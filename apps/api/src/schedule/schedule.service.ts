@@ -5,7 +5,7 @@ import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class ScheduleService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async getWeek(start: string, actor?: { role: string; employeeId?: string }) {
     const startDate = parseWeekStart(start);
@@ -17,8 +17,7 @@ export class ScheduleService {
         startTime: { gte: startDate },
         endTime: { lt: endDate },
         status: { not: 'CANCELLED' },
-        employeeId: scope.type === 'self' ? scope.employeeId : undefined,
-        employee: scope.type === 'department' ? { department: scope.department } : undefined
+        employeeId: scope.type === 'self' ? scope.employeeId : undefined
       },
       include: {
         employee: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Badge, Box, Button, Container, Grid, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Box, Button, Container, Grid, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { IconArrowRight } from '@tabler/icons-react';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState, type FormEvent } from 'react';
@@ -198,9 +198,10 @@ export default function LoginPage() {
                       }}
                     />
 
-                    <PasswordInput
+                    <TextInput
                       label="Şifre"
                       placeholder="Şifren"
+                      type="password"
                       name="password"
                       autoComplete="current-password"
                       size="md"

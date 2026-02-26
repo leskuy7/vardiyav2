@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 60_000,
   webServer: [
     {
-      command: 'set REGISTER_INVITE_CODE=test-invite-code&& npm run -w @vardiya/api dev',
+      command: 'npm run -w @vardiya/api dev',
       url: 'http://localhost:4000/api/health',
       reuseExistingServer: true,
       timeout: 120_000

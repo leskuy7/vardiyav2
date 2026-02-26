@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 
@@ -23,7 +23,6 @@ describe('AuthService', () => {
     const config = {
       get: jest.fn((key: string) => {
         const values: Record<string, string> = {
-          REGISTER_INVITE_CODE: 'invite-123',
           JWT_ACCESS_SECRET: 'access-secret',
           JWT_REFRESH_SECRET: 'refresh-secret',
           JWT_ACCESS_EXPIRES_IN: '15m',
@@ -44,74 +43,6 @@ describe('AuthService', () => {
       config
     };
   }
-
-  it('email kullanımda ise register 400 döner', async () => {
-    const { service, prisma } = createService();
-    prisma.user.findUnique.mockResolvedValue({ id: 'u1' });
-
-    await expect(
-      service.register({
-        email: 'test@example.com',
-        password: 'Test12345!',
-        firstName: 'Ali',
-        lastName: 'Veli',
-        inviteCode: 'invite-123'
-      })
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('invite code yanlışsa register 401 döner', async () => {
-    const { service, prisma } = createService();
-    prisma.user.findUnique.mockResolvedValue(null);
-
-    await expect(
-      service.register({
-        email: 'test@example.com',
-        password: 'Test12345!',
-        firstName: 'Ali',
-        lastName: 'Veli',
-        inviteCode: 'wrong-code'
-      })
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-  });
-
-  it('register başarılıysa user ve employee transaction ile oluşturur', async () => {
-    const { service, prisma } = createService();
-    prisma.user.findUnique.mockResolvedValue(null);
-
-    prisma.$transaction.mockImplementation(async (callback: (trx: any) => Promise<any>) => {
-      const trx = {
-        user: {
-          create: jest.fn().mockResolvedValue({
-            id: 'u-new',
-            email: 'new@example.com',
-            name: 'Ali Veli',
-            role: 'EMPLOYEE'
-          })
-        },
-        employee: {
-          create: jest.fn().mockResolvedValue({ id: 'e-new' })
-        }
-      };
-
-      return callback(trx);
-    });
-
-    const result = await service.register({
-      email: 'new@example.com',
-      password: 'Test12345!',
-      firstName: 'Ali',
-      lastName: 'Veli',
-      inviteCode: 'invite-123'
-    });
-
-    expect(result).toEqual({
-      id: 'u-new',
-      email: 'new@example.com',
-      name: 'Ali Veli',
-      role: 'EMPLOYEE'
-    });
-  });
 
   it('kullanıcı yoksa login 401 döner', async () => {
     const { service, prisma } = createService();

@@ -45,8 +45,7 @@ Production-ready hedefli vardiya planlama sistemi (monorepo).
 - `JWT_ACCESS_EXPIRES_IN`
 - `JWT_REFRESH_EXPIRES_IN`
 - `WEB_ORIGIN`
-- `CSRF_ORIGIN`
-- `REGISTER_INVITE_CODE`
+- `CSRF_ORIGINS` (virgülle ayrılmış origin listesi)
 
 ### Web (`apps/web/.env`)
 
@@ -97,7 +96,6 @@ docker compose up --build
 
 ### Auth
 
-- `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`

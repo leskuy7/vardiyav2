@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Autocomplete,
   Badge,
   Button,
   Card,
@@ -71,6 +72,16 @@ export default function EmployeesPage() {
   const departmentOptions = useMemo(() => {
     const departments = Array.from(new Set((data ?? []).map((employee) => employee.department).filter(Boolean))) as string[];
     return [{ value: 'all', label: 'Tüm Departmanlar' }, ...departments.map((department) => ({ value: department, label: department }))];
+  }, [data]);
+
+  const departmentFormOptions = useMemo(() => {
+    const departments = Array.from(new Set((data ?? []).map((e) => e.department).filter(Boolean))) as string[];
+    return departments.map((d) => ({ value: d, label: d }));
+  }, [data]);
+
+  const positionFormOptions = useMemo(() => {
+    const positions = Array.from(new Set((data ?? []).map((e) => e.position).filter(Boolean))) as string[];
+    return positions.map((p) => ({ value: p, label: p }));
   }, [data]);
 
   const rows = useMemo(() => {
@@ -325,8 +336,20 @@ export default function EmployeesPage() {
               </>
             )}
 
-            <TextInput label="Pozisyon" value={form.position} onChange={(event) => setForm((prev) => ({ ...prev, position: event.currentTarget.value }))} />
-            <TextInput label="Departman" value={form.department} onChange={(event) => setForm((prev) => ({ ...prev, department: event.currentTarget.value }))} />
+            <Autocomplete
+              label="Pozisyon"
+              placeholder="Pozisyon seç veya yeni yaz"
+              data={positionFormOptions.map((o) => o.value)}
+              value={form.position}
+              onChange={(value) => setForm((prev) => ({ ...prev, position: value }))}
+            />
+            <Autocomplete
+              label="Departman"
+              placeholder="Departman seç veya yeni yaz"
+              data={departmentFormOptions.map((o) => o.value)}
+              value={form.department}
+              onChange={(value) => setForm((prev) => ({ ...prev, department: value }))}
+            />
             <TextInput label="Telefon" value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.currentTarget.value }))} />
             <NumberInput
               label="Saatlik Ücret"

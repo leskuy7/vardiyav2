@@ -8,7 +8,7 @@ import { UpdateShiftDto } from './dto/update-shift.dto';
 
 @Injectable()
 export class ShiftsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private toMinutes(isoDate: Date) {
     return isoDate.getUTCHours() * 60 + isoDate.getUTCMinutes();
@@ -105,12 +105,7 @@ export class ShiftsService {
 
     if (scope.type === 'all') {
       where.employeeId = employeeId;
-    } else if (scope.type === 'department') {
-      where.employee = { department: scope.department };
-      if (employeeId) {
-        where.employeeId = employeeId;
-      }
-    } else {
+    } else { // scope.type must be 'self'
       where.employeeId = scope.employeeId;
     }
 
@@ -123,7 +118,7 @@ export class ShiftsService {
   async getById(id: string, actor?: { role: string; employeeId?: string }) {
     const shift = await this.prisma.shift.findUnique({
       where: { id },
-      include: actor?.role === 'EMPLOYEE' ? { employee: { select: { department: true } } } : undefined
+      include: undefined
     });
 
     if (!shift) {
@@ -135,12 +130,7 @@ export class ShiftsService {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access your own shifts' });
     }
 
-    if (scope.type === 'department' && shift.employeeId !== scope.employeeId) {
-      const shiftDepartment = (shift as { employee?: { department?: string | null } }).employee?.department ?? null;
-      if (!shiftDepartment || shiftDepartment !== scope.department) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access shifts in your team' });
-      }
-    }
+
 
     return shift;
   }

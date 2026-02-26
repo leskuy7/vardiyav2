@@ -16,8 +16,6 @@ describe('App (e2e)', () => {
   let outsiderEmployeeId = '';
 
   beforeAll(async () => {
-    process.env.REGISTER_INVITE_CODE = process.env.REGISTER_INVITE_CODE ?? 'test-invite-code';
-
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 
     app = moduleRef.createNestApplication();
@@ -97,49 +95,25 @@ describe('App (e2e)', () => {
     expect(me.body.name).toBe('Manager User');
   });
 
-  it('register geçersiz invite code ile bloklanır', async () => {
+  it('register endpoint kaldırıldı (404 döner)', async () => {
     await request(app.getHttpServer())
       .post('/api/auth/register')
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
-        email: 'new-user-fail@test.local',
+        email: 'new-user@test.local',
         password: 'Test12345!',
         firstName: 'New',
         lastName: 'User',
-        inviteCode: 'wrong-code'
+        inviteCode: 'any-code'
       })
-      .expect(401);
-  });
-
-  it('register başarılı olduğunda employee kaydı da oluşur', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/api/auth/register')
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
-      .send({
-        email: 'new-user-ok@test.local',
-        password: 'Test12345!',
-        firstName: 'New',
-        lastName: 'User',
-        inviteCode: process.env.REGISTER_INVITE_CODE
-      })
-      .expect(201);
-
-    expect(response.body.email).toBe('new-user-ok@test.local');
-
-    const createdUser = await prisma.user.findUnique({
-      where: { email: 'new-user-ok@test.local' },
-      include: { employee: true }
-    });
-
-    expect(createdUser).toBeTruthy();
-    expect(createdUser?.employee).toBeTruthy();
+      .expect(404);
   });
 
   it('employee, shift create için yetkisizdir', async () => {
     await request(app.getHttpServer())
       .post('/api/shifts')
       .set('Authorization', `Bearer ${employeeToken}`)
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
         employeeId: employeeEmployeeId,
         startTime: '2026-01-05T08:00:00.000Z',
@@ -152,7 +126,7 @@ describe('App (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/shifts')
       .set('Authorization', `Bearer ${managerToken}`)
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
         employeeId: employeeEmployeeId,
         startTime: '2026-01-06T08:00:00.000Z',
@@ -163,7 +137,7 @@ describe('App (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/shifts')
       .set('Authorization', `Bearer ${managerToken}`)
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
         employeeId: employeeEmployeeId,
         startTime: '2026-01-06T10:00:00.000Z',
@@ -176,7 +150,7 @@ describe('App (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/availability')
       .set('Authorization', `Bearer ${managerToken}`)
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
         employeeId: managerEmployeeId,
         type: 'UNAVAILABLE',
@@ -191,7 +165,7 @@ describe('App (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/shifts')
       .set('Authorization', `Bearer ${managerToken}`)
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
         employeeId: managerEmployeeId,
         startTime: '2026-01-06T09:00:00.000Z',
@@ -202,7 +176,7 @@ describe('App (e2e)', () => {
     const override = await request(app.getHttpServer())
       .post('/api/shifts')
       .set('Authorization', `Bearer ${managerToken}`)
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
         employeeId: managerEmployeeId,
         startTime: '2026-01-06T09:00:00.000Z',
@@ -228,7 +202,7 @@ describe('App (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/shifts')
       .set('Authorization', `Bearer ${managerToken}`)
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
         employeeId: employeeEmployeeId,
         startTime: '2026-01-07T08:00:00.000Z',
@@ -239,7 +213,7 @@ describe('App (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/shifts')
       .set('Authorization', `Bearer ${managerToken}`)
-      .set('Origin', process.env.CSRF_ORIGIN ?? 'http://localhost:3000')
+      .set('Origin', process.env.CSRF_ORIGINS ?? 'http://localhost:3000')
       .send({
         employeeId: outsiderEmployeeId,
         startTime: '2026-01-07T08:00:00.000Z',

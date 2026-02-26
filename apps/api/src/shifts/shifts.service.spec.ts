@@ -115,9 +115,8 @@ describe('ShiftsService', () => {
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
-  it('employee (departman yok) sadece kendi vardiyalarını listeler', async () => {
+  it('employee sadece kendi vardiyalarını listeler', async () => {
     const { service, prisma } = createService();
-    prisma.employee.findUnique.mockResolvedValue({ id: 'emp-1', department: null });
     prisma.shift.findMany.mockResolvedValue([]);
 
     await service.list(undefined, undefined, undefined, undefined, { role: 'EMPLOYEE', employeeId: 'emp-1' });
@@ -129,27 +128,11 @@ describe('ShiftsService', () => {
     );
   });
 
-  it('employee (departmanlı) takım vardiyalarını listeler', async () => {
+  it('employee başkasının vardiya detayını göremez', async () => {
     const { service, prisma } = createService();
-    prisma.employee.findUnique.mockResolvedValue({ id: 'emp-1', department: 'Operasyon' });
-    prisma.shift.findMany.mockResolvedValue([]);
-
-    await service.list(undefined, undefined, undefined, undefined, { role: 'EMPLOYEE', employeeId: 'emp-1' });
-
-    expect(prisma.shift.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ employee: { department: 'Operasyon' } })
-      })
-    );
-  });
-
-  it('employee departman dışı vardiya detayını göremez', async () => {
-    const { service, prisma } = createService();
-    prisma.employee.findUnique.mockResolvedValue({ id: 'emp-1', department: 'Operasyon' });
     prisma.shift.findUnique.mockResolvedValue({
       id: 'shift-1',
-      employeeId: 'emp-2',
-      employee: { department: 'Satış' }
+      employeeId: 'emp-2'
     });
 
     await expect(service.getById('shift-1', { role: 'EMPLOYEE', employeeId: 'emp-1' })).rejects.toBeInstanceOf(ForbiddenException);
