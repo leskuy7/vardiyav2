@@ -1,0 +1,25 @@
+{
+  "name": "vardiyav2",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "wait-on": "^8.0.3"
+  },
+  "scripts": {
+    "start": "npm run dev",
+    "dev:clean": "node scripts/dev-cleanup.mjs",
+    "dev:api": "npm run -w @vardiya/api dev",
+    "dev:web": "npm run -w @vardiya/web dev",
+    "dev": "npm run dev:clean && concurrently -k -n API,WEB \"npm run dev:api\" \"npm run dev:web\"",
+    "start:api": "npm run -w @vardiya/api start",
+    "start:web": "npm run -w @vardiya/web start",
+    "start:local": "concurrently -k -n API,WEB \"npm run start:api\" \"npm run start:web\"",
+    "build": "npm run -ws build",
+    "lint": "npm run -ws --if-present lint",
+    "test": "npm run -ws --if-present test"
+  }
+}

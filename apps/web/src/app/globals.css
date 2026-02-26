@@ -1,0 +1,22 @@
+@media print {
+  .mantine-AppShell-navbar,
+  .mantine-AppShell-header,
+  button {
+    display: none !important;
+  }
+
+  .mantine-AppShell-main,
+  .mantine-Paper-root,
+  .mantine-Container-root {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+  }
+
+  table {
+    width: 100% !important;
+    font-size: 12px !important;
+  }
+}

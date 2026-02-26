@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vardiya
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vardiya
+      JWT_ACCESS_SECRET: test-access-secret
+      JWT_REFRESH_SECRET: test-refresh-secret
+      WEB_ORIGIN: http://localhost:3000
+      CSRF_ORIGIN: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run -w @vardiya/api lint
+      - run: npm run -w @vardiya/api prisma:generate
+      - run: npm run -w @vardiya/api prisma:push
+      - run: npm run -w @vardiya/api build
+      - run: npm run -w @vardiya/api test
+      - run: npm run -w @vardiya/api test:e2e
+
+  web:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vardiya
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vardiya
+      JWT_ACCESS_SECRET: test-access-secret
+      JWT_REFRESH_SECRET: test-refresh-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      WEB_ORIGIN: http://localhost:3000
+      CSRF_ORIGIN: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npx playwright install --with-deps
+      - run: npm run -w @vardiya/api prisma:generate
+      - run: npm run -w @vardiya/api prisma:push
+      - run: npm run -w @vardiya/api seed:test
+      - run: npm run -w @vardiya/api build
+      - run: npm run -w @vardiya/web build
+      - run: |
+          npm run -w @vardiya/api start &
+          npm run -w @vardiya/web start &
+          npx wait-on http://localhost:4000/api/health http://localhost:3000
+          npm run -w @vardiya/web test
