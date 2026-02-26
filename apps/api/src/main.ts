@@ -7,7 +7,7 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 
 function validateRequiredEnv() {
-  const required = ['DATABASE_URL', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'WEB_ORIGIN', 'CSRF_ORIGIN', 'REGISTER_INVITE_CODE'];
+  const required = ['DATABASE_URL', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'WEB_ORIGIN'];
   const missing = required.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);

@@ -6,6 +6,7 @@ import {
   Card,
   Grid,
   Group,
+  ScrollArea,
   Select,
   Stack,
   Table,
@@ -177,53 +178,55 @@ export default function AvailabilityPage() {
         </Stack>
       </Card>
 
-      <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm">
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Çalışan</Table.Th>
-            <Table.Th>Tür</Table.Th>
-            <Table.Th>Gün</Table.Th>
-            <Table.Th>Saat Aralığı</Table.Th>
-            <Table.Th>Tarih Aralığı</Table.Th>
-            <Table.Th>Not</Table.Th>
-            <Table.Th>Aksiyon</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {(data ?? []).length === 0 ? (
+      <ScrollArea>
+        <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm">
+          <Table.Thead>
             <Table.Tr>
-              <Table.Td colSpan={7}>
-                <Text c="dimmed" ta="center">Müsaitlik kaydı bulunamadı.</Text>
-              </Table.Td>
+              <Table.Th>Çalışan</Table.Th>
+              <Table.Th>Tür</Table.Th>
+              <Table.Th>Gün</Table.Th>
+              <Table.Th>Saat Aralığı</Table.Th>
+              <Table.Th>Tarih Aralığı</Table.Th>
+              <Table.Th>Not</Table.Th>
+              <Table.Th>Aksiyon</Table.Th>
             </Table.Tr>
-          ) : (
-            (data ?? []).map((item) => {
-              const owner = (employees ?? []).find((employee) => employee.id === item.employeeId);
-              return (
-              <Table.Tr key={item.id}>
-                <Table.Td>{owner?.user.name ?? item.employeeId.slice(0, 8)}</Table.Td>
-                <Table.Td><Badge variant="light">{typeLabel(item.type)}</Badge></Table.Td>
-                <Table.Td>{dayLabel(item.dayOfWeek)}</Table.Td>
-                <Table.Td>{item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : '-'}</Table.Td>
-                <Table.Td>{item.startDate || item.endDate ? `${item.startDate ?? '-'} / ${item.endDate ?? '-'}` : '-'}</Table.Td>
-                <Table.Td>{item.note ?? '-'}</Table.Td>
-                <Table.Td>
-                  <Button
-                    variant="light"
-                    color="red"
-                    size="xs"
-                    loading={deleteAvailability.isPending}
-                    onClick={() => deleteAvailability.mutate(item.id)}
-                  >
-                    Sil
-                  </Button>
+          </Table.Thead>
+          <Table.Tbody>
+            {(data ?? []).length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={7}>
+                  <Text c="dimmed" ta="center">Müsaitlik kaydı bulunamadı.</Text>
                 </Table.Td>
               </Table.Tr>
-              );
-            })
-          )}
-        </Table.Tbody>
-      </Table>
+            ) : (
+              (data ?? []).map((item) => {
+                const owner = (employees ?? []).find((employee) => employee.id === item.employeeId);
+                return (
+                  <Table.Tr key={item.id}>
+                    <Table.Td>{owner?.user.name ?? item.employeeId.slice(0, 8)}</Table.Td>
+                    <Table.Td><Badge variant="light">{typeLabel(item.type)}</Badge></Table.Td>
+                    <Table.Td>{dayLabel(item.dayOfWeek)}</Table.Td>
+                    <Table.Td>{item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : '-'}</Table.Td>
+                    <Table.Td>{item.startDate || item.endDate ? `${item.startDate ?? '-'} / ${item.endDate ?? '-'}` : '-'}</Table.Td>
+                    <Table.Td>{item.note ?? '-'}</Table.Td>
+                    <Table.Td>
+                      <Button
+                        variant="light"
+                        color="red"
+                        size="xs"
+                        loading={deleteAvailability.isPending}
+                        onClick={() => deleteAvailability.mutate(item.id)}
+                      >
+                        Sil
+                      </Button>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })
+            )}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea>
     </Stack>
   );
 }

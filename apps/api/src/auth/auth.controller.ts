@@ -5,7 +5,6 @@ import { AuditService } from '../common/audit.service';
 import { CsrfGuard } from '../common/auth/csrf.guard';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
@@ -14,21 +13,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly config: ConfigService,
     private readonly auditService: AuditService
-  ) {}
-
-  @Post('register')
-  @UseGuards(CsrfGuard)
-  async register(@Body() dto: RegisterDto) {
-    const result = await this.authService.register(dto);
-    await this.auditService.log({
-      userId: result.id,
-      action: 'AUTH_REGISTER',
-      entityType: 'USER',
-      entityId: result.id,
-      details: { role: result.role }
-    });
-    return result;
-  }
+  ) { }
 
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {

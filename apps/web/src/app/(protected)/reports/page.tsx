@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge, Button, Card, Grid, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Badge, Button, Card, Grid, Group, ScrollArea, Stack, Table, Text, Title } from '@mantine/core';
+import { IconDownload } from '@tabler/icons-react';
 import { useState } from 'react';
 import { currentWeekStartIsoDate } from '../../../lib/time';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
@@ -45,6 +46,31 @@ export default function ReportsPage() {
           <Badge size="lg" variant="light">{formatWeekRange(weekStart)}</Badge>
           <Button variant="light" onClick={() => setWeekStart((value) => shiftWeek(value, 7))}>Sonraki</Button>
         </Group>
+        <Button
+          variant="light"
+          leftSection={<IconDownload size={16} />}
+          onClick={() => {
+            if (!data) return;
+            const headers = ['Çalışan', 'Normal Saat', 'Toplam Saat', 'Fazla Mesai', 'Maliyet'];
+            const rows = data.employees.map((r) => [
+              r.employeeName,
+              (r.hours - r.overtimeHours).toFixed(2),
+              r.hours.toFixed(2),
+              r.overtimeHours.toFixed(2),
+              r.cost.toFixed(2)
+            ]);
+            const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+            const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rapor_${weekStart}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          CSV İndir
+        </Button>
       </Group>
 
       <Grid>
@@ -71,33 +97,35 @@ export default function ReportsPage() {
       {data.employees.length === 0 ? (
         <PageEmpty title="Rapor verisi bulunamadı" description="Seçilen hafta için çalışan kırılımı henüz oluşmamış." />
       ) : (
-        <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Çalışan</Table.Th>
-              <Table.Th>Normal Saat</Table.Th>
-              <Table.Th>Toplam Saat</Table.Th>
-              <Table.Th>Fazla Mesai</Table.Th>
-              <Table.Th>Maliyet</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {data.employees.map((row) => (
-              <Table.Tr key={row.employeeId}>
-                <Table.Td>
-                  <Stack gap={0}>
-                    <Text fw={600}>{row.employeeName}</Text>
-                    <Text c="dimmed" size="xs">#{row.employeeId.slice(0, 8)}</Text>
-                  </Stack>
-                </Table.Td>
-                <Table.Td>{(row.hours - row.overtimeHours).toFixed(2)}</Table.Td>
-                <Table.Td>{row.hours.toFixed(2)}</Table.Td>
-                <Table.Td>{row.overtimeHours.toFixed(2)}</Table.Td>
-                <Table.Td>₺{row.cost.toFixed(2)}</Table.Td>
+        <ScrollArea>
+          <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Çalışan</Table.Th>
+                <Table.Th>Normal Saat</Table.Th>
+                <Table.Th>Toplam Saat</Table.Th>
+                <Table.Th>Fazla Mesai</Table.Th>
+                <Table.Th>Maliyet</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {data.employees.map((row) => (
+                <Table.Tr key={row.employeeId}>
+                  <Table.Td>
+                    <Stack gap={0}>
+                      <Text fw={600}>{row.employeeName}</Text>
+                      <Text c="dimmed" size="xs">#{row.employeeId.slice(0, 8)}</Text>
+                    </Stack>
+                  </Table.Td>
+                  <Table.Td>{(row.hours - row.overtimeHours).toFixed(2)}</Table.Td>
+                  <Table.Td>{row.hours.toFixed(2)}</Table.Td>
+                  <Table.Td>{row.overtimeHours.toFixed(2)}</Table.Td>
+                  <Table.Td>₺{row.cost.toFixed(2)}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       )}
     </Stack>
   );

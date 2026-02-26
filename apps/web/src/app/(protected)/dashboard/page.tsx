@@ -2,15 +2,21 @@
 
 import { Badge, Card, Grid, Group, List, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
 import { IconAlertTriangle, IconBell, IconClockHour4, IconUsers } from '@tabler/icons-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
 import { useEmployees } from '../../../hooks/use-employees';
 import { useWeeklyReport } from '../../../hooks/use-reports';
 import { useWeeklySchedule } from '../../../hooks/use-shifts';
-import { currentWeekStartIsoDate, formatIstanbul } from '../../../lib/time';
+import { getShiftStatusLabel } from '../../../lib/shift-status';
+import { currentWeekStartIsoDate, formatTimeOnly } from '../../../lib/time';
 
 export default function DashboardPage() {
   const weekStart = currentWeekStartIsoDate();
+  const [todayStr, setTodayStr] = useState('');
+
+  useEffect(() => {
+    setTodayStr(new Date().toLocaleDateString('tr-TR'));
+  }, []);
 
   const { data: employees, isLoading: employeesLoading, isError: employeesError } = useEmployees(true);
   const { data: schedule, isLoading: scheduleLoading, isError: scheduleError } = useWeeklySchedule(weekStart);
@@ -83,7 +89,7 @@ export default function DashboardPage() {
         <Stack gap={2}>
           <Group gap="xs">
             <Badge variant="light">DASHBOARD</Badge>
-            <Text c="dimmed" size="sm">{new Date().toLocaleDateString('tr-TR')}</Text>
+            <Text c="dimmed" size="sm">{todayStr}</Text>
           </Group>
           <Title order={2}>Operasyon Özeti</Title>
           <Text c="dimmed" size="sm">Ekip, vardiya ve bildirim görünümünü tek ekrandan takip et.</Text>
@@ -161,9 +167,9 @@ export default function DashboardPage() {
                   <Group justify="space-between" align="center">
                     <Stack gap={0}>
                       <Text fw={600}>{shift.employeeName ?? 'Çalışan'}</Text>
-                      <Text c="dimmed" size="xs">{formatIstanbul(shift.start)} - {formatIstanbul(shift.end)}</Text>
+                      <Text c="dimmed" size="xs">{formatTimeOnly(shift.start)} - {formatTimeOnly(shift.end)}</Text>
                     </Stack>
-                    <Badge variant="light">{shift.status}</Badge>
+                    <Badge variant="light">{getShiftStatusLabel(shift.status)}</Badge>
                   </Group>
                 </Card>
               ))}

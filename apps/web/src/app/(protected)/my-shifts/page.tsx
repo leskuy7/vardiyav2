@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
 import { useShiftsActions } from '../../../hooks/use-shifts';
 import { getShiftStatusColor, getShiftStatusIcon, getShiftStatusLabel } from '../../../lib/shift-status';
-import { currentWeekStartIsoDate, formatIstanbul } from '../../../lib/time';
+import { currentWeekStartIsoDate, formatDateShort, formatTimeOnly } from '../../../lib/time';
 import { api } from '../../../lib/api';
 
 type ShiftItem = {
@@ -83,7 +83,7 @@ export default function MyShiftsPage() {
             <Card key={shift.id} withBorder radius="md" p="md" className="surface-card interactive-card">
               <Group justify="space-between" align="center">
                 <Stack gap={2}>
-                  <Text fw={700}>{formatIstanbul(shift.startTime)} - {formatIstanbul(shift.endTime)}</Text>
+                  <Text fw={700}>{formatDateShort(shift.startTime)} — {formatTimeOnly(shift.startTime)} - {formatTimeOnly(shift.endTime)}</Text>
                   <Text size="sm" c="dimmed">Vardiya ID: #{shift.id.slice(0, 8)}</Text>
                 </Stack>
                 <Group>

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { AvailabilityModule } from './availability/availability.module';
 import { DatabaseModule } from './database/database.module';
@@ -28,6 +29,9 @@ import { ShiftsModule } from './shifts/shifts.module';
     AvailabilityModule,
     EmployeesModule,
     ReportsModule
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard }
   ]
 })
-export class AppModule {}
+export class AppModule { }

@@ -5,6 +5,23 @@ export function formatIstanbul(value: string) {
   });
 }
 
+export function formatTimeOnly(value: string) {
+  return new Date(value).toLocaleString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
+
+export function formatDateShort(value: string) {
+  return new Date(value).toLocaleDateString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: 'numeric',
+    month: 'short'
+  });
+}
+
 export function currentWeekStartIsoDate() {
   const now = new Date();
   const day = now.getUTCDay();

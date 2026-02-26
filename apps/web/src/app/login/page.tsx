@@ -10,7 +10,6 @@ import { setAccessToken } from '../../lib/token-store';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +41,6 @@ export default function LoginPage() {
     if (selected) {
       setEmail(selected.email);
       setPassword(selected.password);
-      setActiveTab('login');
-      // Auto-submit after a short delay to let state update
       setTimeout(() => {
         formRef.current?.requestSubmit();
       }, 300);
@@ -91,32 +88,9 @@ export default function LoginPage() {
               <form ref={formRef} onSubmit={handleSubmit}>
                 <Stack>
                   <Group justify="space-between" align="center">
-                    <Title order={3}>Hızlı Giriş</Title>
+                    <Title order={3}>Giriş Yap</Title>
                     <Badge variant="light">BETA</Badge>
                   </Group>
-
-                  <Group grow>
-                    <Button
-                      variant={activeTab === 'login' ? 'filled' : 'light'}
-                      onClick={() => setActiveTab('login')}
-                      type="button"
-                    >
-                      Giriş
-                    </Button>
-                    <Button
-                      variant={activeTab === 'register' ? 'filled' : 'light'}
-                      onClick={() => setActiveTab('register')}
-                      type="button"
-                    >
-                      Kayıt
-                    </Button>
-                  </Group>
-
-                  {activeTab === 'register' ? (
-                    <Alert color="blue" variant="light">
-                      Kayıt akışı bir sonraki fazda açılacak. Şimdilik demo hesaplarla giriş yapabilirsin.
-                    </Alert>
-                  ) : null}
 
                   <TextInput
                     label="E-posta"
@@ -165,7 +139,6 @@ export default function LoginPage() {
                           onClick={() => {
                             setEmail(account.email);
                             setPassword(account.password);
-                            setActiveTab('login');
                           }}
                         >
                           {account.label}
@@ -173,6 +146,10 @@ export default function LoginPage() {
                       ))}
                     </Group>
                   </Stack>
+
+                  <Text size="xs" c="dimmed" ta="center">
+                    Hesaplar yalnızca sistem yöneticisi tarafından oluşturulur.
+                  </Text>
 
                   {error ? <Alert color="red">{error}</Alert> : null}
                 </Stack>

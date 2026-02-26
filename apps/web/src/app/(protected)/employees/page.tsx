@@ -8,6 +8,7 @@ import {
   Group,
   Modal,
   NumberInput,
+  ScrollArea,
   Select,
   Stack,
   Table,
@@ -118,7 +119,7 @@ export default function EmployeesPage() {
       password: '',
       firstName,
       lastName,
-      role: 'EMPLOYEE',
+      role: (employee.user as any).role ?? 'EMPLOYEE',
       position: employee.position ?? '',
       department: employee.department ?? '',
       phone: employee.phone ?? '',
@@ -129,11 +130,16 @@ export default function EmployeesPage() {
     setModalOpen(true);
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
 
     try {
       if (formMode === 'create') {
+        if (!form.email || !form.password || !form.firstName) {
+          setError('E-posta, şifre ve ad zorunlu alanlardır.');
+          return;
+        }
         await createEmployee.mutateAsync({
           email: form.email,
           password: form.password,
@@ -165,6 +171,10 @@ export default function EmployeesPage() {
   }
 
   async function handleArchive(employee: EmployeeItem) {
+    const confirmed = window.confirm(
+      `"${employee.user.name}" adlı çalışanı arşivlemek istediğine emin misin?\n\nBu işlem geri alınamaz.`
+    );
+    if (!confirmed) return;
     await archiveEmployee.mutateAsync(employee.id);
   }
 
@@ -227,98 +237,118 @@ export default function EmployeesPage() {
         </Grid.Col>
       </Grid>
 
-      <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm">
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Ad</Table.Th>
-            <Table.Th>E-posta</Table.Th>
-            <Table.Th>Pozisyon</Table.Th>
-            <Table.Th>Departman</Table.Th>
-            <Table.Th>Saatlik Ücret</Table.Th>
-            <Table.Th>Haftalık Limit</Table.Th>
-            <Table.Th>Aksiyon</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {rows.length === 0 ? (
+      <ScrollArea>
+        <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm">
+          <Table.Thead>
             <Table.Tr>
-              <Table.Td colSpan={7}>
-                <Text c="dimmed" ta="center">Sonuç bulunamadı.</Text>
-              </Table.Td>
+              <Table.Th>Ad</Table.Th>
+              <Table.Th>E-posta</Table.Th>
+              <Table.Th>Pozisyon</Table.Th>
+              <Table.Th>Departman</Table.Th>
+              <Table.Th>Saatlik Ücret</Table.Th>
+              <Table.Th>Haftalık Limit</Table.Th>
+              <Table.Th>Aksiyon</Table.Th>
             </Table.Tr>
-          ) : (
-            rows.map((employee) => (
-              <Table.Tr key={employee.id}>
-                <Table.Td>
-                  <Stack gap={0}>
-                    <Text fw={600}>{employee.user.name}</Text>
-                    <Text size="xs" c="dimmed">#{employee.id.slice(0, 8)}</Text>
-                  </Stack>
-                </Table.Td>
-                <Table.Td>{employee.user.email}</Table.Td>
-                <Table.Td>{employee.position ? <Badge variant="light">{employee.position}</Badge> : <Text c="dimmed">-</Text>}</Table.Td>
-                <Table.Td>{employee.department ? <Badge variant="light" color="grape">{employee.department}</Badge> : <Text c="dimmed">-</Text>}</Table.Td>
-                <Table.Td>{employee.hourlyRate ? `₺${Number(employee.hourlyRate).toFixed(2)}` : '-'}</Table.Td>
-                <Table.Td>{employee.maxWeeklyHours ?? 45} saat</Table.Td>
-                <Table.Td>
-                  <Group gap="xs">
-                    <Button size="xs" variant="light" onClick={() => openEditModal(employee)}>Düzenle</Button>
-                    <Button size="xs" variant="light" color="red" onClick={() => handleArchive(employee)} loading={archiveEmployee.isPending}>
-                      Arşivle
-                    </Button>
-                  </Group>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={7}>
+                  <Text c="dimmed" ta="center">Sonuç bulunamadı.</Text>
                 </Table.Td>
               </Table.Tr>
-            ))
-          )}
-        </Table.Tbody>
-      </Table>
+            ) : (
+              rows.map((employee) => (
+                <Table.Tr key={employee.id}>
+                  <Table.Td>
+                    <Stack gap={0}>
+                      <Text fw={600}>{employee.user.name}</Text>
+                      <Text size="xs" c="dimmed">#{employee.id.slice(0, 8)}</Text>
+                    </Stack>
+                  </Table.Td>
+                  <Table.Td>{employee.user.email}</Table.Td>
+                  <Table.Td>{employee.position ? <Badge variant="light">{employee.position}</Badge> : <Text c="dimmed">-</Text>}</Table.Td>
+                  <Table.Td>{employee.department ? <Badge variant="light" color="grape">{employee.department}</Badge> : <Text c="dimmed">-</Text>}</Table.Td>
+                  <Table.Td>{employee.hourlyRate ? `₺${Number(employee.hourlyRate).toFixed(2)}` : '-'}</Table.Td>
+                  <Table.Td>{employee.maxWeeklyHours ?? 45} saat</Table.Td>
+                  <Table.Td>
+                    <Group gap="xs">
+                      <Button size="xs" variant="light" onClick={() => openEditModal(employee)}>Düzenle</Button>
+                      <Button size="xs" variant="light" color="red" onClick={() => handleArchive(employee)} loading={archiveEmployee.isPending}>
+                        Arşivle
+                      </Button>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))
+            )}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea>
 
       <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title={formMode === 'create' ? 'Çalışan Ekle' : 'Çalışanı Düzenle'}>
-        <Stack>
-          {formMode === 'create' ? (
-            <>
-              <TextInput label="E-posta" value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.currentTarget.value }))} />
-              <TextInput label="Şifre" type="password" value={form.password} onChange={(event) => setForm((prev) => ({ ...prev, password: event.currentTarget.value }))} />
-              <Group grow>
-                <TextInput label="Ad" value={form.firstName} onChange={(event) => setForm((prev) => ({ ...prev, firstName: event.currentTarget.value }))} />
-                <TextInput label="Soyad" value={form.lastName} onChange={(event) => setForm((prev) => ({ ...prev, lastName: event.currentTarget.value }))} />
-              </Group>
-              <Select
-                label="Rol"
-                data={[
-                  { value: 'EMPLOYEE', label: 'Çalışan' },
-                  { value: 'MANAGER', label: 'Müdür' }
-                ]}
-                value={form.role}
-                onChange={(value) => setForm((prev) => ({ ...prev, role: (value as 'MANAGER' | 'EMPLOYEE') ?? 'EMPLOYEE' }))}
-              />
-            </>
-          ) : null}
+        <form onSubmit={handleSubmit}>
+          <Stack>
+            {formMode === 'create' ? (
+              <>
+                <TextInput label="E-posta" value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.currentTarget.value }))} required />
+                <TextInput label="Şifre" type="password" autoComplete="new-password" value={form.password} onChange={(event) => setForm((prev) => ({ ...prev, password: event.currentTarget.value }))} required />
+                <Group grow>
+                  <TextInput label="Ad" value={form.firstName} onChange={(event) => setForm((prev) => ({ ...prev, firstName: event.currentTarget.value }))} required />
+                  <TextInput label="Soyad" value={form.lastName} onChange={(event) => setForm((prev) => ({ ...prev, lastName: event.currentTarget.value }))} />
+                </Group>
+                <Select
+                  label="Rol"
+                  data={[
+                    { value: 'EMPLOYEE', label: 'Çalışan' },
+                    { value: 'MANAGER', label: 'Müdür' }
+                  ]}
+                  value={form.role}
+                  onChange={(value) => setForm((prev) => ({ ...prev, role: (value as 'MANAGER' | 'EMPLOYEE') ?? 'EMPLOYEE' }))}
+                />
+              </>
+            ) : (
+              <>
+                <TextInput label="Ad" value={form.firstName} disabled description="İsim düzenlemesi yakında eklenecek." />
+                <TextInput label="Soyad" value={form.lastName} disabled />
+                <TextInput label="E-posta" value={form.email} disabled />
+                <Select
+                  label="Rol"
+                  data={[
+                    { value: 'EMPLOYEE', label: 'Çalışan' },
+                    { value: 'MANAGER', label: 'Müdür' }
+                  ]}
+                  value={form.role}
+                  disabled
+                  description="Rol değişikliği yakında eklenecek."
+                />
+              </>
+            )}
 
-          <TextInput label="Pozisyon" value={form.position} onChange={(event) => setForm((prev) => ({ ...prev, position: event.currentTarget.value }))} />
-          <TextInput label="Departman" value={form.department} onChange={(event) => setForm((prev) => ({ ...prev, department: event.currentTarget.value }))} />
-          <TextInput label="Telefon" value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.currentTarget.value }))} />
-          <NumberInput
-            label="Saatlik Ücret"
-            min={0}
-            value={form.hourlyRate}
-            onChange={(value) => setForm((prev) => ({ ...prev, hourlyRate: Number(value) || 0 }))}
-          />
-          <NumberInput
-            label="Maksimum Haftalık Saat"
-            min={1}
-            value={form.maxWeeklyHours}
-            onChange={(value) => setForm((prev) => ({ ...prev, maxWeeklyHours: Number(value) || 45 }))}
-          />
+            <TextInput label="Pozisyon" value={form.position} onChange={(event) => setForm((prev) => ({ ...prev, position: event.currentTarget.value }))} />
+            <TextInput label="Departman" value={form.department} onChange={(event) => setForm((prev) => ({ ...prev, department: event.currentTarget.value }))} />
+            <TextInput label="Telefon" value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.currentTarget.value }))} />
+            <NumberInput
+              label="Saatlik Ücret"
+              min={0}
+              value={form.hourlyRate}
+              onChange={(value) => setForm((prev) => ({ ...prev, hourlyRate: Number(value) || 0 }))}
+            />
+            <NumberInput
+              label="Maksimum Haftalık Saat"
+              min={1}
+              value={form.maxWeeklyHours}
+              onChange={(value) => setForm((prev) => ({ ...prev, maxWeeklyHours: Number(value) || 45 }))}
+            />
 
-          {error ? <Text c="red" size="sm">{error}</Text> : null}
+            {error ? <Text c="red" size="sm">{error}</Text> : null}
 
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setModalOpen(false)}>Vazgeç</Button>
-            <Button onClick={handleSubmit} loading={createEmployee.isPending || updateEmployee.isPending}>Kaydet</Button>
-          </Group>
-        </Stack>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setModalOpen(false)} type="button">Vazgeç</Button>
+              <Button type="submit" loading={createEmployee.isPending || updateEmployee.isPending}>Kaydet</Button>
+            </Group>
+          </Stack>
+        </form>
       </Modal>
     </Stack>
   );

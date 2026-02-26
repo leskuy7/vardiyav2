@@ -32,6 +32,7 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
   hourlyRate?: number;
 
   @IsOptional()
