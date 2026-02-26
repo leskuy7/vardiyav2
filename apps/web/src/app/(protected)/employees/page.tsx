@@ -33,7 +33,6 @@ type EmployeeForm = {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'MANAGER' | 'EMPLOYEE';
   position: string;
   department: string;
   phone: string;
@@ -46,7 +45,6 @@ const initialForm: EmployeeForm = {
   password: '',
   firstName: '',
   lastName: '',
-  role: 'EMPLOYEE',
   position: '',
   department: '',
   phone: '',
@@ -135,7 +133,6 @@ export default function EmployeesPage() {
       password: '',
       firstName,
       lastName,
-      role: (employee.user as any).role ?? 'EMPLOYEE',
       position: employee.position ?? '',
       department: employee.department ?? '',
       phone: employee.phone ?? '',
@@ -161,7 +158,6 @@ export default function EmployeesPage() {
           password: form.password,
           firstName: form.firstName,
           lastName: form.lastName,
-          role: form.role,
           position: form.position || undefined,
           department: form.department || undefined,
           phone: form.phone || undefined,
@@ -253,75 +249,6 @@ export default function EmployeesPage() {
         </Grid.Col>
       </Grid>
 
-      {/* Departman & Pozisyon Yönetimi */}
-      {(departmentFormOptions.length > 0 || positionFormOptions.length > 0) && (
-        <Paper withBorder radius="md" p="md" className="gradient-card">
-          <Stack gap="sm">
-            <Title order={5}>Departman & Pozisyon Yönetimi</Title>
-            <Text c="dimmed" size="xs">Değerin yanındaki ✕ butonuna basarak o değeri tüm çalışanlardan kaldırabilirsiniz.</Text>
-
-            {departmentFormOptions.length > 0 && (
-              <Group gap="xs" align="center" wrap="wrap">
-                <ThemeIcon variant="light" color="grape" size="sm" radius="xl"><IconBuilding size={12} /></ThemeIcon>
-                <Text size="sm" fw={600}>Departmanlar:</Text>
-                {departmentFormOptions.map((opt) => {
-                  const affectedIds = (data ?? []).filter((e) => e.department === opt.value).map((e) => e.id);
-                  return (
-                    <Badge
-                      key={opt.value}
-                      variant="light"
-                      color="grape"
-                      size="lg"
-                      rightSection={
-                        <CloseButton
-                          size="xs"
-                          variant="transparent"
-                          onClick={() => {
-                            if (!window.confirm(`"${opt.value}" departmanını ${affectedIds.length} çalışandan kaldırmak istediğine emin misin?`)) return;
-                            bulkClearField.mutate({ field: 'department', value: opt.value, employeeIds: affectedIds });
-                          }}
-                        />
-                      }
-                    >
-                      {opt.value} ({affectedIds.length})
-                    </Badge>
-                  );
-                })}
-              </Group>
-            )}
-
-            {positionFormOptions.length > 0 && (
-              <Group gap="xs" align="center" wrap="wrap">
-                <ThemeIcon variant="light" color="indigo" size="sm" radius="xl"><IconTag size={12} /></ThemeIcon>
-                <Text size="sm" fw={600}>Pozisyonlar:</Text>
-                {positionFormOptions.map((opt) => {
-                  const affectedIds = (data ?? []).filter((e) => e.position === opt.value).map((e) => e.id);
-                  return (
-                    <Badge
-                      key={opt.value}
-                      variant="light"
-                      color="indigo"
-                      size="lg"
-                      rightSection={
-                        <CloseButton
-                          size="xs"
-                          variant="transparent"
-                          onClick={() => {
-                            if (!window.confirm(`"${opt.value}" pozisyonunu ${affectedIds.length} çalışandan kaldırmak istediğine emin misin?`)) return;
-                            bulkClearField.mutate({ field: 'position', value: opt.value, employeeIds: affectedIds });
-                          }}
-                        />
-                      }
-                    >
-                      {opt.value} ({affectedIds.length})
-                    </Badge>
-                  );
-                })}
-              </Group>
-            )}
-          </Stack>
-        </Paper>
-      )}
 
       <ScrollArea>
         <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm" className="premium-table">
@@ -372,6 +299,56 @@ export default function EmployeesPage() {
         </Table>
       </ScrollArea>
 
+      {/* Departman & Pozisyon Yönetimi */}
+      {(departmentFormOptions.length > 0 || positionFormOptions.length > 0) && (
+        <Paper withBorder radius="md" p="md" className="gradient-card">
+          <Stack gap="sm">
+            <Title order={5}>Departman & Pozisyon Yönetimi</Title>
+            <Text c="dimmed" size="xs">Değerin yanındaki ✕ butonuna tıklayarak o değeri tüm çalışanlardan kaldırabilirsiniz.</Text>
+
+            {departmentFormOptions.length > 0 && (
+              <Group gap="xs" align="center" wrap="wrap">
+                <ThemeIcon variant="light" color="grape" size="sm" radius="xl"><IconBuilding size={12} /></ThemeIcon>
+                <Text size="sm" fw={600}>Departmanlar:</Text>
+                {departmentFormOptions.map((opt) => {
+                  const affectedIds = (data ?? []).filter((e) => e.department === opt.value).map((e) => e.id);
+                  return (
+                    <Badge key={opt.value} variant="light" color="grape" size="lg"
+                      rightSection={<CloseButton size="xs" variant="transparent" onClick={() => {
+                        if (!window.confirm(`"${opt.value}" departmanını ${affectedIds.length} çalışandan kaldırmak istediğine emin misin?`)) return;
+                        bulkClearField.mutate({ field: 'department', value: opt.value, employeeIds: affectedIds });
+                      }} />}
+                    >
+                      {opt.value} ({affectedIds.length})
+                    </Badge>
+                  );
+                })}
+              </Group>
+            )}
+
+            {positionFormOptions.length > 0 && (
+              <Group gap="xs" align="center" wrap="wrap">
+                <ThemeIcon variant="light" color="indigo" size="sm" radius="xl"><IconTag size={12} /></ThemeIcon>
+                <Text size="sm" fw={600}>Pozisyonlar:</Text>
+                {positionFormOptions.map((opt) => {
+                  const affectedIds = (data ?? []).filter((e) => e.position === opt.value).map((e) => e.id);
+                  return (
+                    <Badge key={opt.value} variant="light" color="indigo" size="lg"
+                      rightSection={<CloseButton size="xs" variant="transparent" onClick={() => {
+                        if (!window.confirm(`"${opt.value}" pozisyonunu ${affectedIds.length} çalışandan kaldırmak istediğine emin misin?`)) return;
+                        bulkClearField.mutate({ field: 'position', value: opt.value, employeeIds: affectedIds });
+                      }} />}
+                    >
+                      {opt.value} ({affectedIds.length})
+                    </Badge>
+                  );
+                })}
+              </Group>
+            )}
+          </Stack>
+        </Paper>
+      )}
+
       <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title={formMode === 'create' ? 'Çalışan Ekle' : 'Çalışanı Düzenle'}>
         <form onSubmit={handleSubmit}>
           <Stack>
@@ -383,31 +360,12 @@ export default function EmployeesPage() {
                   <TextInput label="Ad" value={form.firstName} onChange={(event) => setForm((prev) => ({ ...prev, firstName: event.currentTarget.value }))} required />
                   <TextInput label="Soyad" value={form.lastName} onChange={(event) => setForm((prev) => ({ ...prev, lastName: event.currentTarget.value }))} />
                 </Group>
-                <Select
-                  label="Rol"
-                  data={[
-                    { value: 'EMPLOYEE', label: 'Çalışan' },
-                    { value: 'MANAGER', label: 'Müdür' }
-                  ]}
-                  value={form.role}
-                  onChange={(value) => setForm((prev) => ({ ...prev, role: (value as 'MANAGER' | 'EMPLOYEE') ?? 'EMPLOYEE' }))}
-                />
               </>
             ) : (
               <>
                 <TextInput label="Ad" value={form.firstName} disabled description="İsim düzenlemesi yakında eklenecek." />
                 <TextInput label="Soyad" value={form.lastName} disabled />
                 <TextInput label="E-posta" value={form.email} disabled />
-                <Select
-                  label="Rol"
-                  data={[
-                    { value: 'EMPLOYEE', label: 'Çalışan' },
-                    { value: 'MANAGER', label: 'Müdür' }
-                  ]}
-                  value={form.role}
-                  disabled
-                  description="Rol değişikliği yakında eklenecek."
-                />
               </>
             )}
 

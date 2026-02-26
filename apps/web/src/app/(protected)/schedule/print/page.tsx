@@ -1,0 +1,300 @@
+"use client";
+
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { api } from '../../../../lib/api';
+import { currentWeekStartIsoDate } from '../../../../lib/time';
+
+type Shift = {
+    id: string;
+    employeeId: string;
+    employeeName?: string;
+    start: string;
+    end: string;
+    status: string;
+};
+
+type WeeklySchedule = {
+    start: string;
+    end: string;
+    days: Array<{ date: string; shifts: Shift[] }>;
+};
+
+const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+
+function formatTime(iso: string) {
+    return new Date(iso).toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function formatDateShort(iso: string) {
+    return new Date(`${iso}T00:00:00Z`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}
+
+function formatWeekRange(isoDate: string) {
+    const start = new Date(`${isoDate}T00:00:00Z`);
+    const end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 6);
+    const s = start.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+    const e = end.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    return `${s} – ${e}`;
+}
+
+export default function SchedulePrintPage() {
+    const searchParams = useSearchParams();
+    const weekStart = searchParams.get('start') ?? currentWeekStartIsoDate();
+    const [data, setData] = useState<WeeklySchedule | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        api.get<WeeklySchedule>(`/schedule/week?start=${weekStart}`)
+            .then((res) => setData(res.data))
+            .catch(() => setData(null))
+            .finally(() => setLoading(false));
+    }, [weekStart]);
+
+    // Collect all unique employees across all days
+    const employees = useMemo(() => {
+        if (!data) return [];
+        const map = new Map<string, string>();
+        for (const day of data.days) {
+            for (const shift of day.shifts) {
+                if (!map.has(shift.employeeId)) {
+                    map.set(shift.employeeId, shift.employeeName ?? shift.employeeId.slice(0, 8));
+                }
+            }
+        }
+        return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    }, [data]);
+
+    // Auto-print
+    useEffect(() => {
+        if (!loading && data) {
+            setTimeout(() => window.print(), 600);
+        }
+    }, [loading, data]);
+
+    if (loading) {
+        return (
+            <div style={{ padding: 40, textAlign: 'center', fontFamily: 'sans-serif' }}>
+                <p>Yükleniyor...</p>
+            </div>
+        );
+    }
+
+    if (!data) {
+        return (
+            <div style={{ padding: 40, textAlign: 'center', fontFamily: 'sans-serif' }}>
+                <p>Vardiya verisi yüklenemedi.</p>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <style>{`
+        @media print {
+          @page { size: landscape; margin: 10mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .no-print { display: none !important; }
+        }
+
+        .print-page {
+          font-family: 'Segoe UI', system-ui, sans-serif;
+          padding: 20px;
+          max-width: 1200px;
+          margin: 0 auto;
+          color: #1a1a2e;
+          background: #fff;
+        }
+
+        .print-header {
+          text-align: center;
+          margin-bottom: 20px;
+          border-bottom: 2px solid #4338ca;
+          padding-bottom: 12px;
+        }
+        .print-header h1 {
+          margin: 0 0 4px 0;
+          font-size: 22px;
+          color: #4338ca;
+        }
+        .print-header p {
+          margin: 0;
+          font-size: 14px;
+          color: #666;
+        }
+
+        .print-actions {
+          display: flex;
+          gap: 8px;
+          justify-content: center;
+          margin-bottom: 16px;
+        }
+        .print-actions button {
+          padding: 8px 20px;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+        }
+        .btn-print {
+          background: #4338ca;
+          color: #fff;
+        }
+        .btn-back {
+          background: #e5e7eb;
+          color: #374151;
+        }
+
+        .schedule-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 11px;
+        }
+        .schedule-table th,
+        .schedule-table td {
+          border: 1px solid #d1d5db;
+          padding: 6px 8px;
+          vertical-align: top;
+          text-align: left;
+        }
+        .schedule-table thead th {
+          background: #4338ca;
+          color: #fff;
+          font-weight: 700;
+          text-align: center;
+          font-size: 12px;
+        }
+        .schedule-table thead th.employee-col {
+          background: #312e81;
+          text-align: left;
+          min-width: 120px;
+        }
+        .schedule-table td.employee-cell {
+          font-weight: 700;
+          background: #f5f3ff;
+          white-space: nowrap;
+          font-size: 12px;
+        }
+        .schedule-table tbody tr:nth-child(even) {
+          background: #fafafa;
+        }
+        .shift-cell {
+          text-align: center;
+          min-width: 80px;
+        }
+        .shift-time {
+          font-weight: 600;
+          color: #312e81;
+          font-size: 12px;
+        }
+        .shift-status {
+          font-size: 9px;
+          padding: 1px 5px;
+          border-radius: 4px;
+          display: inline-block;
+          margin-top: 2px;
+        }
+        .status-ACKNOWLEDGED { background: #d1fae5; color: #065f46; }
+        .status-PUBLISHED { background: #dbeafe; color: #1e40af; }
+        .status-DRAFT { background: #fef3c7; color: #92400e; }
+        .status-CANCELLED { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+        .empty-cell { color: #d1d5db; text-align: center; }
+
+        .print-footer {
+          margin-top: 16px;
+          font-size: 11px;
+          color: #9ca3af;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .summary-row td {
+          background: #f0f0ff !important;
+          font-weight: 600;
+          text-align: center;
+          font-size: 11px;
+        }
+      `}</style>
+
+            <div className="print-page">
+                <div className="print-header">
+                    <h1>📋 Haftalık Vardiya Programı</h1>
+                    <p>{formatWeekRange(weekStart)}</p>
+                </div>
+
+                <div className="print-actions no-print">
+                    <button className="btn-print" onClick={() => window.print()}>🖨️ Yazdır</button>
+                    <button className="btn-back" onClick={() => window.history.back()}>← Geri Dön</button>
+                </div>
+
+                <table className="schedule-table">
+                    <thead>
+                        <tr>
+                            <th className="employee-col">Çalışan</th>
+                            {data.days.map((day, i) => (
+                                <th key={day.date}>
+                                    {DAY_NAMES[i]}<br />
+                                    <span style={{ fontWeight: 400, fontSize: 10 }}>{formatDateShort(day.date)}</span>
+                                </th>
+                            ))}
+                            <th>Toplam</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {employees.map((emp) => {
+                            let totalHours = 0;
+                            return (
+                                <tr key={emp.id}>
+                                    <td className="employee-cell">{emp.name}</td>
+                                    {data.days.map((day) => {
+                                        const shifts = day.shifts.filter((s) => s.employeeId === emp.id);
+                                        if (shifts.length === 0) {
+                                            return <td key={day.date} className="shift-cell empty-cell">—</td>;
+                                        }
+                                        return (
+                                            <td key={day.date} className="shift-cell">
+                                                {shifts.map((shift) => {
+                                                    const hours = (new Date(shift.end).getTime() - new Date(shift.start).getTime()) / 3600000;
+                                                    totalHours += hours;
+                                                    return (
+                                                        <div key={shift.id}>
+                                                            <span className="shift-time">{formatTime(shift.start)}–{formatTime(shift.end)}</span>
+                                                            <br />
+                                                            <span className={`shift-status status-${shift.status}`}>
+                                                                {shift.status === 'ACKNOWLEDGED' ? 'Onaylı' : shift.status === 'PUBLISHED' ? 'Yayında' : shift.status === 'DRAFT' ? 'Taslak' : 'İptal'}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </td>
+                                        );
+                                    })}
+                                    <td style={{ textAlign: 'center', fontWeight: 600 }}>{totalHours.toFixed(1)}s</td>
+                                </tr>
+                            );
+                        })}
+                        {/* Summary row */}
+                        <tr className="summary-row">
+                            <td>Toplam</td>
+                            {data.days.map((day) => (
+                                <td key={day.date}>{day.shifts.length} vardiya</td>
+                            ))}
+                            <td>
+                                {employees.length > 0
+                                    ? data.days.flatMap((d) => d.shifts).reduce((sum, s) => sum + (new Date(s.end).getTime() - new Date(s.start).getTime()) / 3600000, 0).toFixed(1) + 's'
+                                    : '—'}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div className="print-footer">
+                    <span>Oluşturma: {new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>{employees.length} çalışan · {data.days.flatMap((d) => d.shifts).length} vardiya</span>
+                </div>
+            </div>
+        </>
+    );
+}

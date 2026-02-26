@@ -161,7 +161,7 @@ export default function SchedulePage() {
                 <Button variant="default" onClick={() => setWeekStart(currentWeekStartIsoDate())}>Bugün</Button>
               </Group>
               <Group>
-                <Button variant="default" onClick={() => window.print()}>Yazdır</Button>
+                <Button variant="default" onClick={() => window.open(`/schedule/print?start=${weekStart}`, '_blank')}>Yazdır</Button>
                 <Button
                   onClick={() => {
                     setSelectedShift(undefined);
