@@ -1,19 +1,30 @@
-.surface-card {
-  animation: fade-in-up 240ms ease-out;
+:root {
+  --gradient-brand: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-hero: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  --gradient-card: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  --gradient-accent: linear-gradient(135deg, #667eea 0%, #5a67d8 50%, #764ba2 100%);
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glow-primary: 0 0 20px rgba(102, 126, 234, 0.3);
+  --glow-accent: 0 0 30px rgba(118, 75, 162, 0.2);
+  --radius-smooth: 16px;
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.interactive-card {
-  transition: transform 160ms ease, box-shadow 160ms ease;
+[data-mantine-color-scheme='light'] {
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --gradient-card: linear-gradient(135deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%);
 }
 
-.interactive-card:hover {
-  transform: translateY(-2px);
-}
-
+/* ─── Animations ─── */
 @keyframes fade-in-up {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(12px);
   }
 
   to {
@@ -22,21 +33,345 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .surface-card {
-    animation: none;
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
 
-  .interactive-card {
-    transition: none;
-  }
-
-  .interactive-card:hover {
-    transform: none;
+  to {
+    opacity: 1;
   }
 }
 
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: var(--glow-primary);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ─── Surface Cards ─── */
+.surface-card {
+  animation: fade-in-up 400ms ease-out;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: var(--glass-border) !important;
+  box-shadow: var(--glass-shadow);
+}
+
+.gradient-card {
+  background: var(--gradient-card) !important;
+  border-color: var(--glass-border) !important;
+  box-shadow: var(--glass-shadow);
+  animation: fade-in-up 400ms ease-out;
+}
+
+/* ─── Interactive Elements ─── */
+.interactive-card {
+  transition: var(--transition-smooth);
+  cursor: pointer;
+}
+
+.interactive-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--glow-primary);
+  border-color: rgba(102, 126, 234, 0.3) !important;
+}
+
+.interactive-card:active {
+  transform: translateY(-1px);
+}
+
+/* ─── Stat Cards ─── */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition-smooth);
+  animation: fade-in-up 400ms ease-out;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-accent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ─── Premium Navbar ─── */
+.premium-nav-link {
+  transition: var(--transition-smooth);
+  border-radius: var(--radius-smooth) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-nav-link:hover {
+  background: var(--gradient-card) !important;
+  transform: translateX(4px);
+}
+
+.premium-nav-link[data-active='true'] {
+  background: var(--gradient-accent) !important;
+  box-shadow: var(--glow-primary);
+}
+
+/* ─── Premium Table ─── */
+.premium-table {
+  border-radius: var(--radius-smooth) !important;
+  overflow: hidden;
+}
+
+.premium-table thead tr th {
+  background: var(--gradient-card) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.05em;
+}
+
+.premium-table tbody tr {
+  transition: var(--transition-smooth);
+}
+
+.premium-table tbody tr:hover {
+  background: var(--gradient-card) !important;
+}
+
+/* ─── Hero Section ─── */
+.hero-section {
+  position: relative;
+  overflow: hidden;
+  background: var(--gradient-hero);
+  border-radius: 24px;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.15) 0%, transparent 70%);
+  animation: float 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: -40%;
+  left: -20%;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(118, 75, 162, 0.12) 0%, transparent 70%);
+  animation: float 10s ease-in-out infinite reverse;
+  pointer-events: none;
+}
+
+/* ─── Gradient Text ─── */
+.gradient-text {
+  background: var(--gradient-accent);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 4s ease-in-out infinite;
+}
+
+/* ─── Premium Badges ─── */
+.badge-glow {
+  box-shadow: var(--glow-primary);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ─── Page Transitions ─── */
+.page-enter {
+  animation: fade-in-up 500ms ease-out;
+}
+
+.stagger-1 {
+  animation-delay: 0ms;
+}
+
+.stagger-2 {
+  animation-delay: 80ms;
+}
+
+.stagger-3 {
+  animation-delay: 160ms;
+}
+
+.stagger-4 {
+  animation-delay: 240ms;
+}
+
+/* ─── Premium Button ─── */
+.btn-gradient {
+  background: var(--gradient-accent) !important;
+  background-size: 200% auto !important;
+  border: none !important;
+  box-shadow: var(--glow-primary);
+  transition: var(--transition-smooth);
+}
+
+.btn-gradient:hover {
+  background-position: right center !important;
+  box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+  transform: translateY(-1px);
+}
+
+/* ─── Feature Cards ─── */
+.feature-card {
+  position: relative;
+  border-color: var(--glass-border) !important;
+  transition: var(--transition-smooth);
+  overflow: hidden;
+}
+
+.feature-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-accent);
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--glass-shadow);
+  border-color: rgba(102, 126, 234, 0.2) !important;
+}
+
+.feature-card:hover::after {
+  transform: scaleX(1);
+}
+
+/* ─── Sidebar user card ─── */
+.user-card {
+  background: var(--gradient-card);
+  border-color: var(--glass-border) !important;
+  transition: var(--transition-smooth);
+}
+
+.user-card:hover {
+  box-shadow: var(--glass-shadow);
+}
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+
+  .surface-card,
+  .gradient-card,
+  .stat-card,
+  .page-enter {
+    animation: none;
+  }
+
+  .interactive-card,
+  .feature-card,
+  .premium-nav-link,
+  .stat-card {
+    transition: none;
+  }
+
+  .interactive-card:hover,
+  .feature-card:hover,
+  .stat-card:hover {
+    transform: none;
+  }
+
+  .hero-section::before,
+  .hero-section::after {
+    animation: none;
+  }
+
+  .gradient-text {
+    animation: none;
+  }
+
+  .badge-glow {
+    animation: none;
+  }
+}
+
+/* ─── Print ─── */
 @media print {
+
   .mantine-AppShell-navbar,
   .mantine-AppShell-header,
   button {

@@ -1,104 +1,199 @@
 "use client";
 
-import { Badge, Button, Container, Grid, Group, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
-import { IconCalendarWeek, IconChartBar, IconUsers } from '@tabler/icons-react';
+import { Badge, Box, Button, Container, Grid, Group, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
+import { IconArrowRight, IconCalendarWeek, IconChartBar, IconShieldCheck, IconUsers } from '@tabler/icons-react';
 import Link from 'next/link';
 import { ThemeToggle } from '../components/theme-toggle';
 
+const features = [
+  {
+    icon: IconCalendarWeek,
+    title: 'Haftalık Planlama',
+    description: 'Sürükle-bırak grid ile anlık vardiya atama ve düzenleme.',
+    color: 'indigo'
+  },
+  {
+    icon: IconUsers,
+    title: 'Çalışan Takibi',
+    description: 'Rol bazlı erişim, müsaitlik ve saat yönetimi.',
+    color: 'violet'
+  },
+  {
+    icon: IconChartBar,
+    title: 'Akıllı Raporlama',
+    description: 'Haftalık saat, mesai ve maliyet analizleri.',
+    color: 'grape'
+  },
+  {
+    icon: IconShieldCheck,
+    title: 'Güvenli Yönetim',
+    description: 'RBAC, CSRF koruması ve audit logging.',
+    color: 'teal'
+  }
+];
+
 export default function HomePage() {
   return (
-    <Container size="xl" py={56}>
-      <Stack gap="lg">
-        <Group justify="flex-end" mb="xs">
-          <ThemeToggle />
-        </Group>
+    <Box>
+      <Container size="xl" py={40}>
+        <Stack gap="xl">
+          {/* Top bar */}
+          <Group justify="space-between" align="center">
+            <Group gap="sm">
+              <Badge variant="light" className="badge-glow" size="lg">Vardiya v2</Badge>
+            </Group>
+            <Group gap="sm">
+              <ThemeToggle />
+              <Button component={Link} href="/login" variant="light" radius="xl">Giriş Yap</Button>
+            </Group>
+          </Group>
 
-        <Paper withBorder radius="xl" p={{ base: 'lg', md: 'xl' }}>
-          <Grid gutter="xl" align="stretch">
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <Stack gap="md" justify="center" h="100%">
-                <Badge variant="light" w="fit-content">Vardiya Yönetimi</Badge>
-                <Title order={1} maw={560}>Ekibinizi akıllıca yönetin.</Title>
-                <Text c="dimmed" size="lg" maw={620}>
-                  Sürükle-bırak planlama, çalışan takibi ve haftalık raporları tek platformda yönet.
-                </Text>
+          {/* Hero */}
+          <Paper className="hero-section" p={{ base: 'xl', md: 48 }}>
+            <Grid gutter="xl" align="center">
+              <Grid.Col span={{ base: 12, md: 7 }}>
+                <Stack gap="lg" style={{ position: 'relative', zIndex: 1 }}>
+                  <Badge
+                    variant="light"
+                    color="white"
+                    size="lg"
+                    style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.1)', color: '#c7d2fe' }}
+                  >
+                    ✨ Yeni Nesil Vardiya Yönetimi
+                  </Badge>
 
-                <Stack gap="sm" mt="sm">
-                  <Group gap="sm" wrap="nowrap">
-                    <ThemeIcon variant="light" radius="xl"><IconCalendarWeek size={16} /></ThemeIcon>
-                    <Stack gap={0}>
-                      <Text fw={600}>Haftalık Planlama</Text>
-                      <Text size="sm" c="dimmed">Sürükle-bırak ile hızlı vardiya düzenleme</Text>
-                    </Stack>
-                  </Group>
-                  <Group gap="sm" wrap="nowrap">
-                    <ThemeIcon variant="light" radius="xl"><IconUsers size={16} /></ThemeIcon>
-                    <Stack gap={0}>
-                      <Text fw={600}>Çalışan Takibi</Text>
-                      <Text size="sm" c="dimmed">Rol, uygunluk ve saat yönetimi tek akışta</Text>
-                    </Stack>
-                  </Group>
-                  <Group gap="sm" wrap="nowrap">
-                    <ThemeIcon variant="light" radius="xl"><IconChartBar size={16} /></ThemeIcon>
-                    <Stack gap={0}>
-                      <Text fw={600}>Raporlama</Text>
-                      <Text size="sm" c="dimmed">Maliyet ve fazla mesai görünürlüğü</Text>
-                    </Stack>
+                  <Title
+                    order={1}
+                    style={{
+                      fontSize: 'clamp(2rem, 4vw, 3.2rem)',
+                      lineHeight: 1.15,
+                      color: '#ffffff',
+                      letterSpacing: '-0.02em'
+                    }}
+                  >
+                    Ekibinizi <span className="gradient-text">akıllıca</span> yönetin.
+                  </Title>
+
+                  <Text
+                    size="lg"
+                    maw={520}
+                    style={{ color: 'rgba(199, 210, 254, 0.8)', lineHeight: 1.7 }}
+                  >
+                    Sürükle-bırak planlama, gerçek zamanlı takip ve detaylı raporlarla
+                    operasyonunu bir üst seviyeye taşı.
+                  </Text>
+
+                  <Group mt="md">
+                    <Button
+                      component={Link}
+                      href="/login"
+                      size="lg"
+                      className="btn-gradient"
+                      rightSection={<IconArrowRight size={18} />}
+                    >
+                      Hemen Başla
+                    </Button>
+                    <Button
+                      component={Link}
+                      href="/login?demo=admin"
+                      size="lg"
+                      variant="outline"
+                      color="gray"
+                      radius="xl"
+                      style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#c7d2fe' }}
+                    >
+                      Demo Dene
+                    </Button>
                   </Group>
                 </Stack>
-              </Stack>
-            </Grid.Col>
+              </Grid.Col>
 
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <Paper withBorder radius="lg" p="xl" h="100%">
-                <Stack justify="space-between" h="100%" gap="lg">
-                  <Stack gap={4}>
+              <Grid.Col span={{ base: 12, md: 5 }}>
+                <Paper
+                  radius="xl"
+                  p="xl"
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  <Stack gap="lg">
                     <Group justify="space-between" align="center">
-                      <Title order={3}>Hızlı Giriş</Title>
-                      <Badge variant="light">BETA</Badge>
+                      <Title order={3} style={{ color: '#fff' }}>Hızlı Giriş</Title>
+                      <Badge variant="light" style={{ background: 'rgba(102, 126, 234, 0.3)', color: '#a5b4fc' }}>BETA</Badge>
                     </Group>
-                    <Text c="dimmed" size="sm">
-                      Demo hesaba geçip plan ve rapor ekranlarını anında görüntüleyebilirsin.
+                    <Text size="sm" style={{ color: 'rgba(199, 210, 254, 0.7)' }}>
+                      Demo hesapla plan, rapor ve çalışan ekranlarını keşfet.
                     </Text>
-                  </Stack>
 
-                  <Stack>
-                    <Button component={Link} href="/login" size="md" fullWidth>
+                    <Button component={Link} href="/login" size="md" fullWidth className="btn-gradient">
                       Sisteme Giriş
                     </Button>
+
                     <Group grow>
-                      <Button component={Link} href="/login?demo=admin" variant="light">Admin</Button>
-                      <Button component={Link} href="/login?demo=manager" variant="light">Müdür</Button>
-                      <Button component={Link} href="/login?demo=employee" variant="light">Çalışan</Button>
+                      {[
+                        { label: 'Admin', demo: 'admin' },
+                        { label: 'Müdür', demo: 'manager' },
+                        { label: 'Çalışan', demo: 'employee' }
+                      ].map((item) => (
+                        <Button
+                          key={item.demo}
+                          component={Link}
+                          href={`/login?demo=${item.demo}`}
+                          variant="default"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            color: '#c7d2fe'
+                          }}
+                        >
+                          {item.label}
+                        </Button>
+                      ))}
                     </Group>
                   </Stack>
-                </Stack>
-              </Paper>
-            </Grid.Col>
-          </Grid>
-        </Paper>
+                </Paper>
+              </Grid.Col>
+            </Grid>
+          </Paper>
 
-        <Grid>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Paper withBorder radius="md" p="lg">
-              <Title order={4}>Haftalık Program</Title>
-              <Text c="dimmed" mt={6}>Grid yapısında hızlı vardiya atama ve düzenleme.</Text>
-            </Paper>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Paper withBorder radius="md" p="lg">
-              <Title order={4}>Rol Bazlı Erişim</Title>
-              <Text c="dimmed" mt={6}>Admin, müdür ve çalışan için ayrı deneyim katmanı.</Text>
-            </Paper>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Paper withBorder radius="md" p="lg">
-              <Title order={4}>Raporlama</Title>
-              <Text c="dimmed" mt={6}>Haftalık saat, mesai ve maliyet kararlarını hızlandır.</Text>
-            </Paper>
-          </Grid.Col>
-        </Grid>
-      </Stack>
-    </Container>
+          {/* Features */}
+          <Grid>
+            {features.map((feature, index) => (
+              <Grid.Col span={{ base: 12, sm: 6, md: 3 }} key={feature.title}>
+                <Paper
+                  withBorder
+                  p="xl"
+                  h="100%"
+                  className={`feature-card stagger-${index + 1}`}
+                  style={{ animationFillMode: 'both' }}
+                >
+                  <Stack gap="sm">
+                    <ThemeIcon
+                      variant="light"
+                      color={feature.color}
+                      size="xl"
+                      radius="xl"
+                    >
+                      <feature.icon size={20} />
+                    </ThemeIcon>
+                    <Title order={4}>{feature.title}</Title>
+                    <Text c="dimmed" size="sm" lh={1.6}>{feature.description}</Text>
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+            ))}
+          </Grid>
+
+          {/* Footer */}
+          <Group justify="center" py="md">
+            <Text c="dimmed" size="xs">© 2026 Vardiya Platformu — Tüm hakları saklıdır.</Text>
+          </Group>
+        </Stack>
+      </Container>
+    </Box>
   );
 }

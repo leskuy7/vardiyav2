@@ -98,40 +98,40 @@ export default function DashboardPage() {
 
       <Grid>
         <Grid.Col span={{ base: 12, md: 3 }}>
-          <Card withBorder radius="md" p="md" className="surface-card interactive-card">
+          <Card withBorder p="md" className="stat-card gradient-card stagger-1">
             <Group justify="space-between">
               <Text c="dimmed" size="sm">Aktif Çalışan</Text>
-              <ThemeIcon variant="light" radius="xl"><IconUsers size={14} /></ThemeIcon>
+              <ThemeIcon variant="gradient" gradient={{ from: 'indigo', to: 'violet' }} radius="xl"><IconUsers size={14} /></ThemeIcon>
             </Group>
             <Title order={3}>{employees.length}</Title>
           </Card>
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 3 }}>
-          <Card withBorder radius="md" p="md" className="surface-card interactive-card">
+          <Card withBorder p="md" className="stat-card gradient-card stagger-2">
             <Group justify="space-between">
               <Text c="dimmed" size="sm">Toplam Vardiya</Text>
-              <ThemeIcon variant="light" radius="xl"><IconClockHour4 size={14} /></ThemeIcon>
+              <ThemeIcon variant="gradient" gradient={{ from: 'indigo', to: 'violet' }} radius="xl"><IconClockHour4 size={14} /></ThemeIcon>
             </Group>
             <Title order={3}>{shifts.length}</Title>
           </Card>
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 3 }}>
-          <Card withBorder radius="md" p="md" className="surface-card interactive-card">
+          <Card withBorder p="md" className="stat-card gradient-card stagger-3">
             <Group justify="space-between">
               <Text c="dimmed" size="sm">Onay Bekleyen</Text>
-              <ThemeIcon variant="light" radius="xl"><IconBell size={14} /></ThemeIcon>
+              <ThemeIcon variant="gradient" gradient={{ from: 'indigo', to: 'violet' }} radius="xl"><IconBell size={14} /></ThemeIcon>
             </Group>
             <Title order={3}>{publishedCount}</Title>
           </Card>
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 3 }}>
-          <Card withBorder radius="md" p="md" className="surface-card interactive-card">
+          <Card withBorder p="md" className="stat-card gradient-card stagger-4">
             <Group justify="space-between">
               <Text c="dimmed" size="sm">Fazla Mesai</Text>
-              <ThemeIcon variant="light" radius="xl"><IconAlertTriangle size={14} /></ThemeIcon>
+              <ThemeIcon variant="gradient" gradient={{ from: 'indigo', to: 'violet' }} radius="xl"><IconAlertTriangle size={14} /></ThemeIcon>
             </Group>
             <Title order={3}>{report.totals.overtimeHours.toFixed(1)} saat</Title>
           </Card>

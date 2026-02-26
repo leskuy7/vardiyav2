@@ -1,6 +1,7 @@
 "use client";
 
-import { Alert, Badge, Button, Container, Grid, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Box, Button, Container, Grid, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { IconArrowRight } from '@tabler/icons-react';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
@@ -18,9 +19,9 @@ export default function LoginPage() {
   const formRef = React.useRef<HTMLFormElement>(null);
 
   const demoAccounts = [
-    { label: 'Admin', email: 'admin@test.local', password: 'Test12345!' },
-    { label: 'Müdür', email: 'manager@test.local', password: 'Test12345!' },
-    { label: 'Çalışan', email: 'employee@test.local', password: 'Test12345!' }
+    { label: 'Admin', email: 'admin@test.local', password: 'Test12345!', color: 'indigo' },
+    { label: 'Müdür', email: 'manager@test.local', password: 'Test12345!', color: 'violet' },
+    { label: 'Çalışan', email: 'employee@test.local', password: 'Test12345!', color: 'grape' }
   ];
 
   useEffect(() => {
@@ -66,98 +67,206 @@ export default function LoginPage() {
   }
 
   return (
-    <Container size="lg" py={64}>
-      <Stack align="flex-end" mb="md">
-        <ThemeToggle />
-      </Stack>
+    <Box
+      style={{
+        minHeight: '100vh',
+        background: 'var(--gradient-hero)',
+        display: 'flex',
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Background orbs */}
+      <Box
+        style={{
+          position: 'absolute',
+          top: '-20%',
+          right: '-10%',
+          width: 500,
+          height: 500,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(102, 126, 234, 0.15) 0%, transparent 70%)',
+          animation: 'float 8s ease-in-out infinite',
+          pointerEvents: 'none'
+        }}
+      />
+      <Box
+        style={{
+          position: 'absolute',
+          bottom: '-20%',
+          left: '-15%',
+          width: 400,
+          height: 400,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(118, 75, 162, 0.12) 0%, transparent 70%)',
+          animation: 'float 10s ease-in-out infinite reverse',
+          pointerEvents: 'none'
+        }}
+      />
 
-      <Paper withBorder radius="lg" p={{ base: 'lg', md: 'xl' }} maw={980} mx="auto">
-        <Grid gutter="xl" align="stretch">
-          <Grid.Col span={{ base: 12, md: 5 }}>
-            <Stack justify="center" h="100%" gap="md">
-              <Badge variant="light" w="fit-content">Vardiya Platformu</Badge>
-              <Title order={1}>Operasyonunu tek panelden yönet</Title>
-              <Text c="dimmed">
-                Vardiya atama, raporlama, çalışan takibi ve onay süreçlerini merkezi olarak yönet.
-              </Text>
-            </Stack>
-          </Grid.Col>
+      <Container size="lg" style={{ position: 'relative', zIndex: 1, width: '100%' }}>
+        <Stack align="flex-end" mb="md">
+          <ThemeToggle />
+        </Stack>
 
-          <Grid.Col span={{ base: 12, md: 7 }}>
-            <Paper withBorder radius="md" p="xl">
-              <form ref={formRef} onSubmit={handleSubmit}>
-                <Stack>
-                  <Group justify="space-between" align="center">
-                    <Title order={3}>Giriş Yap</Title>
-                    <Badge variant="light">BETA</Badge>
-                  </Group>
+        <Paper
+          radius="xl"
+          p={{ base: 'lg', md: 'xl' }}
+          maw={980}
+          mx="auto"
+          style={{
+            background: 'rgba(255, 255, 255, 0.06)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 16px 64px rgba(0, 0, 0, 0.3)'
+          }}
+        >
+          <Grid gutter="xl" align="stretch">
+            <Grid.Col span={{ base: 12, md: 5 }}>
+              <Stack justify="center" h="100%" gap="md" className="page-enter">
+                <Badge
+                  variant="light"
+                  w="fit-content"
+                  size="lg"
+                  style={{ background: 'rgba(102, 126, 234, 0.2)', color: '#a5b4fc' }}
+                >
+                  Vardiya Platformu
+                </Badge>
+                <Title
+                  order={1}
+                  style={{
+                    color: '#ffffff',
+                    fontSize: 'clamp(1.6rem, 3vw, 2.4rem)',
+                    letterSpacing: '-0.02em'
+                  }}
+                >
+                  Operasyonunu <span className="gradient-text">tek panelden</span> yönet
+                </Title>
+                <Text style={{ color: 'rgba(199, 210, 254, 0.7)' }} lh={1.7}>
+                  Vardiya atama, raporlama, çalışan takibi ve onay süreçlerini merkezi olarak yönet.
+                </Text>
+              </Stack>
+            </Grid.Col>
 
-                  <TextInput
-                    label="E-posta"
-                    description="İş e-postan ile giriş yap"
-                    placeholder="admin@shiftplanner.com"
-                    type="email"
-                    name="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    leftSection="@"
-                    size="md"
-                    radius="md"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    required
-                  />
-
-                  <PasswordInput
-                    label="Şifre"
-                    placeholder="Şifren"
-                    name="password"
-                    autoComplete="current-password"
-                    size="md"
-                    radius="md"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
-                  />
-
-                  <Button type="submit" fullWidth size="md" loading={submitting}>
-                    Giriş Yap
-                  </Button>
-
-                  <Stack gap="xs">
-                    <Text size="xs" c="dimmed" ta="center">
-                      Demo Hesaplar
-                    </Text>
-                    <Group grow>
-                      {demoAccounts.map((account) => (
-                        <Button
-                          key={account.label}
-                          variant="light"
-                          type="button"
-                          onClick={() => {
-                            setEmail(account.email);
-                            setPassword(account.password);
-                          }}
-                        >
-                          {account.label}
-                        </Button>
-                      ))}
+            <Grid.Col span={{ base: 12, md: 7 }}>
+              <Paper
+                radius="xl"
+                p="xl"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}
+              >
+                <form ref={formRef} onSubmit={handleSubmit}>
+                  <Stack>
+                    <Group justify="space-between" align="center">
+                      <Title order={3} style={{ color: '#fff' }}>Giriş Yap</Title>
+                      <Badge
+                        variant="light"
+                        style={{ background: 'rgba(102, 126, 234, 0.3)', color: '#a5b4fc' }}
+                      >
+                        BETA
+                      </Badge>
                     </Group>
+
+                    <TextInput
+                      label="E-posta"
+                      description="İş e-postan ile giriş yap"
+                      placeholder="admin@shiftplanner.com"
+                      type="email"
+                      name="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      leftSection="@"
+                      size="md"
+                      radius="lg"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                      styles={{
+                        input: {
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                          color: '#e0e7ff',
+                          '&::placeholder': { color: 'rgba(199, 210, 254, 0.4)' }
+                        },
+                        label: { color: '#c7d2fe' },
+                        description: { color: 'rgba(199, 210, 254, 0.5)' }
+                      }}
+                    />
+
+                    <PasswordInput
+                      label="Şifre"
+                      placeholder="Şifren"
+                      name="password"
+                      autoComplete="current-password"
+                      size="md"
+                      radius="lg"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                      styles={{
+                        input: {
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                          color: '#e0e7ff'
+                        },
+                        label: { color: '#c7d2fe' }
+                      }}
+                    />
+
+                    <Button
+                      type="submit"
+                      fullWidth
+                      size="md"
+                      loading={submitting}
+                      className="btn-gradient"
+                      rightSection={!submitting ? <IconArrowRight size={18} /> : undefined}
+                    >
+                      Giriş Yap
+                    </Button>
+
+                    <Stack gap="xs">
+                      <Text size="xs" ta="center" style={{ color: 'rgba(199, 210, 254, 0.5)' }}>
+                        Demo Hesaplar
+                      </Text>
+                      <Group grow>
+                        {demoAccounts.map((account) => (
+                          <Button
+                            key={account.label}
+                            variant="default"
+                            type="button"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.06)',
+                              borderColor: 'rgba(255, 255, 255, 0.1)',
+                              color: '#c7d2fe'
+                            }}
+                            onClick={() => {
+                              setEmail(account.email);
+                              setPassword(account.password);
+                            }}
+                          >
+                            {account.label}
+                          </Button>
+                        ))}
+                      </Group>
+                    </Stack>
+
+                    <Text size="xs" ta="center" style={{ color: 'rgba(199, 210, 254, 0.4)' }}>
+                      Hesaplar yalnızca sistem yöneticisi tarafından oluşturulur.
+                    </Text>
+
+                    {error ? <Alert color="red" radius="md">{error}</Alert> : null}
                   </Stack>
-
-                  <Text size="xs" c="dimmed" ta="center">
-                    Hesaplar yalnızca sistem yöneticisi tarafından oluşturulur.
-                  </Text>
-
-                  {error ? <Alert color="red">{error}</Alert> : null}
-                </Stack>
-              </form>
-            </Paper>
-          </Grid.Col>
-        </Grid>
-      </Paper>
-    </Container>
+                </form>
+              </Paper>
+            </Grid.Col>
+          </Grid>
+        </Paper>
+      </Container>
+    </Box>
   );
 }

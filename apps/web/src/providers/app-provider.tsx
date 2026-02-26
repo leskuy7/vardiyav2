@@ -6,11 +6,69 @@ import { PropsWithChildren, useState } from 'react';
 import { COLOR_SCHEME_STORAGE_KEY, DEFAULT_COLOR_SCHEME } from '../lib/color-scheme';
 
 const theme = createTheme({
-  primaryColor: 'blue',
+  primaryColor: 'indigo',
   defaultRadius: 'md',
-  fontFamily: 'Inter, Segoe UI, Roboto, sans-serif',
+  fontFamily: 'Inter, -apple-system, Segoe UI, Roboto, sans-serif',
   headings: {
-    fontFamily: 'Inter, Segoe UI, Roboto, sans-serif'
+    fontFamily: 'Inter, -apple-system, Segoe UI, Roboto, sans-serif',
+    fontWeight: '700'
+  },
+  colors: {
+    indigo: [
+      '#eef2ff',
+      '#e0e7ff',
+      '#c7d2fe',
+      '#a5b4fc',
+      '#818cf8',
+      '#667eea',
+      '#5a67d8',
+      '#4f46e5',
+      '#4338ca',
+      '#3730a3'
+    ]
+  },
+  components: {
+    Card: {
+      defaultProps: {
+        radius: 'lg'
+      }
+    },
+    Paper: {
+      defaultProps: {
+        radius: 'lg'
+      }
+    },
+    Button: {
+      defaultProps: {
+        radius: 'lg'
+      }
+    },
+    Badge: {
+      defaultProps: {
+        radius: 'md'
+      }
+    },
+    Modal: {
+      defaultProps: {
+        radius: 'lg',
+        overlayProps: { backgroundOpacity: 0.4, blur: 8 }
+      }
+    },
+    TextInput: {
+      defaultProps: {
+        radius: 'md'
+      }
+    },
+    Select: {
+      defaultProps: {
+        radius: 'md'
+      }
+    },
+    NumberInput: {
+      defaultProps: {
+        radius: 'md'
+      }
+    }
   }
 });
 

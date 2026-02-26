@@ -1,12 +1,13 @@
 "use client";
 
-import { AppShell, Avatar, Badge, Box, Burger, Button, Group, Paper, Stack, Text, ThemeIcon } from '@mantine/core';
+import { AppShell, Avatar, Badge, Box, Burger, Button, Group, Paper, Stack, Text, ThemeIcon, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconCalendarWeek,
   IconChartBar,
   IconClockHour4,
   IconLayoutDashboard,
+  IconLogout,
   IconUsers
 } from '@tabler/icons-react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -47,16 +48,16 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
   const links: Array<{ href: string; label: string; icon: React.ReactNode }> =
     data?.role === 'EMPLOYEE'
       ? [
-          { href: '/my-shifts', label: 'Vardiyalarım', icon: <IconCalendarWeek size={16} /> },
-          { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={16} /> }
-        ]
+        { href: '/my-shifts', label: 'Vardiyalarım', icon: <IconCalendarWeek size={18} /> },
+        { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> }
+      ]
       : [
-          { href: '/dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={16} /> },
-          { href: '/schedule', label: 'Haftalık Program', icon: <IconCalendarWeek size={16} /> },
-          { href: '/employees', label: 'Çalışanlar', icon: <IconUsers size={16} /> },
-          { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={16} /> },
-          { href: '/reports', label: 'Raporlar', icon: <IconChartBar size={16} /> }
-        ];
+        { href: '/dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={18} /> },
+        { href: '/schedule', label: 'Haftalık Program', icon: <IconCalendarWeek size={18} /> },
+        { href: '/employees', label: 'Çalışanlar', icon: <IconUsers size={18} /> },
+        { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> },
+        { href: '/reports', label: 'Raporlar', icon: <IconChartBar size={18} /> }
+      ];
 
   const currentPageLabel = links.find((link) => link.href === pathname)?.label ?? 'Panel';
 
@@ -72,20 +73,40 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
   return (
     <AppShell
       padding="lg"
-      header={{ height: 68 }}
+      header={{ height: 64 }}
       navbar={{ width: 280, breakpoint: 'md', collapsed: { mobile: !opened } }}
+      styles={{
+        header: {
+          backdropFilter: 'blur(12px)',
+          background: 'var(--glass-bg)',
+          borderBottom: '1px solid var(--glass-border)'
+        },
+        navbar: {
+          background: 'var(--glass-bg)',
+          backdropFilter: 'blur(12px)',
+          borderRight: '1px solid var(--glass-border)'
+        }
+      }}
     >
       <AppShell.Header>
         <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">
             <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="sm" />
-            <Badge variant="light">VARDİYA YÖNETİMİ</Badge>
-            <Text fw={700}>{currentPageLabel}</Text>
+            <Badge variant="light" className="badge-glow" size="lg" radius="lg">VARDİYA</Badge>
+            <Text fw={700} size="lg" visibleFrom="sm">{currentPageLabel}</Text>
           </Group>
           <Group gap="sm" wrap="nowrap">
             <ThemeToggle />
-            <Button variant="light" color="red" onClick={logout} data-testid="logout-action" size="sm" radius="xl">
-              Çıkış Yap
+            <Button
+              variant="light"
+              color="red"
+              onClick={logout}
+              data-testid="logout-action"
+              size="sm"
+              radius="xl"
+              leftSection={<IconLogout size={16} />}
+            >
+              Çıkış
             </Button>
           </Group>
         </Group>
@@ -93,52 +114,89 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
 
       <AppShell.Navbar p="md">
         <Stack justify="space-between" h="100%">
-          <Stack gap="sm">
-            <Group gap="sm" align="center" mb="xs">
-              <ThemeIcon radius="md" variant="light">
-                <IconLayoutDashboard size={16} />
+          <Stack gap="xs">
+            <Group gap="sm" align="center" mb="md" px="xs">
+              <ThemeIcon
+                radius="xl"
+                size="lg"
+                variant="gradient"
+                gradient={{ from: 'indigo', to: 'violet' }}
+              >
+                <IconLayoutDashboard size={18} />
               </ThemeIcon>
               <Stack gap={0}>
-                <Text fw={700}>Vardiya Planlayıcı</Text>
-                <Text c="dimmed" size="sm">Ekip Yönetimi</Text>
+                <Text fw={700} size="sm">Vardiya Planlayıcı</Text>
+                <Text c="dimmed" size="xs">Ekip Yönetimi</Text>
               </Stack>
             </Group>
 
-            {links.map((link) => (
-              <Button
-                key={link.href}
-                variant={pathname === link.href ? 'filled' : 'subtle'}
-                justify="flex-start"
-                leftSection={link.icon}
-                onClick={() => {
-                  router.push(link.href);
-                  close();
-                }}
-              >
-                {link.label}
-              </Button>
-            ))}
+            {links.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <UnstyledButton
+                  key={link.href}
+                  className="premium-nav-link"
+                  data-active={isActive}
+                  px="md"
+                  py="sm"
+                  onClick={() => {
+                    router.push(link.href);
+                    close();
+                  }}
+                >
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon
+                      variant={isActive ? 'white' : 'light'}
+                      radius="xl"
+                      size="md"
+                      color={isActive ? 'white' : 'indigo'}
+                      style={isActive ? { background: 'rgba(255,255,255,0.15)' } : undefined}
+                    >
+                      {link.icon}
+                    </ThemeIcon>
+                    <Text
+                      fw={isActive ? 700 : 500}
+                      size="sm"
+                      style={isActive ? { color: '#fff' } : undefined}
+                    >
+                      {link.label}
+                    </Text>
+                  </Group>
+                </UnstyledButton>
+              );
+            })}
           </Stack>
 
-          <Paper withBorder radius="md" p="sm">
+          <Paper withBorder radius="lg" p="sm" className="user-card">
             <Group align="center" wrap="nowrap">
-              <Avatar color="blue" radius="xl" size="md">
+              <Avatar
+                radius="xl"
+                size="md"
+                variant="gradient"
+                gradient={{ from: 'indigo', to: 'violet' }}
+              >
                 {(data?.name ?? data?.email ?? 'U').slice(0, 1).toUpperCase()}
               </Avatar>
-              <Stack gap={2}>
-                <Text size="sm" fw={600}>{data?.name ?? data?.email}</Text>
-                <Text size="xs" c="dimmed">{data?.email}</Text>
+              <Stack gap={2} style={{ overflow: 'hidden' }}>
+                <Text size="sm" fw={600} truncate>{data?.name ?? data?.email}</Text>
+                <Text size="xs" c="dimmed" truncate>{data?.email}</Text>
               </Stack>
             </Group>
             <Box mt="sm">
-              <Badge variant="light" w="fit-content">{data?.role}</Badge>
+              <Badge
+                variant="gradient"
+                gradient={{ from: 'indigo', to: 'violet' }}
+                w="fit-content"
+              >
+                {data?.role}
+              </Badge>
             </Box>
           </Paper>
         </Stack>
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <Paper withBorder radius="lg" p="lg" maw={1400} mx="auto">
+        <Paper withBorder radius="xl" p="xl" maw={1400} mx="auto" className="surface-card page-enter">
           {children}
         </Paper>
       </AppShell.Main>

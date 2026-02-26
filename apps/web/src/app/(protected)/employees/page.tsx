@@ -238,7 +238,7 @@ export default function EmployeesPage() {
       </Grid>
 
       <ScrollArea>
-        <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm">
+        <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm" className="premium-table">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Ad</Table.Th>
