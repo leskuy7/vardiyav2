@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
         return [
             {
                 source: '/api/:path*',
-                destination: `${process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:4000'}/api/:path*`
+                destination: `${process.env.NEXT_PUBLIC_API_BASE ?? 'https://vardiyav2-api-production.up.railway.app'}/api/:path*`
             }
         ];
     }
