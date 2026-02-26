@@ -2,7 +2,7 @@
 
 import { Alert, Badge, Button, Container, Grid, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { AxiosError } from 'axios';
-import { useEffect, useState, type FormEvent } from 'react';
+import React, { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '../../components/theme-toggle';
 import { api } from '../../lib/api';
@@ -15,6 +15,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const formRef = React.useRef<HTMLFormElement>(null);
 
   const demoAccounts = [
     { label: 'Admin', email: 'admin@test.local', password: 'Test12345!' },
@@ -41,6 +43,10 @@ export default function LoginPage() {
       setEmail(selected.email);
       setPassword(selected.password);
       setActiveTab('login');
+      // Auto-submit after a short delay to let state update
+      setTimeout(() => {
+        formRef.current?.requestSubmit();
+      }, 300);
     }
   }, []);
 
@@ -82,7 +88,7 @@ export default function LoginPage() {
 
           <Grid.Col span={{ base: 12, md: 7 }}>
             <Paper withBorder radius="md" p="xl">
-              <form onSubmit={handleSubmit}>
+              <form ref={formRef} onSubmit={handleSubmit}>
                 <Stack>
                   <Group justify="space-between" align="center">
                     <Title order={3}>Hızlı Giriş</Title>

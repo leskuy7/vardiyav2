@@ -2,6 +2,7 @@
 
 import { Badge, Button, Container, Grid, Group, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
 import { IconCalendarWeek, IconChartBar, IconUsers } from '@tabler/icons-react';
+import Link from 'next/link';
 import { ThemeToggle } from '../components/theme-toggle';
 
 export default function HomePage() {
@@ -62,13 +63,13 @@ export default function HomePage() {
                   </Stack>
 
                   <Stack>
-                    <Button component="a" href="/login" size="md" fullWidth>
+                    <Button component={Link} href="/login" size="md" fullWidth>
                       Sisteme Giriş
                     </Button>
                     <Group grow>
-                      <Button component="a" href="/login?demo=admin" variant="light">Admin</Button>
-                      <Button component="a" href="/login?demo=manager" variant="light">Müdür</Button>
-                      <Button component="a" href="/login?demo=employee" variant="light">Çalışan</Button>
+                      <Button component={Link} href="/login?demo=admin" variant="light">Admin</Button>
+                      <Button component={Link} href="/login?demo=manager" variant="light">Müdür</Button>
+                      <Button component={Link} href="/login?demo=employee" variant="light">Çalışan</Button>
                     </Group>
                   </Stack>
                 </Stack>
