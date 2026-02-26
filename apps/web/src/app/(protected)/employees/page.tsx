@@ -1,22 +1,27 @@
 "use client";
 
 import {
+  ActionIcon,
   Autocomplete,
   Badge,
   Button,
   Card,
+  CloseButton,
   Grid,
   Group,
   Modal,
   NumberInput,
+  Paper,
   ScrollArea,
   Select,
   Stack,
   Table,
   Text,
   TextInput,
+  ThemeIcon,
   Title
 } from '@mantine/core';
+import { IconTag, IconBuilding } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
 import { useEmployeeActions, useEmployees, type EmployeeItem } from '../../../hooks/use-employees';
@@ -59,7 +64,7 @@ function nameParts(name: string) {
 
 export default function EmployeesPage() {
   const { data, isLoading, isError } = useEmployees(true);
-  const { createEmployee, updateEmployee, archiveEmployee } = useEmployeeActions();
+  const { createEmployee, updateEmployee, archiveEmployee, bulkClearField } = useEmployeeActions();
 
   const [query, setQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -247,6 +252,76 @@ export default function EmployeesPage() {
           />
         </Grid.Col>
       </Grid>
+
+      {/* Departman & Pozisyon Yönetimi */}
+      {(departmentFormOptions.length > 0 || positionFormOptions.length > 0) && (
+        <Paper withBorder radius="md" p="md" className="gradient-card">
+          <Stack gap="sm">
+            <Title order={5}>Departman & Pozisyon Yönetimi</Title>
+            <Text c="dimmed" size="xs">Değerin yanındaki ✕ butonuna basarak o değeri tüm çalışanlardan kaldırabilirsiniz.</Text>
+
+            {departmentFormOptions.length > 0 && (
+              <Group gap="xs" align="center" wrap="wrap">
+                <ThemeIcon variant="light" color="grape" size="sm" radius="xl"><IconBuilding size={12} /></ThemeIcon>
+                <Text size="sm" fw={600}>Departmanlar:</Text>
+                {departmentFormOptions.map((opt) => {
+                  const affectedIds = (data ?? []).filter((e) => e.department === opt.value).map((e) => e.id);
+                  return (
+                    <Badge
+                      key={opt.value}
+                      variant="light"
+                      color="grape"
+                      size="lg"
+                      rightSection={
+                        <CloseButton
+                          size="xs"
+                          variant="transparent"
+                          onClick={() => {
+                            if (!window.confirm(`"${opt.value}" departmanını ${affectedIds.length} çalışandan kaldırmak istediğine emin misin?`)) return;
+                            bulkClearField.mutate({ field: 'department', value: opt.value, employeeIds: affectedIds });
+                          }}
+                        />
+                      }
+                    >
+                      {opt.value} ({affectedIds.length})
+                    </Badge>
+                  );
+                })}
+              </Group>
+            )}
+
+            {positionFormOptions.length > 0 && (
+              <Group gap="xs" align="center" wrap="wrap">
+                <ThemeIcon variant="light" color="indigo" size="sm" radius="xl"><IconTag size={12} /></ThemeIcon>
+                <Text size="sm" fw={600}>Pozisyonlar:</Text>
+                {positionFormOptions.map((opt) => {
+                  const affectedIds = (data ?? []).filter((e) => e.position === opt.value).map((e) => e.id);
+                  return (
+                    <Badge
+                      key={opt.value}
+                      variant="light"
+                      color="indigo"
+                      size="lg"
+                      rightSection={
+                        <CloseButton
+                          size="xs"
+                          variant="transparent"
+                          onClick={() => {
+                            if (!window.confirm(`"${opt.value}" pozisyonunu ${affectedIds.length} çalışandan kaldırmak istediğine emin misin?`)) return;
+                            bulkClearField.mutate({ field: 'position', value: opt.value, employeeIds: affectedIds });
+                          }}
+                        />
+                      }
+                    >
+                      {opt.value} ({affectedIds.length})
+                    </Badge>
+                  );
+                })}
+              </Group>
+            )}
+          </Stack>
+        </Paper>
+      )}
 
       <ScrollArea>
         <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm" className="premium-table">

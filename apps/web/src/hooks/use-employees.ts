@@ -76,5 +76,15 @@ export function useEmployeeActions() {
     onSuccess: invalidate
   });
 
-  return { createEmployee, updateEmployee, archiveEmployee };
+  const bulkClearField = useMutation({
+    mutationFn: async ({ field, value, employeeIds }: { field: 'department' | 'position'; value: string; employeeIds: string[] }) => {
+      await Promise.all(
+        employeeIds.map((id) => api.patch(`/employees/${id}`, { [field]: '' }))
+      );
+      return { field, value, count: employeeIds.length };
+    },
+    onSuccess: invalidate
+  });
+
+  return { createEmployee, updateEmployee, archiveEmployee, bulkClearField };
 }
