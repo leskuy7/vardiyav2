@@ -11,7 +11,7 @@ describe('ScheduleService', () => {
       shift: { findMany: jest.fn() }
     };
 
-    return { service: new ScheduleService(prisma as never), prisma };
+    return { service: new ScheduleService(prisma as unknown as ConstructorParameters<typeof ScheduleService>[0]), prisma };
   }
 
   it('employee departmanı varsa haftalık planı departmana göre filtreler', async () => {

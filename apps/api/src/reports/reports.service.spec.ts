@@ -19,7 +19,7 @@ describe('ReportsService', () => {
           }
         ])
       }
-    } as never;
+    } as unknown as ConstructorParameters<typeof ReportsService>[0];
 
     const service = new ReportsService(prisma);
     const report = await service.weeklyHours('2026-01-05');

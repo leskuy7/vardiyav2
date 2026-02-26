@@ -3,11 +3,11 @@
 import { Alert, Badge, Button, Card, Container, Grid, Group, Paper, Select, Stack, Text, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
-import { ShiftModal } from '../../../components/schedule/shift-modal';
-import { WeeklyGrid } from '../../../components/schedule/weekly-grid';
 import { useEmployees } from '../../../hooks/use-employees';
 import { useShiftsActions, useWeeklySchedule } from '../../../hooks/use-shifts';
 import { currentWeekStartIsoDate } from '../../../lib/time';
+import { ShiftModal } from 'src/components/schedule/shift-modal';
+import { WeeklyGrid } from 'src/components/schedule/weekly-grid';
 
 function shiftIsoDate(isoDate: string, days: number) {
   const value = new Date(`${isoDate}T00:00:00.000Z`);

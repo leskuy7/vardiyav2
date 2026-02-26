@@ -2,7 +2,7 @@
 
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { Badge, Box, Button, Card, Group, ScrollArea, Stack, Table, Text, ThemeIcon } from '@mantine/core';
-import { getShiftStatusColor, getShiftStatusLabel } from '../../lib/shift-status';
+import { getShiftStatusColor, getShiftStatusIcon, getShiftStatusLabel } from '../../lib/shift-status';
 import { formatIstanbul } from '../../lib/time';
 
 type Employee = { id: string; user: { name: string } };
@@ -49,8 +49,10 @@ function isToday(isoDate: string) {
 
 function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (shift: Shift) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: shift.id, data: shift });
+  const StatusIcon = getShiftStatusIcon(shift.status);
   return (
     <Card
+      className="surface-card interactive-card"
       withBorder
       radius="md"
       shadow="sm"
@@ -69,7 +71,14 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (shift: Shift) => 
       <Text size="sm" fw={700}>{formatIstanbul(shift.start)} - {formatIstanbul(shift.end)}</Text>
       <Text size="xs" c="dimmed" mt={2}>{shiftHours(shift.start, shift.end).toFixed(1)} saat</Text>
       <Group justify="space-between" mt={4}>
-        <Badge size="sm" color={getShiftStatusColor(shift.status)} variant="light">{getShiftStatusLabel(shift.status)}</Badge>
+        <Badge
+          size="sm"
+          color={getShiftStatusColor(shift.status)}
+          variant="light"
+          leftSection={<StatusIcon size={12} />}
+        >
+          {getShiftStatusLabel(shift.status)}
+        </Badge>
         <Button size="xs" variant="subtle" onClick={() => onEdit(shift)}>
           Düzenle
         </Button>

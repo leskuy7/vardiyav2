@@ -3,11 +3,11 @@ import { expect, test } from '@playwright/test';
 test('login -> schedule -> shift ekle -> logout', async ({ page }) => {
   await page.goto('/login');
 
-  await page.getByPlaceholder('E-posta').fill('manager@test.local');
-  await page.getByPlaceholder('Şifre').fill('Test12345!');
+  await page.getByLabel('E-posta').fill('manager@test.local');
+  await page.getByLabel('Şifre').fill('Test12345!');
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Haftalık Plan' })).toBeVisible();
+  await expect(page.getByText('Haftalık Vardiya Programı')).toBeVisible();
 
   const loginResponse = await page.request.post('http://localhost:4000/api/auth/login', {
     data: { email: 'manager@test.local', password: 'Test12345!' }
@@ -47,7 +47,7 @@ test('login -> schedule -> shift ekle -> logout', async ({ page }) => {
 
   await page.reload();
 
-  await expect(page.getByRole('heading', { name: 'Haftalık Plan' })).toBeVisible();
+  await expect(page.getByText('Haftalık Vardiya Programı')).toBeVisible();
 
   const shiftCards = page.locator('[data-testid^="shift-card-"]');
   const dropCells = page.locator('[data-testid^="drop-cell-"]');

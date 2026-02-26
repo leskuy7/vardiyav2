@@ -1,3 +1,41 @@
+.surface-card {
+  animation: fade-in-up 240ms ease-out;
+}
+
+.interactive-card {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.interactive-card:hover {
+  transform: translateY(-2px);
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-card {
+    animation: none;
+  }
+
+  .interactive-card {
+    transition: none;
+  }
+
+  .interactive-card:hover {
+    transform: none;
+  }
+}
+
 @media print {
   .mantine-AppShell-navbar,
   .mantine-AppShell-header,

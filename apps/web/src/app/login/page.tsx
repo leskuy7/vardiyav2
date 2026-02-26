@@ -53,7 +53,7 @@ export default function LoginPage() {
       const response = await api.post('/auth/login', { email, password });
       setAccessToken(response.data.accessToken);
       const role = response.data.user?.role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
-      router.push(role === 'EMPLOYEE' ? '/my-shifts' : '/schedule');
+      router.push(role === 'EMPLOYEE' ? '/my-shifts' : '/dashboard');
     } catch (caughtError) {
       const axiosError = caughtError as AxiosError<{ message?: string }>;
       setError(axiosError.response?.data?.message ?? 'Giriş başarısız.');

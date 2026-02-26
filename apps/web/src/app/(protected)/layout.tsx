@@ -51,6 +51,7 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
           { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={16} /> }
         ]
       : [
+          { href: '/dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={16} /> },
           { href: '/schedule', label: 'Haftalık Program', icon: <IconCalendarWeek size={16} /> },
           { href: '/employees', label: 'Çalışanlar', icon: <IconUsers size={16} /> },
           { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={16} /> },

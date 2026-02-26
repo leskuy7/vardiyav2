@@ -27,7 +27,7 @@ describe('ShiftsService', () => {
       $transaction: jest.fn()
     };
 
-    return { service: new ShiftsService(prisma as never), prisma };
+    return { service: new ShiftsService(prisma as unknown as ConstructorParameters<typeof ShiftsService>[0]), prisma };
   }
 
   it('overlap olduğunda 409 döner', async () => {

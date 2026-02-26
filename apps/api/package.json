@@ -5,6 +5,7 @@
     "dev": "nest start --watch",
     "build": "npm run prisma:generate && nest build",
     "start": "node dist/main",
+    "start:prod": "npx prisma db push --skip-generate && node dist/main",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "jest --config jest.config.ts",
     "test:e2e": "npm run prisma:push && jest --config test/jest-e2e.json",

@@ -9,6 +9,15 @@ async function main() {
   await prisma.employee.deleteMany();
   await prisma.user.deleteMany();
 
+  const admin = await prisma.user.create({
+    data: {
+      email: 'admin@test.local',
+      name: 'Admin User',
+      passwordHash: await bcrypt.hash('Test12345!', 12),
+      role: 'ADMIN'
+    }
+  });
+
   const manager = await prisma.user.create({
     data: {
       email: 'manager@test.local',
@@ -25,6 +34,10 @@ async function main() {
       passwordHash: await bcrypt.hash('Test12345!', 12),
       role: 'EMPLOYEE'
     }
+  });
+
+  const adminEmployee = await prisma.employee.create({
+    data: { userId: admin.id, position: 'Admin', department: 'Yönetim', hourlyRate: 120 }
   });
 
   const managerEmployee = await prisma.employee.create({

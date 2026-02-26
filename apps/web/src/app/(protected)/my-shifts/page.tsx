@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
 import { useShiftsActions } from '../../../hooks/use-shifts';
-import { getShiftStatusColor, getShiftStatusLabel } from '../../../lib/shift-status';
+import { getShiftStatusColor, getShiftStatusIcon, getShiftStatusLabel } from '../../../lib/shift-status';
 import { currentWeekStartIsoDate, formatIstanbul } from '../../../lib/time';
 import { api } from '../../../lib/api';
 
@@ -80,14 +80,23 @@ export default function MyShiftsPage() {
       ) : (
         <Stack>
           {(data ?? []).map((shift: ShiftItem) => (
-            <Card key={shift.id} withBorder radius="md" p="md">
+            <Card key={shift.id} withBorder radius="md" p="md" className="surface-card interactive-card">
               <Group justify="space-between" align="center">
                 <Stack gap={2}>
                   <Text fw={700}>{formatIstanbul(shift.startTime)} - {formatIstanbul(shift.endTime)}</Text>
                   <Text size="sm" c="dimmed">Vardiya ID: #{shift.id.slice(0, 8)}</Text>
                 </Stack>
                 <Group>
-                  <Badge variant="light" color={getShiftStatusColor(shift.status)}>{getShiftStatusLabel(shift.status)}</Badge>
+                  <Badge
+                    variant="light"
+                    color={getShiftStatusColor(shift.status)}
+                    leftSection={(() => {
+                      const StatusIcon = getShiftStatusIcon(shift.status);
+                      return <StatusIcon size={12} />;
+                    })()}
+                  >
+                    {getShiftStatusLabel(shift.status)}
+                  </Badge>
                   {shift.status === 'PUBLISHED' ? (
                     <Button size="xs" onClick={() => acknowledgeShift.mutate(shift.id)}>
                       Onayla
