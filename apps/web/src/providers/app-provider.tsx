@@ -1,6 +1,7 @@
 "use client";
 
 import { createTheme, MantineProvider, localStorageColorSchemeManager } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PropsWithChildren, useState } from 'react';
 import { COLOR_SCHEME_STORAGE_KEY, DEFAULT_COLOR_SCHEME } from '../lib/color-scheme';
@@ -92,6 +93,7 @@ export function AppProvider({ children }: PropsWithChildren) {
 
   return (
     <MantineProvider theme={theme} defaultColorScheme={DEFAULT_COLOR_SCHEME} colorSchemeManager={colorSchemeManager}>
+      <Notifications position="top-right" autoClose={3000} />
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </MantineProvider>
   );

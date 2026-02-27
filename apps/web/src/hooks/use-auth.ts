@@ -18,6 +18,7 @@ export function useAuth() {
       const response = await api.get<AuthUser>('/auth/me');
       return response.data;
     },
-    retry: false
+    retry: false,
+    refetchOnWindowFocus: true
   });
 }

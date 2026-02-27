@@ -22,6 +22,7 @@ import {
   Title
 } from '@mantine/core';
 import { IconBuilding, IconEye, IconEyeOff, IconTag } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
 import {
@@ -79,7 +80,6 @@ export default function EmployeesPage() {
   const [editingEmployee, setEditingEmployee] = useState<EmployeeItem | null>(null);
   const [form, setForm] = useState<EmployeeForm>(initialForm);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const departmentOptions = useMemo(() => {
     const departments = (metaDepartments ?? []).filter(Boolean);
@@ -130,7 +130,6 @@ export default function EmployeesPage() {
     setEditingEmployee(null);
     setForm(initialForm);
     setShowCreatePassword(false);
-    setError(null);
     setModalOpen(true);
   }
 
@@ -149,18 +148,16 @@ export default function EmployeesPage() {
       hourlyRate: Number(employee.hourlyRate ?? 0),
       maxWeeklyHours: employee.maxWeeklyHours ?? 45
     });
-    setError(null);
     setModalOpen(true);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
 
     try {
       if (formMode === 'create') {
         if (!form.email || !form.password || !form.firstName) {
-          setError('E-posta, şifre ve ad zorunlu alanlardır.');
+          notifications.show({ title: 'Hata', message: 'E-posta, şifre ve ad zorunlu alanlardır.', color: 'red' });
           return;
         }
         await createEmployee.mutateAsync({
@@ -174,6 +171,7 @@ export default function EmployeesPage() {
           hourlyRate: form.hourlyRate || undefined,
           maxWeeklyHours: form.maxWeeklyHours || undefined
         });
+        notifications.show({ title: 'Başarılı', message: 'Çalışan oluşturuldu.', color: 'green' });
       } else if (editingEmployee) {
         await updateEmployee.mutateAsync({
           id: editingEmployee.id,
@@ -184,11 +182,12 @@ export default function EmployeesPage() {
           maxWeeklyHours: form.maxWeeklyHours || undefined,
           isActive: true
         });
+        notifications.show({ title: 'Başarılı', message: 'Çalışan güncellendi.', color: 'green' });
       }
 
       setModalOpen(false);
     } catch {
-      setError('İşlem başarısız. Alanları kontrol edip tekrar dene.');
+      notifications.show({ title: 'Hata', message: 'İşlem başarısız. Alanları kontrol edip tekrar dene.', color: 'red' });
     }
   }
 
@@ -197,7 +196,12 @@ export default function EmployeesPage() {
       `"${employee.user.name}" adlı çalışanı arşivlemek istediğine emin misin?\n\nBu işlem geri alınamaz.`
     );
     if (!confirmed) return;
-    await archiveEmployee.mutateAsync(employee.id);
+    try {
+      await archiveEmployee.mutateAsync(employee.id);
+      notifications.show({ title: 'Arşivlendi', message: `${employee.user.name} arşivlendi.`, color: 'green' });
+    } catch {
+      notifications.show({ title: 'Hata', message: 'Arşivleme başarısız.', color: 'red' });
+    }
   }
 
   return (
@@ -424,7 +428,6 @@ export default function EmployeesPage() {
               onChange={(value) => setForm((prev) => ({ ...prev, maxWeeklyHours: Number(value) || 45 }))}
             />
 
-            {error ? <Text c="red" size="sm">{error}</Text> : null}
 
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setModalOpen(false)} type="button">Vazgeç</Button>

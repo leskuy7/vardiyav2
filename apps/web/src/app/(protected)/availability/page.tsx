@@ -16,6 +16,7 @@ import {
   Title
 } from '@mantine/core';
 import { TimeInput } from '@mantine/dates';
+import { notifications } from '@mantine/notifications';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
 import { useAuth } from '../../../hooks/use-auth';
@@ -61,7 +62,6 @@ export default function AvailabilityPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [note, setNote] = useState('');
-  const [error, setError] = useState<string | null>(null);
 
   const effectiveEmployeeId = employeeId || defaultEmployeeId;
   const { data, isLoading, isError } = useAvailability(canManageAll ? undefined : effectiveEmployeeId || undefined);
@@ -73,11 +73,9 @@ export default function AvailabilityPage() {
   );
 
   async function handleCreate() {
-    setError(null);
-
     const selectedEmployeeId = effectiveEmployeeId;
     if (!selectedEmployeeId) {
-      setError('Önce çalışan seçmelisin.');
+      notifications.show({ title: 'Hata', message: 'Önce çalışan seçmelisin.', color: 'red' });
       return;
     }
 
@@ -93,8 +91,9 @@ export default function AvailabilityPage() {
         note: note || undefined
       });
       setNote('');
+      notifications.show({ title: 'Başarılı', message: 'Müsaitlik kaydı oluşturuldu.', color: 'green' });
     } catch {
-      setError('Müsaitlik kaydı oluşturulamadı.');
+      notifications.show({ title: 'Hata', message: 'Müsaitlik kaydı oluşturulamadı.', color: 'red' });
     }
   }
 
@@ -171,8 +170,7 @@ export default function AvailabilityPage() {
             minRows={2}
           />
 
-          <Group justify="space-between">
-            {error ? <PageError message={error} /> : <span />}
+          <Group justify="flex-end">
             <Button onClick={handleCreate} loading={createAvailability.isPending}>Müsaitlik Ekle</Button>
           </Group>
         </Stack>
@@ -215,7 +213,10 @@ export default function AvailabilityPage() {
                         color="red"
                         size="xs"
                         loading={deleteAvailability.isPending}
-                        onClick={() => deleteAvailability.mutate(item.id)}
+                        onClick={() => deleteAvailability.mutate(item.id, {
+                          onSuccess: () => notifications.show({ title: 'Silindi', message: 'Müsaitlik kaydı silindi.', color: 'green' }),
+                          onError: () => notifications.show({ title: 'Hata', message: 'Silme başarısız.', color: 'red' }),
+                        })}
                       >
                         Sil
                       </Button>

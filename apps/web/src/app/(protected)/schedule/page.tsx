@@ -1,6 +1,7 @@
 "use client";
 
 import { Alert, Badge, Button, Group, Select, Stack, Text, Title } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
 import { useEmployees } from '../../../hooks/use-employees';
@@ -85,15 +86,23 @@ export default function SchedulePage() {
   }
 
   async function handleSubmit(payload: { employeeId: string; startTime: string; endTime: string; note?: string; forceOverride?: boolean }) {
-    if (selectedShift?.id) {
-      const result = await updateShift.mutateAsync({ id: selectedShift.id, ...payload });
+    try {
+      if (selectedShift?.id) {
+        const result = await updateShift.mutateAsync({ id: selectedShift.id, ...payload });
+        const warnings = result.warnings ?? [];
+        setWarning(warnings.length > 0 ? warnings.join(', ') : null);
+        notifications.show({ title: 'Başarılı', message: 'Vardiya güncellendi.', color: 'green' });
+        setModalOpen(false);
+        return;
+      }
+      const result = await createShift.mutateAsync(payload);
       const warnings = result.warnings ?? [];
       setWarning(warnings.length > 0 ? warnings.join(', ') : null);
-      return;
+      notifications.show({ title: 'Başarılı', message: 'Vardiya oluşturuldu.', color: 'green' });
+      setModalOpen(false);
+    } catch {
+      notifications.show({ title: 'Hata', message: 'Vardiya kaydedilemedi.', color: 'red' });
     }
-    const result = await createShift.mutateAsync(payload);
-    const warnings = result.warnings ?? [];
-    setWarning(warnings.length > 0 ? warnings.join(', ') : null);
   }
 
   async function handleMove(payload: { shiftId: string; employeeId: string; targetDate: string }) {
@@ -106,14 +115,19 @@ export default function SchedulePage() {
     const movedStart = new Date(`${payload.targetDate}T${timePart}.000Z`);
     const movedEnd = new Date(movedStart.getTime() + duration);
 
-    const result = await updateShift.mutateAsync({
-      id: shift.id,
-      employeeId: payload.employeeId,
-      startTime: movedStart.toISOString(),
-      endTime: movedEnd.toISOString(),
-    });
-    const warnings = result.warnings ?? [];
-    setWarning(warnings.length > 0 ? warnings.join(', ') : null);
+    try {
+      const result = await updateShift.mutateAsync({
+        id: shift.id,
+        employeeId: payload.employeeId,
+        startTime: movedStart.toISOString(),
+        endTime: movedEnd.toISOString(),
+      });
+      const warnings = result.warnings ?? [];
+      setWarning(warnings.length > 0 ? warnings.join(', ') : null);
+      notifications.show({ title: 'Başarılı', message: 'Vardiya taşındı.', color: 'green' });
+    } catch {
+      notifications.show({ title: 'Hata', message: 'Vardiya taşınamadı.', color: 'red' });
+    }
   }
 
   if (isLoading) return <PageLoading />;
@@ -189,7 +203,15 @@ export default function SchedulePage() {
         onSubmit={handleSubmit}
         onDelete={
           selectedShift?.id
-            ? async () => { await deleteShift.mutateAsync(selectedShift.id); }
+            ? async () => {
+              try {
+                await deleteShift.mutateAsync(selectedShift.id);
+                setModalOpen(false);
+                notifications.show({ title: 'Başarılı', message: 'Vardiya iptal edildi.', color: 'green' });
+              } catch {
+                notifications.show({ title: 'Hata', message: 'Vardiya iptal edilemedi.', color: 'red' });
+              }
+            }
             : undefined
         }
       />

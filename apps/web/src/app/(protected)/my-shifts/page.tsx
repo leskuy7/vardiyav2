@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge, Button, Card, Grid, Group, Stack, Text, Title } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
@@ -102,9 +103,10 @@ export default function MyShiftsPage() {
                       size="xs"
                       loading={acknowledgeShift.isPending}
                       onClick={() => acknowledgeShift.mutate(shift.id, {
+                        onSuccess: () => notifications.show({ title: 'Onaylandı', message: 'Vardiya başarıyla onaylandı.', color: 'green' }),
                         onError: (err: any) => {
                           const msg = err?.response?.data?.message ?? 'Onay başarısız oldu.';
-                          alert(msg);
+                          notifications.show({ title: 'Hata', message: msg, color: 'red' });
                         }
                       })}
                     >
