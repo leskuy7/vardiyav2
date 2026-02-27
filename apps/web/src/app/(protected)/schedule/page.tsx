@@ -27,6 +27,7 @@ function formatWeekRange(isoDate: string) {
 
 export default function SchedulePage() {
   const [weekStart, setWeekStart] = useState(currentWeekStartIsoDate());
+  const [gridScale, setGridScale] = useState(1);
   const [warning, setWarning] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -161,6 +162,23 @@ export default function SchedulePage() {
                 <Button variant="default" onClick={() => setWeekStart(currentWeekStartIsoDate())}>Bugün</Button>
               </Group>
               <Group>
+                <Group gap="xs">
+                  <Button
+                    variant="default"
+                    onClick={() => setGridScale((value) => Number(Math.max(0.8, value - 0.1).toFixed(1)))}
+                    aria-label="Programı küçült"
+                  >
+                    -
+                  </Button>
+                  <Badge variant="light">{Math.round(gridScale * 100)}%</Badge>
+                  <Button
+                    variant="default"
+                    onClick={() => setGridScale((value) => Number(Math.min(1.4, value + 0.1).toFixed(1)))}
+                    aria-label="Programı büyüt"
+                  >
+                    +
+                  </Button>
+                </Group>
                 <Button variant="default" onClick={() => window.open(`/schedule/print?start=${weekStart}`, '_blank')}>Yazdır</Button>
                 <Button
                   onClick={() => {
@@ -208,6 +226,7 @@ export default function SchedulePage() {
         <WeeklyGrid
           employees={filteredEmployees}
           days={data.days}
+          scale={gridScale}
           onCreate={openCreate}
           onEdit={(shift) => openEdit({ id: shift.id, employeeId: shift.employeeId, start: shift.start, end: shift.end })}
           onMove={handleMove}

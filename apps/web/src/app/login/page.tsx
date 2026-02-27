@@ -1,7 +1,7 @@
 "use client";
 
-import { Alert, Badge, Box, Button, Container, Grid, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
-import { IconArrowRight } from '@tabler/icons-react';
+import { ActionIcon, Alert, Badge, Box, Button, Container, Grid, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { IconArrowRight, IconEye, IconEyeOff } from '@tabler/icons-react';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -201,13 +202,23 @@ export default function LoginPage() {
                     <TextInput
                       label="Şifre"
                       placeholder="Şifren"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       name="password"
                       autoComplete="current-password"
                       size="md"
                       radius="lg"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
+                      rightSection={
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
+                          onClick={() => setShowPassword((value) => !value)}
+                          aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                        >
+                          {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                        </ActionIcon>
+                      }
                       required
                       styles={{
                         input: {

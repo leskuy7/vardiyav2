@@ -82,6 +82,11 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
       return;
     }
 
+    if (startAt.getTime() >= endAt.getTime()) {
+      setError('Bitiş zamanı başlangıçtan sonra olmalı.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await onSubmit({

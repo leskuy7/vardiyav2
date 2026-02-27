@@ -21,10 +21,16 @@ import {
   ThemeIcon,
   Title
 } from '@mantine/core';
-import { IconTag, IconBuilding } from '@tabler/icons-react';
+import { IconBuilding, IconEye, IconEyeOff, IconTag } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
-import { useEmployeeActions, useEmployees, type EmployeeItem } from '../../../hooks/use-employees';
+import {
+  useEmployeeActions,
+  useEmployees,
+  useMetaDepartments,
+  useMetaPositions,
+  type EmployeeItem
+} from '../../../hooks/use-employees';
 
 type FormMode = 'create' | 'edit';
 
@@ -62,6 +68,8 @@ function nameParts(name: string) {
 
 export default function EmployeesPage() {
   const { data, isLoading, isError } = useEmployees(true);
+  const { data: metaDepartments } = useMetaDepartments();
+  const { data: metaPositions } = useMetaPositions();
   const { createEmployee, updateEmployee, archiveEmployee, bulkClearField } = useEmployeeActions();
 
   const [query, setQuery] = useState('');
@@ -70,22 +78,23 @@ export default function EmployeesPage() {
   const [formMode, setFormMode] = useState<FormMode>('create');
   const [editingEmployee, setEditingEmployee] = useState<EmployeeItem | null>(null);
   const [form, setForm] = useState<EmployeeForm>(initialForm);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const departmentOptions = useMemo(() => {
-    const departments = Array.from(new Set((data ?? []).map((employee) => employee.department).filter(Boolean))) as string[];
+    const departments = (metaDepartments ?? []).filter(Boolean);
     return [{ value: 'all', label: 'Tüm Departmanlar' }, ...departments.map((department) => ({ value: department, label: department }))];
-  }, [data]);
+  }, [metaDepartments]);
 
   const departmentFormOptions = useMemo(() => {
-    const departments = Array.from(new Set((data ?? []).map((e) => e.department).filter(Boolean))) as string[];
+    const departments = (metaDepartments ?? []).filter(Boolean);
     return departments.map((d) => ({ value: d, label: d }));
-  }, [data]);
+  }, [metaDepartments]);
 
   const positionFormOptions = useMemo(() => {
-    const positions = Array.from(new Set((data ?? []).map((e) => e.position).filter(Boolean))) as string[];
+    const positions = (metaPositions ?? []).filter(Boolean);
     return positions.map((p) => ({ value: p, label: p }));
-  }, [data]);
+  }, [metaPositions]);
 
   const rows = useMemo(() => {
     const all = data ?? [];
@@ -120,6 +129,7 @@ export default function EmployeesPage() {
     setFormMode('create');
     setEditingEmployee(null);
     setForm(initialForm);
+    setShowCreatePassword(false);
     setError(null);
     setModalOpen(true);
   }
@@ -355,7 +365,24 @@ export default function EmployeesPage() {
             {formMode === 'create' ? (
               <>
                 <TextInput label="E-posta" value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.currentTarget.value }))} required />
-                <TextInput label="Şifre" type="password" autoComplete="new-password" value={form.password} onChange={(event) => setForm((prev) => ({ ...prev, password: event.currentTarget.value }))} required />
+                <TextInput
+                  label="Şifre"
+                  type={showCreatePassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={form.password}
+                  onChange={(event) => setForm((prev) => ({ ...prev, password: event.currentTarget.value }))}
+                  rightSection={
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setShowCreatePassword((value) => !value)}
+                      aria-label={showCreatePassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                    >
+                      {showCreatePassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                    </ActionIcon>
+                  }
+                  required
+                />
                 <Group grow>
                   <TextInput label="Ad" value={form.firstName} onChange={(event) => setForm((prev) => ({ ...prev, firstName: event.currentTarget.value }))} required />
                   <TextInput label="Soyad" value={form.lastName} onChange={(event) => setForm((prev) => ({ ...prev, lastName: event.currentTarget.value }))} />

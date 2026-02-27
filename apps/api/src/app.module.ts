@@ -7,8 +7,10 @@ import { AvailabilityModule } from './availability/availability.module';
 import { DatabaseModule } from './database/database.module';
 import { EmployeesModule } from './employees/employees.module';
 import { HealthModule } from './health/health.module';
+import { MetaModule } from './meta/meta.module';
 import { ReportsModule } from './reports/reports.module';
 import { ScheduleModule } from './schedule/schedule.module';
+import { SecurityModule } from './security/security.module';
 import { ShiftsModule } from './shifts/shifts.module';
 
 @Module({
@@ -17,8 +19,8 @@ import { ShiftsModule } from './shifts/shifts.module';
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => [{
-        ttl: config.get<number>('THROTTLE_TTL', 60000),
-        limit: config.get<number>('THROTTLE_LIMIT', 120)
+        ttl: Number(config.get('THROTTLE_TTL') ?? 60000),
+        limit: Number(config.get('THROTTLE_LIMIT') ?? 120)
       }]
     }),
     DatabaseModule,
@@ -28,6 +30,8 @@ import { ShiftsModule } from './shifts/shifts.module';
     ShiftsModule,
     AvailabilityModule,
     EmployeesModule,
+    MetaModule,
+    SecurityModule,
     ReportsModule
   ],
   providers: [

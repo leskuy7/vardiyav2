@@ -4,34 +4,31 @@ import { ScheduleService } from './schedule.service';
 describe('ScheduleService', () => {
   function createService() {
     const prisma: {
-      employee: { findUnique: jest.Mock };
       shift: { findMany: jest.Mock };
     } = {
-      employee: { findUnique: jest.fn() },
       shift: { findMany: jest.fn() }
     };
 
     return { service: new ScheduleService(prisma as unknown as ConstructorParameters<typeof ScheduleService>[0]), prisma };
   }
 
-  it('employee departmanı varsa haftalık planı departmana göre filtreler', async () => {
+  it('employee haftalık planı kendi employeeId kapsamına göre filtreler', async () => {
     const { service, prisma } = createService();
-    prisma.employee.findUnique.mockResolvedValue({ id: 'emp-1', department: 'Operasyon' });
     prisma.shift.findMany.mockResolvedValue([]);
 
     await service.getWeek('2026-01-05', { role: 'EMPLOYEE', employeeId: 'emp-1' });
 
     expect(prisma.shift.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ employee: { department: 'Operasyon' } })
+        where: expect.objectContaining({ employeeId: 'emp-1' })
       })
     );
   });
 
-  it('employee kaydı yoksa Forbidden döner', async () => {
+  it('employeeId eksikse Forbidden döner', async () => {
     const { service, prisma } = createService();
-    prisma.employee.findUnique.mockResolvedValue(null);
+    prisma.shift.findMany.mockResolvedValue([]);
 
-    await expect(service.getWeek('2026-01-05', { role: 'EMPLOYEE', employeeId: 'emp-1' })).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.getWeek('2026-01-05', { role: 'EMPLOYEE' })).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

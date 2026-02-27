@@ -39,12 +39,16 @@ const accounts = [
 ];
 
 async function seed() {
-    console.log('🗑️  Temizleniyor...');
-    await prisma.shift.deleteMany();
-    await prisma.availabilityBlock.deleteMany();
-    await prisma.auditLog.deleteMany();
-    await prisma.employee.deleteMany();
-    await prisma.user.deleteMany();
+    if (process.env.SEED_PROD !== 'true') {
+        console.log('⏭️  SEED_PROD=true olmadığı için üretim seed atlandı.');
+        return;
+    }
+
+    const existingUsers = await prisma.user.count();
+    if (existingUsers > 0) {
+        console.log(`⏭️  Veritabanında ${existingUsers} kullanıcı var; seed atlandı (idempotent güvenlik).`);
+        return;
+    }
 
     const hash = await bcrypt.hash(PASSWORD, 12);
     const employeeMap: Record<string, string> = {};

@@ -15,6 +15,7 @@ type WeeklyGridProps = {
   onCreate: (employeeId: string, date: string) => void;
   onEdit: (shift: Shift) => void;
   onMove: (payload: { shiftId: string; employeeId: string; targetDate: string }) => void;
+  scale?: number;
 };
 
 function formatDayHeader(isoDate: string) {
@@ -92,13 +93,15 @@ function ShiftCell({
   day,
   shifts,
   onCreate,
-  onEdit
+  onEdit,
+  scale
 }: {
   employeeId: string;
   day: string;
   shifts: Shift[];
   onCreate: (employeeId: string, date: string) => void;
   onEdit: (shift: Shift) => void;
+  scale: number;
 }) {
   const dropId = `${employeeId}::${day}`;
   const { setNodeRef, isOver } = useDroppable({ id: dropId, data: { employeeId, day } });
@@ -109,8 +112,8 @@ function ShiftCell({
       p="sm"
       data-testid={`drop-cell-${employeeId}-${day}`}
       style={{
-        minWidth: 250,
-        minHeight: 170,
+        minWidth: Math.round(205 * scale),
+        minHeight: Math.round(150 * scale),
         borderRadius: 'var(--mantine-radius-md)',
         border: '1px solid var(--mantine-color-gray-3)',
         background: isOver ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-body)'
@@ -126,7 +129,7 @@ function ShiftCell({
   );
 }
 
-export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: WeeklyGridProps) {
+export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove, scale = 1 }: WeeklyGridProps) {
   const sensors = useSensors(useSensor(PointerSensor));
 
   function handleDragEnd(event: DragEndEvent) {
@@ -138,11 +141,11 @@ export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: Weekly
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <ScrollArea>
+      <ScrollArea type="always" scrollbars="x" offsetScrollbars>
         <Table withTableBorder highlightOnHover striped="odd" verticalSpacing="sm" horizontalSpacing="sm">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w={260}>Çalışan</Table.Th>
+              <Table.Th w={220}>Çalışan</Table.Th>
               {days.map((day) => (
                 <Table.Th key={day.date} style={{ background: isToday(day.date) ? 'var(--mantine-color-blue-light)' : undefined }}>
                   <Text fw={700}>{formatDayHeader(day.date)}</Text>
@@ -179,6 +182,7 @@ export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: Weekly
                         shifts={day.shifts.filter((shift) => shift.employeeId === employee.id)}
                         onCreate={onCreate}
                         onEdit={onEdit}
+                        scale={scale}
                       />
                     </Table.Td>
                   ))}

@@ -19,3 +19,40 @@ export function useWeeklyReport(weekStart: string) {
     }
   });
 }
+
+export type SecurityEvent = {
+  id: string;
+  createdAt: string;
+  sourceIp: string | null;
+  documentUri: string | null;
+  violatedDirective: string | null;
+  blockedUri: string | null;
+  effectiveDirective: string | null;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  recommendation: string;
+};
+
+export function useSecurityEvents(
+  enabled: boolean,
+  filters?: { limit?: number; directive?: string; from?: string; to?: string }
+) {
+  const limit = filters?.limit ?? 50;
+  const directive = filters?.directive ?? '';
+  const from = filters?.from ?? '';
+  const to = filters?.to ?? '';
+
+  return useQuery({
+    queryKey: ['reports', 'security-events', limit, directive, from, to],
+    enabled,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      if (directive.trim()) params.set('directive', directive.trim());
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+
+      const response = await api.get<SecurityEvent[]>(`/reports/security-events?${params.toString()}`);
+      return response.data;
+    }
+  });
+}

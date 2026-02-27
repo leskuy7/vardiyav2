@@ -9,6 +9,4 @@ coverage
 *.log
 playwright-report
 test-results
-deep-research-report.md
-analysis_report.md.resolved
-design_and_feature_analysis.md.resolved
+deep-research-report (2).md

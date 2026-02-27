@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuditService } from '../common/audit.service';
 import { CsrfGuard } from '../common/auth/csrf.guard';
@@ -16,6 +17,12 @@ export class AuthController {
   ) { }
 
   @Post('login')
+  @Throttle({
+    default: {
+      ttl: Number(process.env.LOGIN_THROTTLE_TTL ?? 60_000),
+      limit: Number(process.env.LOGIN_THROTTLE_LIMIT ?? 5)
+    }
+  })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.login(dto);
     this.setRefreshCookie(response, result.refreshToken);

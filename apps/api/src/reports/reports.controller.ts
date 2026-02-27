@@ -14,4 +14,21 @@ export class ReportsController {
   weeklyHours(@Query('weekStart') weekStart: string) {
     return this.reportsService.weeklyHours(weekStart);
   }
+
+  @Get('security-events')
+  @Roles('ADMIN')
+  securityEvents(
+    @Query('limit') limit?: string,
+    @Query('directive') directive?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string
+  ) {
+    const parsedLimit = Number(limit ?? 50);
+    return this.reportsService.securityEvents({
+      limit: Number.isFinite(parsedLimit) ? parsedLimit : 50,
+      directive,
+      from,
+      to
+    });
+  }
 }

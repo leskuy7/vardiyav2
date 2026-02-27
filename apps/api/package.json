@@ -5,7 +5,7 @@
     "dev": "nest start --watch",
     "build": "npm run prisma:generate && nest build && npx tsc scripts/seed-prod.ts --outDir dist --esModuleInterop --resolveJsonModule --skipLibCheck",
     "start": "node dist/main",
-    "start:prod": "npx prisma db push --skip-generate && node dist/seed-prod.js && node dist/main",
+    "start:prod": "node dist/main",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "jest --config jest.config.ts",
     "test:e2e": "npm run prisma:push && jest --config test/jest-e2e.json",
@@ -13,7 +13,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
-    "seed:test": "ts-node scripts/seed-test.ts"
+    "seed:test": "ts-node scripts/seed-test.ts",
+    "seed:prod": "node dist/seed-prod.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

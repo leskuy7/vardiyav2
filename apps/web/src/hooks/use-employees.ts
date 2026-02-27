@@ -24,6 +24,26 @@ export function useEmployees(active = true) {
   });
 }
 
+export function useMetaDepartments() {
+  return useQuery({
+    queryKey: ['meta', 'departments'],
+    queryFn: async () => {
+      const response = await api.get<string[]>('/meta/departments');
+      return response.data;
+    }
+  });
+}
+
+export function useMetaPositions() {
+  return useQuery({
+    queryKey: ['meta', 'positions'],
+    queryFn: async () => {
+      const response = await api.get<string[]>('/meta/positions');
+      return response.data;
+    }
+  });
+}
+
 type CreateEmployeePayload = {
   email: string;
   password: string;
@@ -49,7 +69,13 @@ type UpdateEmployeePayload = {
 
 export function useEmployeeActions() {
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['employees'] });
+  const invalidate = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['employees'] }),
+      queryClient.invalidateQueries({ queryKey: ['meta', 'departments'] }),
+      queryClient.invalidateQueries({ queryKey: ['meta', 'positions'] })
+    ]);
+  };
 
   const createEmployee = useMutation({
     mutationFn: async (payload: CreateEmployeePayload) => {

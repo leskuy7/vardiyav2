@@ -94,7 +94,7 @@ export default function SchedulePrintPage() {
             <style>{`
         @media print {
           @page { size: landscape; margin: 10mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    body { color: #000; background: #fff; }
           .no-print { display: none !important; }
         }
 
@@ -103,25 +103,25 @@ export default function SchedulePrintPage() {
           padding: 20px;
           max-width: 1200px;
           margin: 0 auto;
-          color: #1a1a2e;
+                    color: #000;
           background: #fff;
         }
 
         .print-header {
           text-align: center;
           margin-bottom: 20px;
-          border-bottom: 2px solid #4338ca;
+                    border-bottom: 2px solid #000;
           padding-bottom: 12px;
         }
         .print-header h1 {
           margin: 0 0 4px 0;
           font-size: 22px;
-          color: #4338ca;
+                    color: #000;
         }
         .print-header p {
           margin: 0;
           font-size: 14px;
-          color: #666;
+                    color: #000;
         }
 
         .print-actions {
@@ -160,25 +160,25 @@ export default function SchedulePrintPage() {
           text-align: left;
         }
         .schedule-table thead th {
-          background: #4338ca;
-          color: #fff;
+                    background: #fff;
+                    color: #000;
           font-weight: 700;
           text-align: center;
           font-size: 12px;
         }
         .schedule-table thead th.employee-col {
-          background: #312e81;
+                    background: #fff;
           text-align: left;
           min-width: 120px;
         }
         .schedule-table td.employee-cell {
           font-weight: 700;
-          background: #f5f3ff;
+                    background: #fff;
           white-space: nowrap;
           font-size: 12px;
         }
         .schedule-table tbody tr:nth-child(even) {
-          background: #fafafa;
+                    background: #fff;
         }
         .shift-cell {
           text-align: center;
@@ -186,7 +186,7 @@ export default function SchedulePrintPage() {
         }
         .shift-time {
           font-weight: 600;
-          color: #312e81;
+                    color: #000;
           font-size: 12px;
         }
         .shift-status {
@@ -196,22 +196,27 @@ export default function SchedulePrintPage() {
           display: inline-block;
           margin-top: 2px;
         }
-        .status-ACKNOWLEDGED { background: #d1fae5; color: #065f46; }
-        .status-PUBLISHED { background: #dbeafe; color: #1e40af; }
-        .status-DRAFT { background: #fef3c7; color: #92400e; }
-        .status-CANCELLED { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
-        .empty-cell { color: #d1d5db; text-align: center; }
+                .status-ACKNOWLEDGED,
+                .status-PUBLISHED,
+                .status-DRAFT,
+                .status-CANCELLED {
+                    background: #fff;
+                    color: #000;
+                    border: 1px solid #000;
+                }
+                .status-CANCELLED { text-decoration: line-through; }
+                .empty-cell { color: #666; text-align: center; }
 
         .print-footer {
           margin-top: 16px;
           font-size: 11px;
-          color: #9ca3af;
+                    color: #000;
           display: flex;
           justify-content: space-between;
         }
 
         .summary-row td {
-          background: #f0f0ff !important;
+                    background: #fff !important;
           font-weight: 600;
           text-align: center;
           font-size: 11px;

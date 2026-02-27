@@ -1,10 +1,38 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { parseWeekStart, plusDays } from '../common/time.utils';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readString(value: Prisma.JsonValue | null | undefined) {
+    return typeof value === 'string' ? value : null;
+  }
+
+  private classifyDirective(directive: string | null) {
+    const value = (directive ?? '').toLowerCase();
+
+    if (value.includes('script-src') || value.includes('object-src')) {
+      return {
+        severity: 'HIGH' as const,
+        recommendation: 'Script/Object kaynaklarını gözden geçir, izinli domain listesini daralt.'
+      };
+    }
+
+    if (value.includes('connect-src') || value.includes('frame-src') || value.includes('frame-ancestors')) {
+      return {
+        severity: 'MEDIUM' as const,
+        recommendation: 'Harici bağlantı ve frame kaynaklarını doğrula, gereksiz originleri kaldır.'
+      };
+    }
+
+    return {
+      severity: 'LOW' as const,
+      recommendation: 'Direktif ihlali tekrar ediyorsa policy ve asset URLlerini senkronize et.'
+    };
+  }
 
   async weeklyHours(weekStart: string) {
     const start = parseWeekStart(weekStart);
@@ -73,5 +101,62 @@ export class ReportsService {
       employees: rows,
       totals
     };
+  }
+
+  async securityEvents(params?: { limit?: number; directive?: string; from?: string; to?: string }) {
+    const take = Math.max(1, Math.min(200, Math.trunc(params?.limit ?? 50)));
+    const directiveFilter = params?.directive?.trim().toLowerCase() ?? '';
+    const fromDate = params?.from ? new Date(params.from) : null;
+    const toDate = params?.to ? new Date(params.to) : null;
+
+    const logs = await this.prisma.auditLog.findMany({
+      where: {
+        action: 'SECURITY_CSP_REPORT',
+        createdAt: {
+          gte: fromDate && !Number.isNaN(fromDate.getTime()) ? fromDate : undefined,
+          lte: toDate && !Number.isNaN(toDate.getTime()) ? toDate : undefined
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take
+    });
+
+    const normalized = logs.map((log) => {
+      const details = (log.details ?? {}) as Prisma.JsonObject;
+      const sourceIp = this.readString(details.sourceIp);
+      const reportValue = details.report;
+      const reportObject = (reportValue && typeof reportValue === 'object' && !Array.isArray(reportValue)
+        ? reportValue
+        : {}) as Prisma.JsonObject;
+      const cspReportValue = reportObject['csp-report'];
+      const cspReport = (cspReportValue && typeof cspReportValue === 'object' && !Array.isArray(cspReportValue)
+        ? cspReportValue
+        : reportObject) as Prisma.JsonObject;
+      const violatedDirective = this.readString(cspReport['violated-directive']);
+      const effectiveDirective = this.readString(cspReport['effective-directive']);
+      const directiveForClassification = violatedDirective ?? effectiveDirective;
+      const classification = this.classifyDirective(directiveForClassification);
+
+      return {
+        id: log.id,
+        createdAt: log.createdAt.toISOString(),
+        sourceIp,
+        documentUri: this.readString(cspReport['document-uri']),
+        violatedDirective,
+        blockedUri: this.readString(cspReport['blocked-uri']),
+        effectiveDirective,
+        severity: classification.severity,
+        recommendation: classification.recommendation
+      };
+    });
+
+    if (!directiveFilter) {
+      return normalized;
+    }
+
+    return normalized.filter((event) => {
+      const directiveValue = (event.violatedDirective ?? event.effectiveDirective ?? '').toLowerCase();
+      return directiveValue.includes(directiveFilter);
+    });
   }
 }
