@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Badge, Button, Card, Container, Grid, Group, Paper, Select, Stack, Text, Title } from '@mantine/core';
+import { Alert, Badge, Button, Group, Select, Stack, Text, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
 import { useEmployees } from '../../../hooks/use-employees';
@@ -19,7 +19,6 @@ function formatWeekRange(isoDate: string) {
   const start = new Date(`${isoDate}T00:00:00.000Z`);
   const end = new Date(start);
   end.setUTCDate(start.getUTCDate() + 6);
-
   const startText = start.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
   const endText = end.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
   return `${startText} - ${endText}`;
@@ -27,7 +26,6 @@ function formatWeekRange(isoDate: string) {
 
 export default function SchedulePage() {
   const [weekStart, setWeekStart] = useState(currentWeekStartIsoDate());
-  const [gridScale, setGridScale] = useState(1);
   const [warning, setWarning] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -55,27 +53,20 @@ export default function SchedulePage() {
     const index = new Map<string, { id: string; employeeId: string; start: string; end: string; note?: string }>();
     for (const day of data?.days ?? []) {
       for (const shift of day.shifts) {
-        index.set(shift.id, {
-          id: shift.id,
-          employeeId: shift.employeeId,
-          start: shift.start,
-          end: shift.end
-        });
+        index.set(shift.id, { id: shift.id, employeeId: shift.employeeId, start: shift.start, end: shift.end });
       }
     }
     return index;
   }, [data]);
 
   const departmentOptions = useMemo(() => {
-    const departments = Array.from(new Set((employees ?? []).map((employee) => employee.department).filter(Boolean))) as string[];
-    return [{ value: 'all', label: 'Tüm Departmanlar' }, ...departments.map((department) => ({ value: department, label: department }))];
+    const departments = Array.from(new Set((employees ?? []).map((e) => e.department).filter(Boolean))) as string[];
+    return [{ value: 'all', label: 'Tüm Departmanlar' }, ...departments.map((d) => ({ value: d, label: d }))];
   }, [employees]);
 
   const filteredEmployees = useMemo(() => {
-    if (departmentFilter === 'all') {
-      return employees ?? [];
-    }
-    return (employees ?? []).filter((employee) => employee.department === departmentFilter);
+    if (departmentFilter === 'all') return employees ?? [];
+    return (employees ?? []).filter((e) => e.department === departmentFilter);
   }, [departmentFilter, employees]);
 
   function openCreate(employeeId: string, date: string) {
@@ -100,7 +91,6 @@ export default function SchedulePage() {
       setWarning(warnings.length > 0 ? warnings.join(', ') : null);
       return;
     }
-
     const result = await createShift.mutateAsync(payload);
     const warnings = result.warnings ?? [];
     setWarning(warnings.length > 0 ? warnings.join(', ') : null);
@@ -109,11 +99,9 @@ export default function SchedulePage() {
   async function handleMove(payload: { shiftId: string; employeeId: string; targetDate: string }) {
     const shift = shiftIndex.get(payload.shiftId);
     if (!shift) return;
-
     const start = new Date(shift.start);
     const end = new Date(shift.end);
     const duration = end.getTime() - start.getTime();
-
     const timePart = start.toISOString().slice(11, 19);
     const movedStart = new Date(`${payload.targetDate}T${timePart}.000Z`);
     const movedEnd = new Date(movedStart.getTime() + duration);
@@ -122,132 +110,89 @@ export default function SchedulePage() {
       id: shift.id,
       employeeId: payload.employeeId,
       startTime: movedStart.toISOString(),
-      endTime: movedEnd.toISOString()
+      endTime: movedEnd.toISOString(),
     });
-
     const warnings = result.warnings ?? [];
     setWarning(warnings.length > 0 ? warnings.join(', ') : null);
   }
 
-  if (isLoading) {
-    return <PageLoading />;
-  }
-
-  if (isError || !data) {
-    return <PageError message="Plan yüklenemedi." />;
-  }
+  if (isLoading) return <PageLoading />;
+  if (isError || !data) return <PageError message="Plan yüklenemedi." />;
 
   return (
-    <Container fluid>
-      <Stack>
-        <Paper withBorder radius="lg" p="md">
-          <Stack gap="sm">
-            <Group justify="space-between" align="center">
-              <Group gap="sm">
-                <Badge variant="light">Haftalık Vardiya Programı</Badge>
-                <Text c="dimmed" size="sm">{new Date().toLocaleDateString('tr-TR')}</Text>
-              </Group>
-              <Group>
-                <Badge variant="light">Çalışan: {employees?.length ?? 0}</Badge>
-                <Badge variant="light">Vardiya: {totalShifts}</Badge>
-                <Badge variant="light">Saat: {totalHours.toFixed(1)}</Badge>
-              </Group>
-            </Group>
+    <Stack gap="sm">
+      {/* ─── Toolbar ─── */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+        <Group gap="xs" wrap="wrap">
+          <Badge variant="light" size="sm">HAFTALIK PROGRAM</Badge>
+          <Badge variant="light" size="sm">Çalışan: {filteredEmployees.length}</Badge>
+          <Badge variant="light" size="sm">Vardiya: {totalShifts}</Badge>
+          <Badge variant="light" size="sm">Saat: {totalHours}</Badge>
+        </Group>
+        <Group gap="xs" wrap="wrap">
+          <Button size="xs" variant="default" onClick={() => window.open(`/schedule/print?start=${weekStart}`, '_blank')}>
+            Yazdır
+          </Button>
+          <Button
+            size="xs"
+            className="btn-gradient"
+            onClick={() => {
+              setSelectedShift(undefined);
+              setSelectedEmployeeId((employees ?? [])[0]?.id ?? '');
+              setModalOpen(true);
+            }}
+          >
+            Vardiya Ekle
+          </Button>
+        </Group>
+      </Group>
 
-            <Group justify="space-between" align="center" wrap="wrap">
-              <Group wrap="wrap">
-                <Button variant="light" onClick={() => setWeekStart((value) => shiftIsoDate(value, -7))}>Önceki</Button>
-                <Title order={3}>{formatWeekRange(weekStart)}</Title>
-                <Button variant="light" onClick={() => setWeekStart((value) => shiftIsoDate(value, 7))}>Sonraki</Button>
-                <Button variant="default" onClick={() => setWeekStart(currentWeekStartIsoDate())}>Bugün</Button>
-              </Group>
-              <Group>
-                <Group gap="xs">
-                  <Button
-                    variant="default"
-                    onClick={() => setGridScale((value) => Number(Math.max(0.8, value - 0.1).toFixed(1)))}
-                    aria-label="Programı küçült"
-                  >
-                    -
-                  </Button>
-                  <Badge variant="light">{Math.round(gridScale * 100)}%</Badge>
-                  <Button
-                    variant="default"
-                    onClick={() => setGridScale((value) => Number(Math.min(1.4, value + 0.1).toFixed(1)))}
-                    aria-label="Programı büyüt"
-                  >
-                    +
-                  </Button>
-                </Group>
-                <Button variant="default" onClick={() => window.open(`/schedule/print?start=${weekStart}`, '_blank')}>Yazdır</Button>
-                <Button
-                  onClick={() => {
-                    setSelectedShift(undefined);
-                    setSelectedEmployeeId((employees ?? [])[0]?.id ?? '');
-                    setModalOpen(true);
-                  }}
-                >
-                  Vardiya Ekle
-                </Button>
-              </Group>
-            </Group>
-          </Stack>
-        </Paper>
-
-        <Grid>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Card withBorder radius="md" p="md">
-              <Text c="dimmed" size="sm">Toplam Çalışan</Text>
-              <Title order={3}>{filteredEmployees.length}</Title>
-            </Card>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Card withBorder radius="md" p="md">
-              <Text c="dimmed" size="sm">Planlanan Gün</Text>
-              <Title order={3}>{data.days.length}</Title>
-            </Card>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Select
-              label="Departman Filtresi"
-              data={departmentOptions}
-              value={departmentFilter}
-              onChange={(value) => setDepartmentFilter(value ?? 'all')}
-            />
-          </Grid.Col>
-        </Grid>
-
-        {warning ? (
-          <Alert color="yellow" variant="light" title="Planlama Uyarısı">
-            {warning}
-          </Alert>
-        ) : null}
-
-        <WeeklyGrid
-          employees={filteredEmployees}
-          days={data.days}
-          scale={gridScale}
-          onCreate={openCreate}
-          onEdit={(shift) => openEdit({ id: shift.id, employeeId: shift.employeeId, start: shift.start, end: shift.end })}
-          onMove={handleMove}
+      {/* ─── Navigation ─── */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+        <Group gap="xs">
+          <Button size="xs" variant="light" onClick={() => setWeekStart((v) => shiftIsoDate(v, -7))}>Önceki</Button>
+          <Title order={4}>{formatWeekRange(weekStart)}</Title>
+          <Button size="xs" variant="light" onClick={() => setWeekStart((v) => shiftIsoDate(v, 7))}>Sonraki</Button>
+          <Button size="xs" variant="default" onClick={() => setWeekStart(currentWeekStartIsoDate())}>Bugün</Button>
+        </Group>
+        <Select
+          size="xs"
+          w={180}
+          data={departmentOptions}
+          value={departmentFilter}
+          onChange={(value) => setDepartmentFilter(value ?? 'all')}
+          placeholder="Departman"
         />
-      </Stack>
+      </Group>
+
+      {warning && (
+        <Alert color="yellow" variant="light" title="Planlama Uyarısı" withCloseButton onClose={() => setWarning(null)}>
+          {warning}
+        </Alert>
+      )}
+
+      {/* ─── Grid ─── */}
+      <WeeklyGrid
+        employees={filteredEmployees}
+        days={data.days}
+        onCreate={openCreate}
+        onEdit={(shift) => openEdit({ id: shift.id, employeeId: shift.employeeId, start: shift.start, end: shift.end })}
+        onMove={handleMove}
+      />
 
       <ShiftModal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
         employeeId={selectedEmployeeId}
-        employees={(employees ?? []).map((employee) => ({ value: employee.id, label: employee.user.name }))}
+        employees={(employees ?? []).map((e) => ({ value: e.id, label: e.user.name }))}
         initial={selectedShift ? { start: selectedShift.start, end: selectedShift.end, note: selectedShift.note } : undefined}
         onSubmit={handleSubmit}
         onDelete={
           selectedShift?.id
-            ? async () => {
-              await deleteShift.mutateAsync(selectedShift.id);
-            }
+            ? async () => { await deleteShift.mutateAsync(selectedShift.id); }
             : undefined
         }
       />
-    </Container>
+    </Stack>
   );
 }

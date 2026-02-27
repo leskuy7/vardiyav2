@@ -20,67 +20,50 @@ type WeeklyGridProps = {
 
 function formatDayHeader(isoDate: string) {
   const date = new Date(`${isoDate}T00:00:00.000Z`);
-  const text = date.toLocaleDateString('tr-TR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC'
-  });
-  return text;
+  return date.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
 function getInitials(fullName: string) {
-  return fullName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
+  return fullName.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
 }
 
 function shiftHours(start: string, end: string) {
-  const startDate = new Date(start).getTime();
-  const endDate = new Date(end).getTime();
-  return Number(((endDate - startDate) / (1000 * 60 * 60)).toFixed(1));
+  return Number(((new Date(end).getTime() - new Date(start).getTime()) / 3_600_000).toFixed(1));
 }
 
 function isToday(isoDate: string) {
   return new Date().toISOString().slice(0, 10) === isoDate;
 }
 
-function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (shift: Shift) => void }) {
+/* ─── Compact Shift Card ─── */
+function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: shift.id, data: shift });
   const StatusIcon = getShiftStatusIcon(shift.status);
+
   return (
     <Card
-      className="surface-card interactive-card"
       withBorder
-      radius="md"
-      shadow="sm"
+      radius="sm"
       ref={setNodeRef}
-      p="sm"
-      mb="xs"
+      p={6}
+      mb={4}
       data-testid={`shift-card-${shift.id}`}
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-        opacity: isDragging ? 0.6 : 1,
-        borderLeft: `4px solid var(--mantine-color-${getShiftStatusColor(shift.status)}-6)`
+        opacity: isDragging ? 0.5 : 1,
+        borderLeft: `3px solid var(--mantine-color-${getShiftStatusColor(shift.status)}-6)`,
+        fontSize: '0.75rem',
       }}
       {...listeners}
       {...attributes}
     >
-      <Text size="sm" fw={700}>{formatIstanbul(shift.start)} - {formatIstanbul(shift.end)}</Text>
-      <Text size="xs" c="dimmed" mt={2}>{shiftHours(shift.start, shift.end).toFixed(1)} saat</Text>
-      <Group justify="space-between" mt={4}>
-        <Badge
-          size="sm"
-          color={getShiftStatusColor(shift.status)}
-          variant="light"
-          leftSection={<StatusIcon size={12} />}
-        >
+      <Text size="xs" fw={700} lh={1.2}>{formatIstanbul(shift.start)} - {formatIstanbul(shift.end)}</Text>
+      <Text size="xs" c="dimmed" lh={1.2}>{shiftHours(shift.start, shift.end)} saat</Text>
+      <Group justify="space-between" mt={2} gap={4}>
+        <Badge size="xs" color={getShiftStatusColor(shift.status)} variant="light" leftSection={<StatusIcon size={10} />}>
           {getShiftStatusLabel(shift.status)}
         </Badge>
-        <Button size="xs" variant="subtle" onClick={() => onEdit(shift)}>
+        <Button size="compact-xs" variant="subtle" onClick={() => onEdit(shift)} fz={10}>
           Düzenle
         </Button>
       </Group>
@@ -88,20 +71,19 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (shift: Shift) => 
   );
 }
 
+/* ─── Drop Cell ─── */
 function ShiftCell({
   employeeId,
   day,
   shifts,
   onCreate,
   onEdit,
-  scale
 }: {
   employeeId: string;
   day: string;
   shifts: Shift[];
   onCreate: (employeeId: string, date: string) => void;
   onEdit: (shift: Shift) => void;
-  scale: number;
 }) {
   const dropId = `${employeeId}::${day}`;
   const { setNodeRef, isOver } = useDroppable({ id: dropId, data: { employeeId, day } });
@@ -109,17 +91,26 @@ function ShiftCell({
   return (
     <Box
       ref={setNodeRef}
-      p="sm"
+      p={4}
       data-testid={`drop-cell-${employeeId}-${day}`}
       style={{
-        minWidth: Math.round(205 * scale),
-        minHeight: Math.round(150 * scale),
-        borderRadius: 'var(--mantine-radius-md)',
-        border: '1px solid var(--mantine-color-gray-3)',
-        background: isOver ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-body)'
+        minWidth: 130,
+        minHeight: 80,
+        borderRadius: 'var(--mantine-radius-sm)',
+        border: '1px solid var(--glass-border)',
+        background: isOver ? 'rgba(102, 126, 234, 0.12)' : 'transparent',
+        transition: 'background 0.15s ease',
       }}
     >
-      <Button size="xs" variant="light" mb="xs" fullWidth data-testid={`create-shift-${employeeId}-${day}`} onClick={() => onCreate(employeeId, day)}>
+      <Button
+        size="compact-xs"
+        variant="light"
+        fullWidth
+        mb={4}
+        fz={10}
+        data-testid={`create-shift-${employeeId}-${day}`}
+        onClick={() => onCreate(employeeId, day)}
+      >
         + Vardiya
       </Button>
       {shifts.map((shift) => (
@@ -129,7 +120,8 @@ function ShiftCell({
   );
 }
 
-export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove, scale = 1 }: WeeklyGridProps) {
+/* ─── Weekly Grid ─── */
+export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: WeeklyGridProps) {
   const sensors = useSensors(useSensor(PointerSensor));
 
   function handleDragEnd(event: DragEndEvent) {
@@ -142,52 +134,71 @@ export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove, scale = 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <ScrollArea type="always" scrollbars="x" offsetScrollbars>
-        <Table withTableBorder highlightOnHover striped="odd" verticalSpacing="sm" horizontalSpacing="sm">
+        <Table
+          withTableBorder
+          highlightOnHover
+          verticalSpacing={4}
+          horizontalSpacing={4}
+          style={{ tableLayout: 'fixed', minWidth: employees.length > 0 ? 130 * days.length + 200 : undefined }}
+        >
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w={220}>Çalışan</Table.Th>
+              <Table.Th style={{ width: 160, position: 'sticky', left: 0, zIndex: 2, background: 'var(--glass-bg)', backdropFilter: 'blur(8px)' }}>
+                <Text size="xs" fw={700} tt="uppercase">Çalışan</Text>
+              </Table.Th>
               {days.map((day) => (
-                <Table.Th key={day.date} style={{ background: isToday(day.date) ? 'var(--mantine-color-blue-light)' : undefined }}>
-                  <Text fw={700}>{formatDayHeader(day.date)}</Text>
+                <Table.Th
+                  key={day.date}
+                  style={{
+                    background: isToday(day.date) ? 'rgba(102, 126, 234, 0.12)' : undefined,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Text size="xs" fw={700}>{formatDayHeader(day.date)}</Text>
                 </Table.Th>
               ))}
-              <Table.Th w={130}>Toplam Saat</Table.Th>
+              <Table.Th style={{ width: 80, textAlign: 'center' }}>
+                <Text size="xs" fw={700} tt="uppercase">Toplam</Text>
+              </Table.Th>
             </Table.Tr>
           </Table.Thead>
+
           <Table.Tbody>
             {employees.map((employee) => {
               const weeklyHours = days
-                .flatMap((day) => day.shifts)
-                .filter((shift) => shift.employeeId === employee.id)
-                .reduce((sum, shift) => sum + shiftHours(shift.start, shift.end), 0);
+                .flatMap((d) => d.shifts)
+                .filter((s) => s.employeeId === employee.id)
+                .reduce((sum, s) => sum + shiftHours(s.start, s.end), 0);
 
               return (
                 <Table.Tr key={employee.id}>
-                  <Table.Td>
-                    <Group align="flex-start" wrap="nowrap">
-                      <ThemeIcon variant="light" radius="xl" size="lg">
-                        {getInitials(employee.user.name)}
+                  <Table.Td style={{ position: 'sticky', left: 0, zIndex: 1, background: 'var(--glass-bg)', backdropFilter: 'blur(8px)' }}>
+                    <Group align="center" wrap="nowrap" gap={6}>
+                      <ThemeIcon variant="light" radius="xl" size="sm">
+                        <Text size="xs" fw={700}>{getInitials(employee.user.name)}</Text>
                       </ThemeIcon>
                       <Stack gap={0}>
-                        <Text fw={700}>{employee.user.name}</Text>
-                        <Text size="xs" c="dimmed">#{employee.id.slice(0, 8)}</Text>
+                        <Text size="xs" fw={700} truncate style={{ maxWidth: 100 }}>{employee.user.name}</Text>
+                        <Text size="10px" c="dimmed">#{employee.id.slice(0, 6)}</Text>
                       </Stack>
                     </Group>
                   </Table.Td>
                   {days.map((day) => (
-                    <Table.Td key={`${employee.id}-${day.date}`} style={{ background: isToday(day.date) ? 'var(--mantine-color-blue-light)' : undefined }}>
+                    <Table.Td
+                      key={`${employee.id}-${day.date}`}
+                      style={{ background: isToday(day.date) ? 'rgba(102, 126, 234, 0.06)' : undefined, verticalAlign: 'top' }}
+                    >
                       <ShiftCell
                         employeeId={employee.id}
                         day={day.date}
-                        shifts={day.shifts.filter((shift) => shift.employeeId === employee.id)}
+                        shifts={day.shifts.filter((s) => s.employeeId === employee.id)}
                         onCreate={onCreate}
                         onEdit={onEdit}
-                        scale={scale}
                       />
                     </Table.Td>
                   ))}
-                  <Table.Td>
-                    <Badge variant="light" size="lg">{weeklyHours.toFixed(1)} saat</Badge>
+                  <Table.Td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                    <Badge variant="light" size="sm">{weeklyHours.toFixed(1)}s</Badge>
                   </Table.Td>
                 </Table.Tr>
               );

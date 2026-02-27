@@ -72,10 +72,8 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
 
   return (
     <>
-      {/* Gradient background — fixed, behind everything */}
-      <div className="app-shell-bg">
-        <div className="app-shell-bg-orb3" />
-      </div>
+      {/* Background */}
+      <div className="app-shell-bg" />
 
       <AppShell
         padding="lg"
@@ -98,118 +96,118 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
           }
         }}
       >
-      <AppShell.Header>
-        <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="sm" />
-            <Badge variant="light" className="badge-glow" size="lg" radius="lg">VARDİYA</Badge>
-            <Text fw={700} size="lg" visibleFrom="sm">{currentPageLabel}</Text>
-          </Group>
-          <Group gap="sm" wrap="nowrap">
-            <ThemeToggle />
-            <Button
-              variant="light"
-              color="red"
-              onClick={logout}
-              data-testid="logout-action"
-              size="sm"
-              radius="xl"
-              leftSection={<IconLogout size={16} />}
-            >
-              Çıkış
-            </Button>
-          </Group>
-        </Group>
-      </AppShell.Header>
-
-      <AppShell.Navbar p="md">
-        <Stack justify="space-between" h="100%">
-          <Stack gap="xs">
-            <Group gap="sm" align="center" mb="md" px="xs">
-              <ThemeIcon
-                radius="xl"
-                size="lg"
-                variant="gradient"
-                gradient={{ from: 'indigo', to: 'violet' }}
-              >
-                <IconLayoutDashboard size={18} />
-              </ThemeIcon>
-              <Stack gap={0}>
-                <Text fw={700} size="sm">Vardiya Planlayıcı</Text>
-                <Text c="dimmed" size="xs">Ekip Yönetimi</Text>
-              </Stack>
+        <AppShell.Header>
+          <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap">
+              <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="sm" />
+              <Badge variant="light" className="badge-glow" size="lg" radius="lg">VARDİYA</Badge>
+              <Text fw={700} size="lg" visibleFrom="sm">{currentPageLabel}</Text>
             </Group>
+            <Group gap="sm" wrap="nowrap">
+              <ThemeToggle />
+              <Button
+                variant="light"
+                color="red"
+                onClick={logout}
+                data-testid="logout-action"
+                size="sm"
+                radius="xl"
+                leftSection={<IconLogout size={16} />}
+              >
+                Çıkış
+              </Button>
+            </Group>
+          </Group>
+        </AppShell.Header>
 
-            {links.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <UnstyledButton
-                  key={link.href}
-                  className="premium-nav-link"
-                  data-active={isActive}
-                  px="md"
-                  py="sm"
-                  onClick={() => {
-                    router.push(link.href);
-                    close();
-                  }}
+        <AppShell.Navbar p="md">
+          <Stack justify="space-between" h="100%">
+            <Stack gap="xs">
+              <Group gap="sm" align="center" mb="md" px="xs">
+                <ThemeIcon
+                  radius="xl"
+                  size="lg"
+                  variant="gradient"
+                  gradient={{ from: 'indigo', to: 'violet' }}
                 >
-                  <Group gap="sm" wrap="nowrap">
-                    <ThemeIcon
-                      variant={isActive ? 'white' : 'light'}
-                      radius="xl"
-                      size="md"
-                      color={isActive ? 'white' : 'indigo'}
-                      style={isActive ? { background: 'rgba(255,255,255,0.15)' } : undefined}
-                    >
-                      {link.icon}
-                    </ThemeIcon>
-                    <Text
-                      fw={isActive ? 700 : 500}
-                      size="sm"
-                      style={isActive ? { color: '#fff' } : undefined}
-                    >
-                      {link.label}
-                    </Text>
-                  </Group>
-                </UnstyledButton>
-              );
-            })}
+                  <IconLayoutDashboard size={18} />
+                </ThemeIcon>
+                <Stack gap={0}>
+                  <Text fw={700} size="sm">Vardiya Planlayıcı</Text>
+                  <Text c="dimmed" size="xs">Ekip Yönetimi</Text>
+                </Stack>
+              </Group>
+
+              {links.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <UnstyledButton
+                    key={link.href}
+                    className="premium-nav-link"
+                    data-active={isActive}
+                    px="md"
+                    py="sm"
+                    onClick={() => {
+                      router.push(link.href);
+                      close();
+                    }}
+                  >
+                    <Group gap="sm" wrap="nowrap">
+                      <ThemeIcon
+                        variant={isActive ? 'white' : 'light'}
+                        radius="xl"
+                        size="md"
+                        color={isActive ? 'white' : 'indigo'}
+                        style={isActive ? { background: 'rgba(255,255,255,0.15)' } : undefined}
+                      >
+                        {link.icon}
+                      </ThemeIcon>
+                      <Text
+                        fw={isActive ? 700 : 500}
+                        size="sm"
+                        style={isActive ? { color: '#fff' } : undefined}
+                      >
+                        {link.label}
+                      </Text>
+                    </Group>
+                  </UnstyledButton>
+                );
+              })}
+            </Stack>
+
+            <Paper withBorder radius="lg" p="sm" className="user-card">
+              <Group align="center" wrap="nowrap">
+                <Avatar
+                  radius="xl"
+                  size="md"
+                  variant="gradient"
+                  gradient={{ from: 'indigo', to: 'violet' }}
+                >
+                  {(data?.name ?? data?.email ?? 'U').slice(0, 1).toUpperCase()}
+                </Avatar>
+                <Stack gap={2} style={{ overflow: 'hidden' }}>
+                  <Text size="sm" fw={600} truncate>{data?.name ?? data?.email}</Text>
+                  <Text size="xs" c="dimmed" truncate>{data?.email}</Text>
+                </Stack>
+              </Group>
+              <Box mt="sm">
+                <Badge
+                  variant="gradient"
+                  gradient={{ from: 'indigo', to: 'violet' }}
+                  w="fit-content"
+                >
+                  {data?.role}
+                </Badge>
+              </Box>
+            </Paper>
           </Stack>
+        </AppShell.Navbar>
 
-          <Paper withBorder radius="lg" p="sm" className="user-card">
-            <Group align="center" wrap="nowrap">
-              <Avatar
-                radius="xl"
-                size="md"
-                variant="gradient"
-                gradient={{ from: 'indigo', to: 'violet' }}
-              >
-                {(data?.name ?? data?.email ?? 'U').slice(0, 1).toUpperCase()}
-              </Avatar>
-              <Stack gap={2} style={{ overflow: 'hidden' }}>
-                <Text size="sm" fw={600} truncate>{data?.name ?? data?.email}</Text>
-                <Text size="xs" c="dimmed" truncate>{data?.email}</Text>
-              </Stack>
-            </Group>
-            <Box mt="sm">
-              <Badge
-                variant="gradient"
-                gradient={{ from: 'indigo', to: 'violet' }}
-                w="fit-content"
-              >
-                {data?.role}
-              </Badge>
-            </Box>
-          </Paper>
-        </Stack>
-      </AppShell.Navbar>
-
-      <AppShell.Main>
-        <Paper withBorder radius="xl" p="xl" maw={1400} mx="auto" className="surface-card page-enter">
-          {children}
-        </Paper>
-      </AppShell.Main>
+        <AppShell.Main>
+          <div className="page-enter" style={{ padding: 'var(--mantine-spacing-md)' }}>
+            {children}
+          </div>
+        </AppShell.Main>
       </AppShell>
     </>
   );

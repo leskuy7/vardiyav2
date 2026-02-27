@@ -98,7 +98,16 @@ export default function MyShiftsPage() {
                     {getShiftStatusLabel(shift.status)}
                   </Badge>
                   {shift.status === 'PUBLISHED' ? (
-                    <Button size="xs" onClick={() => acknowledgeShift.mutate(shift.id)}>
+                    <Button
+                      size="xs"
+                      loading={acknowledgeShift.isPending}
+                      onClick={() => acknowledgeShift.mutate(shift.id, {
+                        onError: (err: any) => {
+                          const msg = err?.response?.data?.message ?? 'Onay başarısız oldu.';
+                          alert(msg);
+                        }
+                      })}
+                    >
                       Onayla
                     </Button>
                   ) : null}
