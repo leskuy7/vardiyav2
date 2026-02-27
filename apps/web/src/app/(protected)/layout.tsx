@@ -71,23 +71,33 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
   }
 
   return (
-    <AppShell
-      padding="lg"
-      header={{ height: 64 }}
-      navbar={{ width: 280, breakpoint: 'md', collapsed: { mobile: !opened } }}
-      styles={{
-        header: {
-          backdropFilter: 'blur(12px)',
-          background: 'var(--glass-bg)',
-          borderBottom: '1px solid var(--glass-border)'
-        },
-        navbar: {
-          background: 'var(--glass-bg)',
-          backdropFilter: 'blur(12px)',
-          borderRight: '1px solid var(--glass-border)'
-        }
-      }}
-    >
+    <>
+      {/* Gradient background — fixed, behind everything */}
+      <div className="app-shell-bg">
+        <div className="app-shell-bg-orb3" />
+      </div>
+
+      <AppShell
+        padding="lg"
+        header={{ height: 64 }}
+        navbar={{ width: 280, breakpoint: 'md', collapsed: { mobile: !opened } }}
+        styles={{
+          root: { background: 'transparent' },
+          main: { background: 'transparent' },
+          header: {
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            background: 'var(--glass-bg)',
+            borderBottom: '1px solid var(--glass-border)'
+          },
+          navbar: {
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            borderRight: '1px solid var(--glass-border)'
+          }
+        }}
+      >
       <AppShell.Header>
         <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">
@@ -200,6 +210,7 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
           {children}
         </Paper>
       </AppShell.Main>
-    </AppShell>
+      </AppShell>
+    </>
   );
 }
