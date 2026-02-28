@@ -87,7 +87,7 @@ export default function EmployeesPage() {
     null,
   );
   const [form, setForm] = useState<EmployeeForm>(initialForm);
-  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [newCredentials, setNewCredentials] = useState<{ email: string, password: string, name: string } | null>(null);
 
   const departmentOptions = useMemo(() => {
     const departments = (metaDepartments ?? []).filter(Boolean);
@@ -157,7 +157,6 @@ export default function EmployeesPage() {
     setFormMode("create");
     setEditingEmployee(null);
     setForm(initialForm);
-    setShowCreatePassword(false);
     setModalOpen(true);
   }
 
@@ -184,17 +183,21 @@ export default function EmployeesPage() {
 
     try {
       if (formMode === "create") {
-        if (!form.email || !form.password || !form.firstName) {
+        if (!form.firstName) {
           notifications.show({
             title: "Hata",
-            message: "E-posta, şifre ve ad zorunlu alanlardır.",
+            message: "Ad zorunlu alandır.",
             color: "red",
           });
           return;
         }
+
+        const generatedEmail = Math.random().toString(16).slice(2, 8).toLowerCase();
+        const generatedPassword = Math.random().toString(36).slice(-8);
+
         await createEmployee.mutateAsync({
-          email: form.email,
-          password: form.password,
+          email: generatedEmail,
+          password: generatedPassword,
           firstName: form.firstName,
           lastName: form.lastName,
           position: form.position || undefined,
@@ -203,6 +206,13 @@ export default function EmployeesPage() {
           hourlyRate: form.hourlyRate || undefined,
           maxWeeklyHours: form.maxWeeklyHours || undefined,
         });
+
+        setNewCredentials({
+          email: generatedEmail,
+          password: generatedPassword,
+          name: `${form.firstName} ${form.lastName}`.trim()
+        });
+
         notifications.show({
           title: "Başarılı",
           message: "Çalışan oluşturuldu.",
@@ -307,8 +317,8 @@ export default function EmployeesPage() {
         <Grid.Col span={{ base: 12, md: 8 }}>
           <TextInput
             label="Çalışan Ara"
-            description="Ad, e-posta, pozisyon veya departman ile filtrele"
-            placeholder="Ad, e-posta, pozisyon veya departman ara"
+            description="Ad, kullanıcı adı, pozisyon veya departman ile filtrele"
+            placeholder="Ad, kullanıcı adı, pozisyon..."
             radius="md"
             size="md"
             value={query}
@@ -337,7 +347,7 @@ export default function EmployeesPage() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Ad</Table.Th>
-              <Table.Th>E-posta</Table.Th>
+              <Table.Th>Kullanıcı Adı</Table.Th>
               <Table.Th>Pozisyon</Table.Th>
               <Table.Th>Departman</Table.Th>
               <Table.Th>Saatlik Ücret</Table.Th>
@@ -526,71 +536,29 @@ export default function EmployeesPage() {
         <form onSubmit={handleSubmit}>
           <Stack>
             {formMode === "create" ? (
-              <>
+              <Group grow>
                 <TextInput
-                  label="E-posta"
-                  value={form.email}
+                  label="Ad"
+                  value={form.firstName}
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
-                      email: event.currentTarget.value,
+                      firstName: event.currentTarget.value,
                     }))
                   }
                   required
                 />
                 <TextInput
-                  label="Şifre"
-                  type={showCreatePassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  value={form.password}
+                  label="Soyad"
+                  value={form.lastName}
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
-                      password: event.currentTarget.value,
+                      lastName: event.currentTarget.value,
                     }))
                   }
-                  rightSection={
-                    <ActionIcon
-                      variant="subtle"
-                      color="gray"
-                      onClick={() => setShowCreatePassword((value) => !value)}
-                      aria-label={
-                        showCreatePassword ? "Şifreyi gizle" : "Şifreyi göster"
-                      }
-                    >
-                      {showCreatePassword ? (
-                        <IconEyeOff size={16} />
-                      ) : (
-                        <IconEye size={16} />
-                      )}
-                    </ActionIcon>
-                  }
-                  required
                 />
-                <Group grow>
-                  <TextInput
-                    label="Ad"
-                    value={form.firstName}
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        firstName: event.currentTarget.value,
-                      }))
-                    }
-                    required
-                  />
-                  <TextInput
-                    label="Soyad"
-                    value={form.lastName}
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        lastName: event.currentTarget.value,
-                      }))
-                    }
-                  />
-                </Group>
-              </>
+              </Group>
             ) : (
               <>
                 <TextInput
@@ -600,7 +568,7 @@ export default function EmployeesPage() {
                   description="İsim düzenlemesi yakında eklenecek."
                 />
                 <TextInput label="Soyad" value={form.lastName} disabled />
-                <TextInput label="E-posta" value={form.email} disabled />
+                <TextInput label="Kullanıcı Adı" value={form.email} disabled />
               </>
             )}
 
@@ -669,6 +637,35 @@ export default function EmployeesPage() {
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      <Modal
+        opened={!!newCredentials}
+        onClose={() => setNewCredentials(null)}
+        title="Yeni Çalışan Oluşturuldu"
+        centered
+        closeOnClickOutside={false}
+      >
+        <Stack>
+          <Text size="sm">
+            Kullanıcı: <strong>{newCredentials?.name}</strong> için hesap başarıyla oluşturuldu.
+            Lütfen aşağıdaki giriş bilgilerini kopyalayıp çalışana iletin.
+            <br /><Text span c="red" size="sm" fw={600}>Bu şifre güvenlik sebebiyle bir daha gösterilmeyecektir!</Text>
+          </Text>
+          <TextInput
+            label="Kullanıcı Adı"
+            readOnly
+            value={newCredentials?.email ?? ''}
+            styles={{ input: { fontFamily: 'monospace', fontWeight: 600 } }}
+          />
+          <TextInput
+            label="Geçici Şifre"
+            readOnly
+            value={newCredentials?.password ?? ''}
+            styles={{ input: { fontFamily: 'monospace', fontWeight: 600 } }}
+          />
+          <Button fullWidth mt="md" onClick={() => setNewCredentials(null)}>Anladım, Kapat</Button>
+        </Stack>
       </Modal>
     </Stack>
   );

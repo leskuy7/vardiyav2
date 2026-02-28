@@ -1,7 +1,7 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "../lib/api";
 
 export type EmployeeItem = {
   id: string;
@@ -16,31 +16,39 @@ export type EmployeeItem = {
 
 export function useEmployees(active = true) {
   return useQuery({
-    queryKey: ['employees', active],
+    queryKey: ["employees", active],
     queryFn: async () => {
-      const response = await api.get<EmployeeItem[]>(`/employees?active=${active}`);
+      const response = await api.get<EmployeeItem[]>(
+        `/employees?active=${active}`,
+      );
       return response.data;
-    }
+    },
   });
 }
 
 export function useMetaDepartments() {
   return useQuery({
-    queryKey: ['meta', 'departments'],
+    queryKey: ["meta", "departments"],
     queryFn: async () => {
-      const response = await api.get<string[]>('/meta/departments');
-      return response.data;
-    }
+      const response = await api.get<string[]>("/meta/departments");
+      const defaults = ["Mutfak", "Servis", "Yönetim", "Temizlik"];
+      return Array.from(new Set([...defaults, ...(response.data ?? [])])).sort(
+        (a, b) => a.localeCompare(b, "tr"),
+      );
+    },
   });
 }
 
 export function useMetaPositions() {
   return useQuery({
-    queryKey: ['meta', 'positions'],
+    queryKey: ["meta", "positions"],
     queryFn: async () => {
-      const response = await api.get<string[]>('/meta/positions');
-      return response.data;
-    }
+      const response = await api.get<string[]>("/meta/positions");
+      const defaults = ["Aşçı", "Garson", "Komi", "Barmen", "Müdür", "Kasiyer"];
+      return Array.from(new Set([...defaults, ...(response.data ?? [])])).sort(
+        (a, b) => a.localeCompare(b, "tr"),
+      );
+    },
   });
 }
 
@@ -49,7 +57,7 @@ type CreateEmployeePayload = {
   password: string;
   firstName: string;
   lastName: string;
-  role?: 'MANAGER' | 'EMPLOYEE';
+  role?: "MANAGER" | "EMPLOYEE";
   position?: string;
   department?: string;
   phone?: string;
@@ -71,18 +79,18 @@ export function useEmployeeActions() {
   const queryClient = useQueryClient();
   const invalidate = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['employees'] }),
-      queryClient.invalidateQueries({ queryKey: ['meta', 'departments'] }),
-      queryClient.invalidateQueries({ queryKey: ['meta', 'positions'] })
+      queryClient.invalidateQueries({ queryKey: ["employees"] }),
+      queryClient.invalidateQueries({ queryKey: ["meta", "departments"] }),
+      queryClient.invalidateQueries({ queryKey: ["meta", "positions"] }),
     ]);
   };
 
   const createEmployee = useMutation({
     mutationFn: async (payload: CreateEmployeePayload) => {
-      const response = await api.post('/employees', payload);
+      const response = await api.post("/employees", payload);
       return response.data as EmployeeItem;
     },
-    onSuccess: invalidate
+    onSuccess: invalidate,
   });
 
   const updateEmployee = useMutation({
@@ -91,7 +99,7 @@ export function useEmployeeActions() {
       const response = await api.patch(`/employees/${id}`, data);
       return response.data as EmployeeItem;
     },
-    onSuccess: invalidate
+    onSuccess: invalidate,
   });
 
   const archiveEmployee = useMutation({
@@ -99,17 +107,25 @@ export function useEmployeeActions() {
       const response = await api.delete(`/employees/${id}`);
       return response.data as { message: string };
     },
-    onSuccess: invalidate
+    onSuccess: invalidate,
   });
 
   const bulkClearField = useMutation({
-    mutationFn: async ({ field, value, employeeIds }: { field: 'department' | 'position'; value: string; employeeIds: string[] }) => {
+    mutationFn: async ({
+      field,
+      value,
+      employeeIds,
+    }: {
+      field: "department" | "position";
+      value: string;
+      employeeIds: string[];
+    }) => {
       await Promise.all(
-        employeeIds.map((id) => api.patch(`/employees/${id}`, { [field]: '' }))
+        employeeIds.map((id) => api.patch(`/employees/${id}`, { [field]: "" })),
       );
       return { field, value, count: employeeIds.length };
     },
-    onSuccess: invalidate
+    onSuccess: invalidate,
   });
 
   return { createEmployee, updateEmployee, archiveEmployee, bulkClearField };

@@ -15,7 +15,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { IconArrowRight, IconEye, IconEyeOff } from "@tabler/icons-react";
+import { IconArrowRight, IconEye, IconEyeOff, IconAt } from "@tabler/icons-react";
 import { AxiosError } from "axios";
 import React, { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -268,16 +268,14 @@ export default function LoginPage() {
                     </Group>
 
                     <TextInput
-                      label="E-posta"
-                      description="İş e-postan ile giriş yap"
-                      placeholder="admin@shiftplanner.com"
-                      type="email"
+                      label="Kullanıcı Adı / E-posta"
+                      description="Size verilen 6 haneli kod veya e-postanız ile giriş yapın"
+                      placeholder="örn. a1b2c3 veya admin@shiftplanner.com"
                       name="email"
-                      autoComplete="email"
-                      inputMode="email"
+                      autoComplete="username"
                       autoCapitalize="none"
                       spellCheck={false}
-                      leftSection="@"
+                      leftSection={<IconAt size={18} />}
                       size="md"
                       radius="lg"
                       value={email}
