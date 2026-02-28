@@ -45,12 +45,33 @@ export class ScheduleService {
       orderBy: [{ startTime: 'asc' }]
     });
 
+    const leaves = await this.prisma.leaveRequest.findMany({
+      where: {
+        status: 'APPROVED',
+        startDate: { lt: endDate },
+        endDate: { gte: startDate },
+        ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
+        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
+      },
+      include: {
+        employee: {
+          include: { user: true }
+        }
+      }
+    });
+
     const days = await Promise.all(
       Array.from({ length: 7 }).map(async (_, index) => {
         const dayDate = plusDays(startDate, index);
         const dayIso = toIsoDate(dayDate);
 
         const dailyShifts = shifts.filter((shift: any) => toIsoDate(shift.startTime) === dayIso);
+
+        const dailyLeaves = leaves.filter((l: any) => {
+          const lStart = toIsoDate(l.startDate);
+          const lEnd = toIsoDate(l.endDate);
+          return dayIso >= lStart && dayIso <= lEnd;
+        });
 
         const mappedShifts = await Promise.all(
           dailyShifts.map(async (shift: any) => {
@@ -78,7 +99,14 @@ export class ScheduleService {
 
         return {
           date: dayIso,
-          shifts: mappedShifts
+          shifts: mappedShifts,
+          leaves: dailyLeaves.map((l: any) => ({
+            id: l.id,
+            employeeId: l.employeeId,
+            employeeName: l.employee.user.name,
+            type: l.type,
+            reason: l.reason
+          }))
         };
       })
     );

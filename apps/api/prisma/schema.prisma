@@ -36,6 +36,20 @@ enum SwapRequestStatus {
   CANCELLED
 }
 
+enum LeaveType {
+  ANNUAL
+  SICK
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 model User {
   id               String   @id @default(uuid())
   email            String   @unique
@@ -64,6 +78,7 @@ model Employee {
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   shifts         Shift[]
   availability   AvailabilityBlock[]
+  leaveRequests  LeaveRequest[]
   swapRequestsSent SwapRequest[]     @relation("SwapRequester")
   swapRequestsReceived SwapRequest[] @relation("SwapTarget")
 }
@@ -129,4 +144,20 @@ model AuditLog {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
+}
+
+model LeaveRequest {
+  id          String      @id @default(uuid())
+  employeeId  String
+  type        LeaveType
+  startDate   DateTime    @db.Date
+  endDate     DateTime    @db.Date
+  status      LeaveStatus @default(PENDING)
+  reason      String?
+  managerNote String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, startDate, endDate])
 }

@@ -13,6 +13,7 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { SecurityModule } from './security/security.module';
 import { ShiftsModule } from './shifts/shifts.module';
 import { SwapRequestsModule } from './swap-requests/swap-requests.module';
+import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { SwapRequestsModule } from './swap-requests/swap-requests.module';
     MetaModule,
     SecurityModule,
     ReportsModule,
-    SwapRequestsModule
+    SwapRequestsModule,
+    LeaveRequestsModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard }

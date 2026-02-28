@@ -7,7 +7,8 @@ import { formatIstanbul } from '../../lib/time';
 
 type Employee = { id: string; user: { name: string } };
 type Shift = { id: string; employeeId: string; employeeName?: string; start: string; end: string; status: string };
-type Day = { date: string; shifts: Shift[] };
+type Leave = { id: string; employeeId: string; type: string; reason?: string | null };
+type Day = { date: string; shifts: Shift[]; leaves?: Leave[] };
 
 type WeeklyGridProps = {
   employees: Employee[];
@@ -76,15 +77,47 @@ function ShiftCell({
   employeeId,
   day,
   shifts,
+  leaves,
   onCreate,
   onEdit,
 }: {
   employeeId: string;
   day: string;
   shifts: Shift[];
+  leaves?: Leave[];
   onCreate: (employeeId: string, date: string) => void;
   onEdit: (shift: Shift) => void;
 }) {
+  const employeeLeaves = leaves?.filter((l) => l.employeeId === employeeId) || [];
+
+  if (employeeLeaves.length > 0) {
+    const leave = employeeLeaves[0];
+    let label = "İzinli";
+    if (leave.type === "ANNUAL") label = "Yıllık İzin";
+    else if (leave.type === "SICK") label = "Raporlu";
+    else if (leave.type === "UNPAID") label = "Ücretsiz İzin";
+
+    return (
+      <Box
+        p={4}
+        style={{
+          minWidth: 130,
+          minHeight: 80,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "rgba(134, 142, 150, 0.1)",
+          borderRadius: "var(--mantine-radius-sm)",
+          border: "1px dashed var(--mantine-color-gray-4)",
+        }}
+      >
+        <Badge color="gray" variant="filled" size="sm" title={leave.reason || label}>
+          {label}
+        </Badge>
+      </Box>
+    );
+  }
+
   const dropId = `${employeeId}::${day}`;
   const { setNodeRef, isOver } = useDroppable({ id: dropId, data: { employeeId, day } });
 
@@ -198,6 +231,7 @@ export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: Weekly
                         employeeId={employee.id}
                         day={day.date}
                         shifts={day.shifts.filter((s) => s.employeeId === employee.id)}
+                        leaves={day.leaves}
                         onCreate={onCreate}
                         onEdit={onEdit}
                       />

@@ -296,6 +296,19 @@ export class ShiftsService {
       throw new ConflictException({ code: 'SHIFT_OVERLAP', message: 'Shift overlaps another shift' });
     }
 
+    const overlapLeave = await this.prisma.leaveRequest.findFirst({
+      where: {
+        employeeId: dto.employeeId,
+        status: 'APPROVED',
+        startDate: { lte: endTime },
+        endDate: { gte: startTime }
+      }
+    });
+
+    if (overlapLeave) {
+      throw new UnprocessableEntityException({ code: 'LEAVE_OVERLAP', message: 'Personel belirtilen tarihlerde onaylı izinde.' });
+    }
+
     const availWarnings = await this.buildAvailabilityWarnings(dto.employeeId, startTime, endTime, dto.forceOverride);
     const compWarnings = await this.buildComplianceWarnings(dto.employeeId, startTime, endTime, dto.forceOverride);
     const warnings = [...availWarnings, ...compWarnings];
@@ -347,6 +360,19 @@ export class ShiftsService {
 
     if (overlap) {
       throw new ConflictException({ code: 'SHIFT_OVERLAP', message: 'Shift overlaps another shift' });
+    }
+
+    const overlapLeave = await this.prisma.leaveRequest.findFirst({
+      where: {
+        employeeId,
+        status: 'APPROVED',
+        startDate: { lte: endTime },
+        endDate: { gte: startTime }
+      }
+    });
+
+    if (overlapLeave) {
+      throw new UnprocessableEntityException({ code: 'LEAVE_OVERLAP', message: 'Personel belirtilen tarihlerde onaylı izinde.' });
     }
 
     const availWarnings = await this.buildAvailabilityWarnings(employeeId, startTime, endTime, dto.forceOverride);

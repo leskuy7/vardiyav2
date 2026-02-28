@@ -3,6 +3,7 @@
 import { AppShell, Avatar, Badge, Box, Burger, Button, Group, Paper, Stack, Text, ThemeIcon, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
+  IconCalendarEvent,
   IconCalendarWeek,
   IconChartBar,
   IconClockHour4,
@@ -31,7 +32,7 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
   }, [isError, router]);
 
   useEffect(() => {
-    const employeeAllowed = ['/my-shifts', '/availability'];
+    const employeeAllowed = ['/my-shifts', '/availability', '/leaves'];
     if (!isLoading && data?.role === 'EMPLOYEE' && !employeeAllowed.includes(pathname)) {
       router.replace('/my-shifts');
     }
@@ -49,13 +50,15 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
     data?.role === 'EMPLOYEE'
       ? [
         { href: '/my-shifts', label: 'Vardiyalarım', icon: <IconCalendarWeek size={18} /> },
-        { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> }
+        { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> },
+        { href: '/leaves', label: 'İzinlerim', icon: <IconCalendarEvent size={18} /> }
       ]
       : [
         { href: '/dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={18} /> },
         { href: '/schedule', label: 'Haftalık Program', icon: <IconCalendarWeek size={18} /> },
         { href: '/employees', label: 'Çalışanlar', icon: <IconUsers size={18} /> },
         { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> },
+        { href: '/leaves', label: 'İzin Onayları', icon: <IconCalendarEvent size={18} /> },
         { href: '/reports', label: 'Raporlar', icon: <IconChartBar size={18} /> }
       ];
 
