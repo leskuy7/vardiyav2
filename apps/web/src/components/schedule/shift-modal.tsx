@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Checkbox, Group, Modal, Select, Stack, TextInput } from '@mantine/core';
+import { Alert, Button, Checkbox, Group, Modal, Select, Stack, TextInput, Text } from '@mantine/core';
 import { DateTimePicker } from '@mantine/dates';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
@@ -160,8 +160,23 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
           {error ? <Alert color="red" variant="light">{error}</Alert> : null}
 
           <Group justify="space-between">
-            {isEdit ? (
-              <Button color="red" variant="light" type="button" onClick={handleDelete} loading={deleting}>
+            {isEdit && onDelete ? (
+              <Button color="red" variant="light" type="button" onClick={() => {
+                import('@mantine/modals').then(({ modals }) => {
+                  modals.openConfirmModal({
+                    title: 'Emin misiniz?',
+                    centered: true,
+                    children: (
+                      <Text size="sm">
+                        Bu vardiyayı gerçekten silmek istiyor musunuz? Bu işlem geri alınamaz.
+                      </Text>
+                    ),
+                    labels: { confirm: 'Evet, Sil', cancel: 'Vazgeç' },
+                    confirmProps: { color: 'red' },
+                    onConfirm: handleDelete,
+                  });
+                });
+              }} loading={deleting}>
                 Vardiyayı İptal Et
               </Button>
             ) : <span />}

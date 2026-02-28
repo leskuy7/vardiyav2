@@ -44,7 +44,8 @@ export class ScheduleService {
             employeeName: shift.employee.user.name,
             start: shift.startTime.toISOString(),
             end: shift.endTime.toISOString(),
-            status: shift.status
+            status: shift.status,
+            note: shift.note
           }))
       };
     });

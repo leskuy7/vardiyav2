@@ -5,7 +5,7 @@ const apiBase =
     (process.env.NODE_ENV === 'production' ? null : 'http://localhost:4000');
 
 if (process.env.NODE_ENV === 'production' && !apiBase) {
-    throw new Error('NEXT_PUBLIC_API_BASE is required in production');
+    console.warn('WARNING: NEXT_PUBLIC_API_BASE is not set in production. Rewrites may fail.');
 }
 
 const cspReportOnly = [
@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
         ];
     },
     async rewrites() {
+        if (!apiBase) return [];
         return [
             {
                 source: '/api/:path*',

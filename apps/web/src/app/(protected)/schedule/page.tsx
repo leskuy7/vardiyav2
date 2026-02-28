@@ -49,12 +49,12 @@ export default function SchedulePage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [selectedShift, setSelectedShift] = useState<
     | {
-        id: string;
-        employeeId: string;
-        start: string;
-        end: string;
-        note?: string;
-      }
+      id: string;
+      employeeId: string;
+      start: string;
+      end: string;
+      note?: string;
+    }
     | undefined
   >(undefined);
 
@@ -97,6 +97,7 @@ export default function SchedulePage() {
           employeeId: shift.employeeId,
           start: shift.start,
           end: shift.end,
+          note: shift.note,
         });
       }
     }
@@ -132,6 +133,7 @@ export default function SchedulePage() {
     employeeId: string;
     start: string;
     end: string;
+    note?: string;
   }) {
     setSelectedEmployeeId(shift.employeeId);
     setSelectedShift({
@@ -139,6 +141,7 @@ export default function SchedulePage() {
       employeeId: shift.employeeId,
       start: shift.start,
       end: shift.end,
+      note: shift.note,
     });
     setModalOpen(true);
   }
@@ -341,32 +344,32 @@ export default function SchedulePage() {
         initial={
           selectedShift
             ? {
-                start: selectedShift.start,
-                end: selectedShift.end,
-                note: selectedShift.note,
-              }
+              start: selectedShift.start,
+              end: selectedShift.end,
+              note: selectedShift.note,
+            }
             : undefined
         }
         onSubmit={handleSubmit}
         onDelete={
           selectedShift?.id
             ? async () => {
-                try {
-                  await deleteShift.mutateAsync(selectedShift.id);
-                  setModalOpen(false);
-                  notifications.show({
-                    title: "Başarılı",
-                    message: "Vardiya iptal edildi.",
-                    color: "green",
-                  });
-                } catch {
-                  notifications.show({
-                    title: "Hata",
-                    message: "Vardiya iptal edilemedi.",
-                    color: "red",
-                  });
-                }
+              try {
+                await deleteShift.mutateAsync(selectedShift.id);
+                setModalOpen(false);
+                notifications.show({
+                  title: "Başarılı",
+                  message: "Vardiya iptal edildi.",
+                  color: "green",
+                });
+              } catch {
+                notifications.show({
+                  title: "Hata",
+                  message: "Vardiya iptal edilemedi.",
+                  color: "red",
+                });
               }
+            }
             : undefined
         }
       />

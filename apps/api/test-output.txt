@@ -1,0 +1,32 @@
+FAIL src/shifts/shifts.service.spec.ts
+  ShiftsService
+    ÔêÜ overlap oldu─şunda 409 d├Âner (2 ms)
+    ÔêÜ UNAVAILABLE blokta forceOverride yoksa 422 d├Âner (1 ms)
+    ├ù forceOverride true ise warning ile olu┼şturur (1 ms)
+    ÔêÜ shift aral─▒─ş─▒ blok aral─▒─ş─▒n─▒ kapsad─▒─ş─▒nda conflict ├╝retir
+    ÔêÜ employee sadece kendi vardiyalar─▒n─▒ listeler (1 ms)
+    ÔêÜ employee ba┼şkas─▒n─▒n vardiya detay─▒n─▒ g├Âremez (1 ms)
+    ÔêÜ update invalid time range i├ğin 400 d├Âner
+
+  ÔùÅ ShiftsService ÔÇ║ forceOverride true ise warning ile olu┼şturur
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: "UNAVAILABLE block overridden"
+    Received array: ["UNAVAILABLE block overridden on start day"]
+
+      90 |     });
+      91 |
+    > 92 |     expect(result.warnings).toContain('UNAVAILABLE block overridden');
+         |                             ^
+      93 |   });
+      94 |
+      95 |   it('shift aral─▒─ş─▒ blok aral─▒─ş─▒n─▒ kapsad─▒─ş─▒nda conflict ├╝retir', async () => {
+
+      at Object.<anonymous> (src/shifts/shifts.service.spec.ts:92:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 6 passed, 7 total
+Snapshots:   0 total
+Time:        1.471 s, estimated 2 s
+Ran all test suites matching /src\\shifts\\shifts.service.spec.ts/i.

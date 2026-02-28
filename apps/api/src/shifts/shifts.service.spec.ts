@@ -88,8 +88,7 @@ describe('ShiftsService', () => {
       endTime: '2026-01-01T12:00:00.000Z',
       forceOverride: true
     });
-
-    expect(result.warnings).toContain('UNAVAILABLE block overridden');
+    expect(result.warnings).toContain('UNAVAILABLE block overridden on start day');
   });
 
   it('shift aralığı blok aralığını kapsadığında conflict üretir', async () => {

@@ -14,9 +14,12 @@ enum UserRole {
 }
 
 enum ShiftStatus {
+  PROPOSED
   DRAFT
   PUBLISHED
   ACKNOWLEDGED
+  DECLINED
+  SWAPPED
   CANCELLED
 }
 
@@ -24,6 +27,13 @@ enum AvailabilityType {
   UNAVAILABLE
   PREFER_NOT
   AVAILABLE_ONLY
+}
+
+enum SwapRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }
 
 model User {
@@ -54,6 +64,8 @@ model Employee {
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   shifts         Shift[]
   availability   AvailabilityBlock[]
+  swapRequestsSent SwapRequest[]     @relation("SwapRequester")
+  swapRequestsReceived SwapRequest[] @relation("SwapTarget")
 }
 
 model Shift {
@@ -66,8 +78,27 @@ model Shift {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  swapRequests SwapRequest[]
 
   @@index([employeeId, startTime, endTime])
+}
+
+model SwapRequest {
+  id               String            @id @default(uuid())
+  shiftId          String
+  requesterId      String
+  targetEmployeeId String?
+  status           SwapRequestStatus @default(PENDING)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  shift            Shift             @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  requester        Employee          @relation("SwapRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  targetEmployee   Employee?         @relation("SwapTarget", fields: [targetEmployeeId], references: [id], onDelete: Cascade)
+
+  @@index([shiftId])
+  @@index([requesterId])
+  @@index([targetEmployeeId])
 }
 
 model AvailabilityBlock {

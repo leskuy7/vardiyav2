@@ -1,0 +1,5 @@
+ Ô¿» Failed to load next.config.ts, see more info here https://nextjs.org/docs/messages/next-config-error
+
+> Build error occurred
+Error: NEXT_PUBLIC_API_BASE is required in production
+    at Object.<anonymous> (C:\Users\yksel\Desktop\yzlm\vardiyav2\apps\web\next.config.compiled.js:134:11)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '../../../../lib/api';
 import { currentWeekStartIsoDate } from '../../../../lib/time';
@@ -39,7 +39,7 @@ function formatWeekRange(isoDate: string) {
     return `${s} – ${e}`;
 }
 
-export default function SchedulePrintPage() {
+function PrintPageContent() {
     const searchParams = useSearchParams();
     const weekStart = searchParams.get('start') ?? currentWeekStartIsoDate();
     const [data, setData] = useState<WeeklySchedule | null>(null);
@@ -224,7 +224,6 @@ export default function SchedulePrintPage() {
 
             <div className="print-page">
                 <div className="print-header">
-                    <h1>📋 Haftalık Vardiya Programı</h1>
                     <p>{formatWeekRange(weekStart)}</p>
                 </div>
 
@@ -300,5 +299,13 @@ export default function SchedulePrintPage() {
                 </div>
             </div>
         </>
+    );
+}
+
+export default function SchedulePrintPage() {
+    return (
+        <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>Yükleniyor...</div>}>
+            <PrintPageContent />
+        </Suspense>
     );
 }

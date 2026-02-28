@@ -13,7 +13,7 @@ type WeeklyGridProps = {
   employees: Employee[];
   days: Day[];
   onCreate: (employeeId: string, date: string) => void;
-  onEdit: (shift: Shift) => void;
+  onEdit: (shift: Shift & { note?: string }) => void;
   onMove: (payload: { shiftId: string; employeeId: string; targetDate: string }) => void;
   scale?: number;
 };
@@ -122,7 +122,13 @@ function ShiftCell({
 
 /* ─── Weekly Grid ─── */
 export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: WeeklyGridProps) {
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;

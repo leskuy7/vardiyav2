@@ -68,11 +68,14 @@ export class EmployeesService {
     const name = `${dto.firstName} ${dto.lastName}`;
 
     let targetDepartment = dto.department;
+    let targetRole = dto.role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE';
+
     if (actor?.role === 'MANAGER' && actor.employeeId) {
       const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
       if (manager) {
         targetDepartment = manager.department ?? undefined;
       }
+      targetRole = 'EMPLOYEE'; // Force managers to only create employees
     }
 
     return this.prisma.$transaction(async (trx: Prisma.TransactionClient) => {
@@ -81,7 +84,7 @@ export class EmployeesService {
           email: dto.email,
           name,
           passwordHash,
-          role: dto.role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE'
+          role: targetRole as any
         }
       });
 
@@ -102,11 +105,19 @@ export class EmployeesService {
   async update(id: string, dto: UpdateEmployeeDto, actor?: { role: string; employeeId?: string }) {
     await this.getById(id, actor);
 
+    let targetDepartment = dto.department;
+    if (actor?.role === 'MANAGER' && actor.employeeId) {
+      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+      if (manager) {
+        targetDepartment = manager.department ?? undefined;
+      }
+    }
+
     return this.prisma.employee.update({
       where: { id },
       data: {
         position: dto.position,
-        department: dto.department,
+        department: targetDepartment,
         phone: dto.phone,
         hourlyRate: dto.hourlyRate,
         maxWeeklyHours: dto.maxWeeklyHours,

@@ -43,47 +43,97 @@ export class ShiftsService {
   }
 
   private async buildAvailabilityWarnings(employeeId: string, startTime: Date, endTime: Date, forceOverride?: boolean) {
-    const dayOfWeek = startTime.getUTCDay();
-    const blocks = await this.prisma.availabilityBlock.findMany({
-      where: { employeeId, dayOfWeek }
+    const warnings: string[] = [];
+
+    // Day 1
+    const day1 = startTime.getUTCDay();
+    const shiftStart1 = this.toMinutes(startTime);
+    const isCrossDay = startTime.getUTCDate() !== endTime.getUTCDate() || startTime.getUTCMonth() !== endTime.getUTCMonth() || startTime.getUTCFullYear() !== endTime.getUTCFullYear();
+    const shiftEnd1 = isCrossDay ? 24 * 60 : this.toMinutes(endTime);
+
+    const blocksDay1 = await this.prisma.availabilityBlock.findMany({
+      where: { employeeId, dayOfWeek: day1 }
     });
 
-    const warnings: string[] = [];
-    const shiftStartMinutes = this.toMinutes(startTime);
-    const shiftEndMinutes = this.toMinutes(endTime);
-
-    for (const block of blocks) {
+    for (const block of blocksDay1) {
       if (!this.inDateRange(startTime, block.startDate, block.endDate)) {
         continue;
       }
 
       const blockStartMinutes = block.startTime ? this.parseTimeToMinutes(block.startTime) : 0;
       const blockEndMinutes = block.endTime ? this.parseTimeToMinutes(block.endTime) : 24 * 60;
-      const hit = this.intervalsOverlap(shiftStartMinutes, shiftEndMinutes, blockStartMinutes, blockEndMinutes);
+      const hit = this.intervalsOverlap(shiftStart1, shiftEnd1, blockStartMinutes, blockEndMinutes);
 
       if (!hit) {
         continue;
       }
 
       if (block.type === 'UNAVAILABLE' && !forceOverride) {
-        throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: 'Shift conflicts with UNAVAILABLE block' });
+        throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Shift conflicts with UNAVAILABLE block on ${startTime.toISOString().slice(0, 10)}` });
       }
 
       if (block.type === 'UNAVAILABLE' && forceOverride) {
-        warnings.push('UNAVAILABLE block overridden');
+        warnings.push('UNAVAILABLE block overridden on start day');
       }
 
       if (block.type === 'PREFER_NOT') {
-        warnings.push('Employee prefers not to work in this interval');
+        warnings.push('Employee prefers not to work on start day');
       }
 
       if (block.type === 'AVAILABLE_ONLY') {
-        const fullyInside = shiftStartMinutes >= blockStartMinutes && shiftEndMinutes <= blockEndMinutes;
+        const fullyInside = shiftStart1 >= blockStartMinutes && shiftEnd1 <= blockEndMinutes;
         if (!fullyInside && !forceOverride) {
-          throw new UnprocessableEntityException({ code: 'AVAILABLE_ONLY_CONFLICT', message: 'Shift must stay within AVAILABLE_ONLY interval' });
+          throw new UnprocessableEntityException({ code: 'AVAILABLE_ONLY_CONFLICT', message: 'Shift must stay within AVAILABLE_ONLY interval on start day' });
         }
         if (!fullyInside && forceOverride) {
-          warnings.push('AVAILABLE_ONLY rule overridden');
+          warnings.push('AVAILABLE_ONLY rule overridden on start day');
+        }
+      }
+    }
+
+    if (isCrossDay) {
+      // Day 2 exists
+      const day2 = endTime.getUTCDay();
+      const shiftStart2 = 0;
+      const shiftEnd2 = this.toMinutes(endTime);
+
+      const blocksDay2 = await this.prisma.availabilityBlock.findMany({
+        where: { employeeId, dayOfWeek: day2 }
+      });
+
+      for (const block of blocksDay2) {
+        if (!this.inDateRange(endTime, block.startDate, block.endDate)) {
+          continue;
+        }
+
+        const blockStartMinutes = block.startTime ? this.parseTimeToMinutes(block.startTime) : 0;
+        const blockEndMinutes = block.endTime ? this.parseTimeToMinutes(block.endTime) : 24 * 60;
+        const hit = this.intervalsOverlap(shiftStart2, shiftEnd2, blockStartMinutes, blockEndMinutes);
+
+        if (!hit) {
+          continue;
+        }
+
+        if (block.type === 'UNAVAILABLE' && !forceOverride) {
+          throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Shift conflicts with UNAVAILABLE block on ${endTime.toISOString().slice(0, 10)}` });
+        }
+
+        if (block.type === 'UNAVAILABLE' && forceOverride) {
+          warnings.push('UNAVAILABLE block overridden on end day');
+        }
+
+        if (block.type === 'PREFER_NOT') {
+          warnings.push('Employee prefers not to work on end day');
+        }
+
+        if (block.type === 'AVAILABLE_ONLY') {
+          const fullyInside = shiftStart2 >= blockStartMinutes && shiftEnd2 <= blockEndMinutes;
+          if (!fullyInside && !forceOverride) {
+            throw new UnprocessableEntityException({ code: 'AVAILABLE_ONLY_CONFLICT', message: 'Shift must stay within AVAILABLE_ONLY interval on end day' });
+          }
+          if (!fullyInside && forceOverride) {
+            warnings.push('AVAILABLE_ONLY rule overridden on end day');
+          }
         }
       }
     }

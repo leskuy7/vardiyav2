@@ -12,6 +12,7 @@ export type Shift = {
   startTime?: string;
   endTime?: string;
   status: string;
+  note?: string;
   warnings?: string[];
 };
 
