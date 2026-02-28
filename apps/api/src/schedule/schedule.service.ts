@@ -17,7 +17,8 @@ export class ScheduleService {
         startTime: { gte: startDate },
         endTime: { lt: endDate },
         status: { not: 'CANCELLED' },
-        employeeId: scope.type === 'self' ? scope.employeeId : undefined
+        ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
+        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
       },
       include: {
         employee: {

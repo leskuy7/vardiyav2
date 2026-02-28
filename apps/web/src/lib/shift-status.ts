@@ -4,7 +4,7 @@ export type ShiftStatus = 'DRAFT' | 'PUBLISHED' | 'ACKNOWLEDGED' | 'CANCELLED' |
 
 export const SHIFT_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Taslak',
-  PUBLISHED: 'Yayınlandı',
+  PUBLISHED: 'Onay Bekliyor',
   ACKNOWLEDGED: 'Onaylandı',
   CANCELLED: 'İptal'
 };

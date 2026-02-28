@@ -43,28 +43,27 @@ export default function SchedulePrintPage() {
     const searchParams = useSearchParams();
     const weekStart = searchParams.get('start') ?? currentWeekStartIsoDate();
     const [data, setData] = useState<WeeklySchedule | null>(null);
+    const [employees, setEmployees] = useState<{ id: string; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.get<WeeklySchedule>(`/schedule/week?start=${weekStart}`)
-            .then((res) => setData(res.data))
-            .catch(() => setData(null))
+        Promise.all([
+            api.get<WeeklySchedule>(`/schedule/week?start=${weekStart}`),
+            api.get<any[]>('/employees?active=true')
+        ])
+            .then(([scheduleRes, empRes]) => {
+                setData(scheduleRes.data);
+                const employeeList = empRes.data.map((e) => ({
+                    id: e.id,
+                    name: e.user?.name ?? e.id.slice(0, 8)
+                })).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+                setEmployees(employeeList);
+            })
+            .catch(() => {
+                setData(null);
+            })
             .finally(() => setLoading(false));
     }, [weekStart]);
-
-    // Collect all unique employees across all days
-    const employees = useMemo(() => {
-        if (!data) return [];
-        const map = new Map<string, string>();
-        for (const day of data.days) {
-            for (const shift of day.shifts) {
-                if (!map.has(shift.employeeId)) {
-                    map.set(shift.employeeId, shift.employeeName ?? shift.employeeId.slice(0, 8));
-                }
-            }
-        }
-        return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-    }, [data]);
 
     // Auto-print
     useEffect(() => {
