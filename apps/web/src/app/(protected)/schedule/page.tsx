@@ -13,9 +13,11 @@ import {
 import { notifications } from "@mantine/notifications";
 import { useMemo, useState } from "react";
 import { PageError, PageLoading } from "../../../components/page-states";
+import { useAvailability } from "../../../hooks/use-availability";
 import { useEmployees } from "../../../hooks/use-employees";
 import { useShiftsActions, useWeeklySchedule } from "../../../hooks/use-shifts";
-import { currentWeekStartIsoDate } from "../../../lib/time";
+import type { AvailabilityHintType } from "../../../components/schedule/weekly-grid";
+import { currentWeekStartIsoDate, isoToLocalTimeString, localTimeToIso } from "../../../lib/time";
 import { ShiftModal } from "../../../components/schedule/shift-modal";
 import { WeeklyGrid } from "../../../components/schedule/weekly-grid";
 
@@ -60,6 +62,7 @@ export default function SchedulePage() {
 
   const { data, isLoading, isError } = useWeeklySchedule(weekStart);
   const { data: employees } = useEmployees(true);
+  const { data: availabilityList } = useAvailability();
   const { createShift, updateShift, deleteShift } = useShiftsActions(weekStart);
 
   const totalShifts = useMemo(
@@ -119,11 +122,38 @@ export default function SchedulePage() {
     return (employees ?? []).filter((e) => e.department === departmentFilter);
   }, [departmentFilter, employees]);
 
+  const availabilityHints = useMemo((): Record<string, Record<string, AvailabilityHintType>> => {
+    const blocks = availabilityList ?? [];
+    const out: Record<string, Record<string, AvailabilityHintType>> = {};
+    const empIds = new Set((filteredEmployees ?? []).map((e) => e.id));
+    for (const block of blocks) {
+      if (!empIds.has(block.employeeId)) continue;
+      const dayOfWeek = block.dayOfWeek;
+      const startDate = block.startDate ? new Date(block.startDate).toISOString().slice(0, 10) : null;
+      const endDate = block.endDate ? new Date(block.endDate).toISOString().slice(0, 10) : null;
+      for (const day of data?.days ?? []) {
+        const date = day.date;
+        const d = new Date(`${date}T12:00:00.000Z`);
+        const dow = d.getUTCDay();
+        if (dow !== dayOfWeek) continue;
+        if (startDate != null && date < startDate) continue;
+        if (endDate != null && date > endDate) continue;
+        if (!out[block.employeeId]) out[block.employeeId] = {};
+        const existing = out[block.employeeId][date];
+        const priority = { UNAVAILABLE: 3, PREFER_NOT: 2, AVAILABLE_ONLY: 1 };
+        if (existing == null || priority[block.type] >= priority[existing]) {
+          out[block.employeeId][date] = block.type as AvailabilityHintType;
+        }
+      }
+    }
+    return out;
+  }, [availabilityList, filteredEmployees, data?.days]);
+
   function openCreate(employeeId: string, date: string) {
     setSelectedShift(undefined);
     setSelectedEmployeeId(employeeId);
-    const start = new Date(`${date}T06:00:00.000Z`).toISOString();
-    const end = new Date(`${date}T14:00:00.000Z`).toISOString();
+    const start = localTimeToIso(date, "06:00");
+    const end = localTimeToIso(date, "14:00");
     setSelectedShift({ id: "", employeeId, start, end });
     setModalOpen(true);
   }
@@ -197,8 +227,8 @@ export default function SchedulePage() {
     const start = new Date(shift.start);
     const end = new Date(shift.end);
     const duration = end.getTime() - start.getTime();
-    const timePart = start.toISOString().slice(11, 19);
-    const movedStart = new Date(`${payload.targetDate}T${timePart}.000Z`);
+    const localTime = isoToLocalTimeString(shift.start);
+    const movedStart = new Date(localTimeToIso(payload.targetDate, localTime));
     const movedEnd = new Date(movedStart.getTime() + duration);
 
     try {
@@ -323,6 +353,7 @@ export default function SchedulePage() {
       <WeeklyGrid
         employees={filteredEmployees}
         days={data.days}
+        availabilityHints={availabilityHints}
         onCreate={openCreate}
         onEdit={(shift) =>
           openEdit({

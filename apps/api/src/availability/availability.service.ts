@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { getEmployeeScope } from '../common/employee-scope';
 import { PrismaService } from '../database/prisma.service';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
 
@@ -11,20 +12,50 @@ export class AvailabilityService {
     return hours * 60 + minutes;
   }
 
-  async list(employeeId?: string, dayOfWeek?: number) {
+  async list(employeeId?: string, dayOfWeek?: number, actor?: { role: string; employeeId?: string }) {
+    const scope = await getEmployeeScope(this.prisma, actor);
+
+    if (scope.type === 'self') {
+      return this.prisma.availabilityBlock.findMany({
+        where: {
+          employeeId: scope.employeeId,
+          ...(dayOfWeek !== undefined ? { dayOfWeek } : {})
+        },
+        orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }]
+      });
+    }
+
+    if (scope.type === 'department') {
+      return this.prisma.availabilityBlock.findMany({
+        where: {
+          employee: { department: scope.department },
+          ...(employeeId ? { employeeId } : {}),
+          ...(dayOfWeek !== undefined ? { dayOfWeek } : {})
+        },
+        orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }]
+      });
+    }
+
     return this.prisma.availabilityBlock.findMany({
       where: {
-        employeeId,
-        dayOfWeek
+        ...(employeeId ? { employeeId } : {}),
+        ...(dayOfWeek !== undefined ? { dayOfWeek } : {})
       },
       orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }]
     });
   }
 
   async create(dto: CreateAvailabilityDto, actor: { sub: string; role: string; employeeId?: string }) {
-    const canManageAll = actor.role === 'ADMIN' || actor.role === 'MANAGER';
-    if (!canManageAll && actor.employeeId !== dto.employeeId) {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only manage your own availability' });
+    if (actor.role === 'EMPLOYEE') {
+      if (actor.employeeId !== dto.employeeId) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only manage your own availability' });
+      }
+    } else if (actor.role === 'MANAGER' && actor.employeeId) {
+      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+      const target = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
+      if (!target || target.department !== manager?.department) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only manage availability for employees in your department' });
+      }
     }
 
     if ((dto.startTime && !dto.endTime) || (!dto.startTime && dto.endTime)) {
@@ -54,14 +85,20 @@ export class AvailabilityService {
   }
 
   async remove(id: string, actor: { sub: string; role: string; employeeId?: string }) {
-    const record = await this.prisma.availabilityBlock.findUnique({ where: { id } });
+    const record = await this.prisma.availabilityBlock.findUnique({ where: { id }, include: { employee: true } });
     if (!record) {
       throw new BadRequestException({ code: 'AVAILABILITY_NOT_FOUND', message: 'Availability not found' });
     }
 
-    const canManageAll = actor.role === 'ADMIN' || actor.role === 'MANAGER';
-    if (!canManageAll && actor.employeeId !== record.employeeId) {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only delete your own availability' });
+    if (actor.role === 'EMPLOYEE') {
+      if (actor.employeeId !== record.employeeId) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only delete your own availability' });
+      }
+    } else if (actor.role === 'MANAGER' && actor.employeeId) {
+      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+      if (record.employee.department !== manager?.department) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only delete availability for employees in your department' });
+      }
     }
 
     await this.prisma.availabilityBlock.delete({ where: { id } });

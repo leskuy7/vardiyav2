@@ -1,14 +1,36 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import type { Prisma, ShiftStatus } from '@prisma/client';
+import type { Prisma, ShiftEventAction, ShiftStatus } from '@prisma/client';
 import { getEmployeeScope } from '../common/employee-scope';
 import { parseWeekStart, plusDays } from '../common/time.utils';
 import { PrismaService } from '../database/prisma.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 
+type ActorWithSub = { role: string; employeeId?: string; sub?: string };
+
 @Injectable()
 export class ShiftsService {
   constructor(private readonly prisma: PrismaService) { }
+
+  private async recordShiftEvent(
+    shiftId: string,
+    actorUserId: string,
+    action: ShiftEventAction,
+    previousStatus: ShiftStatus | null,
+    newStatus: ShiftStatus | null,
+    reason?: string
+  ) {
+    await this.prisma.shiftEvent.create({
+      data: {
+        shiftId,
+        actorUserId,
+        action,
+        previousStatus,
+        newStatus,
+        reason: reason ?? undefined
+      }
+    });
+  }
 
   private toMinutes(isoDate: Date) {
     return isoDate.getUTCHours() * 60 + isoDate.getUTCMinutes();
@@ -313,15 +335,21 @@ export class ShiftsService {
     const compWarnings = await this.buildComplianceWarnings(dto.employeeId, startTime, endTime, dto.forceOverride);
     const warnings = [...availWarnings, ...compWarnings];
 
+    const status = (dto.status as ShiftStatus) || 'PUBLISHED';
     const shift = await this.prisma.shift.create({
       data: {
         employeeId: dto.employeeId,
         startTime,
         endTime,
         note: dto.note,
-        status: (dto.status as ShiftStatus) || 'PUBLISHED'
+        status
       }
     });
+
+    const userId = (actor as ActorWithSub)?.sub;
+    if (userId) {
+      await this.recordShiftEvent(shift.id, userId, 'CREATED', null, status);
+    }
 
     return { ...shift, warnings };
   }
@@ -379,6 +407,7 @@ export class ShiftsService {
     const compWarnings = await this.buildComplianceWarnings(employeeId, startTime, endTime, dto.forceOverride, id);
     const warnings = [...availWarnings, ...compWarnings];
 
+    const newStatus = (dto.status as ShiftStatus) ?? existing.status;
     const shift = await this.prisma.shift.update({
       where: { id },
       data: {
@@ -390,12 +419,21 @@ export class ShiftsService {
       }
     });
 
+    const userId = (actor as ActorWithSub)?.sub;
+    if (userId && (existing.status !== newStatus || dto.startTime || dto.endTime || dto.employeeId)) {
+      await this.recordShiftEvent(id, userId, 'UPDATED', existing.status, newStatus);
+    }
+
     return { ...shift, warnings };
   }
 
   async remove(id: string, actor?: { role: string; employeeId?: string }) {
-    await this.getById(id, actor);
+    const existing = await this.getById(id, actor);
     await this.prisma.shift.update({ where: { id }, data: { status: 'CANCELLED' } });
+    const userId = (actor as ActorWithSub)?.sub;
+    if (userId) {
+      await this.recordShiftEvent(id, userId, 'CANCELLED', existing.status, 'CANCELLED');
+    }
     return { message: 'Shift cancelled' };
   }
 
@@ -407,7 +445,12 @@ export class ShiftsService {
     if (shift.status !== 'PUBLISHED' && shift.status !== 'PROPOSED') {
       throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be acknowledged' });
     }
-    return this.prisma.shift.update({ where: { id }, data: { status: 'ACKNOWLEDGED' } });
+    const updated = await this.prisma.shift.update({ where: { id }, data: { status: 'ACKNOWLEDGED' } });
+    const userId = (actor as ActorWithSub)?.sub;
+    if (userId) {
+      await this.recordShiftEvent(id, userId, 'ACKNOWLEDGED', shift.status, 'ACKNOWLEDGED');
+    }
+    return updated;
   }
 
   async decline(id: string, reason: string, actor: { role: string; employeeId?: string }) {
@@ -419,13 +462,18 @@ export class ShiftsService {
       throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be declined' });
     }
 
-    return this.prisma.shift.update({
+    const updated = await this.prisma.shift.update({
       where: { id },
       data: {
         status: 'DECLINED',
         note: shift.note ? `${shift.note}\n--- Reddetme Nedeni: ${reason}` : `Reddetme Nedeni: ${reason}`
       }
     });
+    const userId = (actor as ActorWithSub)?.sub;
+    if (userId) {
+      await this.recordShiftEvent(id, userId, 'DECLINED', shift.status, 'DECLINED', reason);
+    }
+    return updated;
   }
 
   async bulkCreate(payload: CreateShiftDto[], actor?: { role: string; employeeId?: string }) {

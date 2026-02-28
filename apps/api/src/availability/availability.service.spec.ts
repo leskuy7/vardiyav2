@@ -81,7 +81,7 @@ describe('AvailabilityService', () => {
 
   it('remove sırasında kayıt başka kullanıcıya aitse 403 döner', async () => {
     const { service, prisma } = createService();
-    prisma.availabilityBlock.findUnique.mockResolvedValue({ id: 'a1', employeeId: 'emp-2' });
+    prisma.availabilityBlock.findUnique.mockResolvedValue({ id: 'a1', employeeId: 'emp-2', employee: { department: 'D1' } });
 
     await expect(service.remove('a1', { sub: 'u1', role: 'EMPLOYEE', employeeId: 'emp-1' })).rejects.toBeInstanceOf(
       ForbiddenException

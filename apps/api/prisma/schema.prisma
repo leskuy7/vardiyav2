@@ -84,18 +84,44 @@ model Employee {
 }
 
 model Shift {
-  id         String      @id @default(uuid())
-  employeeId String
-  startTime  DateTime    @db.Timestamptz
-  endTime    DateTime    @db.Timestamptz
-  note       String?
-  status     ShiftStatus @default(PUBLISHED)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id          String       @id @default(uuid())
+  employeeId  String
+  startTime   DateTime     @db.Timestamptz
+  endTime     DateTime     @db.Timestamptz
+  note        String?
+  status      ShiftStatus  @default(PUBLISHED)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  employee    Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   swapRequests SwapRequest[]
+  shiftEvents ShiftEvent[]
 
   @@index([employeeId, startTime, endTime])
+}
+
+enum ShiftEventAction {
+  CREATED
+  UPDATED
+  CANCELLED
+  ACKNOWLEDGED
+  DECLINED
+  SWAPPED
+}
+
+model ShiftEvent {
+  id            String           @id @default(uuid())
+  shiftId       String
+  actorUserId   String
+  action        ShiftEventAction
+  previousStatus ShiftStatus?
+  newStatus     ShiftStatus?
+  reason        String?
+  ip            String?
+  createdAt     DateTime         @default(now())
+  shift         Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@index([shiftId])
+  @@index([createdAt])
 }
 
 model SwapRequest {

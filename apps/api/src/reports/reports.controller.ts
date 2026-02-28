@@ -17,6 +17,12 @@ export class ReportsController {
     return this.reportsService.weeklyHours(weekStart, actor);
   }
 
+  @Get('compliance-violations')
+  complianceViolations(@Query('weekStart') weekStart: string, @Req() request: Request) {
+    const actor = request.user as { role: string; employeeId?: string };
+    return this.reportsService.complianceViolations(weekStart, actor);
+  }
+
   @Get('security-events')
   @Roles('ADMIN')
   securityEvents(

@@ -3,6 +3,7 @@
 import {
   ActionIcon,
   Alert,
+  Anchor,
   Badge,
   Box,
   Button,
@@ -15,6 +16,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import Link from "next/link";
 import { IconArrowRight, IconEye, IconEyeOff, IconAt } from "@tabler/icons-react";
 import { AxiosError } from "axios";
 import React, { useEffect, useState, type FormEvent } from "react";
@@ -389,6 +391,12 @@ export default function LoginPage() {
                         {error}
                       </Alert>
                     ) : null}
+
+                    <Text size="xs" ta="center" mt="md" style={{ color: "rgba(199, 210, 254, 0.5)" }}>
+                      <Anchor component={Link} href="/aydinlatma-metni" size="xs" style={{ color: "rgba(199, 210, 254, 0.8)" }}>
+                        Aydınlatma Metni (KVKK)
+                      </Anchor>
+                    </Text>
                   </Stack>
                 </form>
               </Paper>

@@ -36,7 +36,10 @@ export function useWeeklySchedule(weekStart: string) {
 export function useShiftsActions(weekStart: string) {
   const queryClient = useQueryClient();
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['schedule', weekStart] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['schedule', weekStart] });
+    queryClient.invalidateQueries({ queryKey: ['my-shifts'] });
+  };
 
   const createShift = useMutation({
     mutationFn: async (payload: { employeeId: string; startTime: string; endTime: string; note?: string; forceOverride?: boolean }) => {

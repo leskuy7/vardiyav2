@@ -12,8 +12,13 @@ export class AvailabilityController {
   constructor(private readonly availabilityService: AvailabilityService) {}
 
   @Get()
-  list(@Query('employeeId') employeeId?: string, @Query('dayOfWeek') dayOfWeek?: string) {
-    return this.availabilityService.list(employeeId, dayOfWeek ? Number(dayOfWeek) : undefined);
+  list(
+    @Query('employeeId') employeeId?: string,
+    @Query('dayOfWeek') dayOfWeek?: string,
+    @Req() request?: Request
+  ) {
+    const actor = request?.user as { role: string; employeeId?: string } | undefined;
+    return this.availabilityService.list(employeeId, dayOfWeek ? Number(dayOfWeek) : undefined, actor);
   }
 
   @Post()

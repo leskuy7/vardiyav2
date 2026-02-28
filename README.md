@@ -92,6 +92,10 @@ docker compose up --build
 - Env fail-fast: kritik env eksikse API açılmaz.
 - Rate limiting: `@nestjs/throttler` aktif.
 
+## Vardiya durum makinesi
+
+Rol bazlı aksiyonlar (onayla, reddet, iptal, takas) ve geçiş kuralları için [docs/SHIFT_STATE_MACHINE.md](docs/SHIFT_STATE_MACHINE.md) dosyasına bakın.
+
 ## API Sözleşmesi
 
 ### Auth
@@ -117,6 +121,7 @@ docker compose up --build
 - `PATCH /api/shifts/:id`
 - `DELETE /api/shifts/:id`
 - `POST /api/shifts/:id/acknowledge`
+- `POST /api/shifts/:id/decline` (body: `{ reason }`)
 - `POST /api/shifts/copy-week`
 - `POST /api/shifts/bulk`
 

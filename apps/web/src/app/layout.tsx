@@ -10,7 +10,10 @@ import { COLOR_SCHEME_STORAGE_KEY, DEFAULT_COLOR_SCHEME } from '../lib/color-sch
 
 export const metadata: Metadata = {
   title: 'Vardiya',
-  description: 'Vardiya planlama sistemi'
+  description: 'Vardiya planlama sistemi',
+  manifest: '/manifest.json',
+  themeColor: '#4338ca',
+  appleWebApp: { capable: true, title: 'Vardiya' }
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -21,6 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           defaultColorScheme={DEFAULT_COLOR_SCHEME}
           localStorageKey={COLOR_SCHEME_STORAGE_KEY}
         />
+        <link rel="manifest" href="/manifest.json" />
       </head>
       <body style={{ background: 'var(--mantine-color-body)', minHeight: '100vh' }}>
         <AppProvider>{children}</AppProvider>

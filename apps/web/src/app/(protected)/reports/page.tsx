@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { currentWeekStartIsoDate } from '../../../lib/time';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
 import { useAuth } from '../../../hooks/use-auth';
-import { useSecurityEvents, useWeeklyReport } from '../../../hooks/use-reports';
+import { useComplianceViolations, useSecurityEvents, useWeeklyReport } from '../../../hooks/use-reports';
 
 function shiftWeek(isoDate: string, dayOffset: number) {
   const value = new Date(`${isoDate}T00:00:00.000Z`);
@@ -30,6 +30,7 @@ export default function ReportsPage() {
   const [securityTo, setSecurityTo] = useState('');
   const { data: me } = useAuth();
   const { data, isLoading, isError } = useWeeklyReport(weekStart);
+  const { data: complianceData, isLoading: complianceLoading } = useComplianceViolations(weekStart);
   const isAdmin = me?.role === 'ADMIN';
   const {
     data: securityEvents,
@@ -172,6 +173,56 @@ export default function ReportsPage() {
           </Table>
         </ScrollArea>
       )}
+
+      <Stack gap="sm">
+        <Title order={3}>Uyum İhlalleri (ÇSGB / 4857)</Title>
+        <Text c="dimmed" size="sm">
+          Seçilen haftada haftalık max saat aşımı veya 24 saat kesintisiz dinlenme ihlali olan çalışanlar.
+        </Text>
+        {complianceLoading ? (
+          <Text c="dimmed" size="sm">Yükleniyor...</Text>
+        ) : (complianceData?.violations ?? []).length === 0 ? (
+          <Text c="dimmed" size="sm">Bu hafta ihlal kaydı yok.</Text>
+        ) : (
+          <ScrollArea>
+            <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="sm" horizontalSpacing="sm">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Çalışan</Table.Th>
+                  <Table.Th>Max saat aşımı</Table.Th>
+                  <Table.Th>24 saat dinlenme</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {(complianceData?.violations ?? []).map((v) => (
+                  <Table.Tr key={v.employeeId}>
+                    <Table.Td>
+                      <Stack gap={0}>
+                        <Text fw={600}>{v.employeeName}</Text>
+                        <Text c="dimmed" size="xs">#{v.employeeId.slice(0, 8)}</Text>
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td>
+                      {v.maxHoursViolation != null ? (
+                        <Badge color="red" variant="light">+{v.maxHoursViolation} saat</Badge>
+                      ) : (
+                        <Text c="dimmed">—</Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      {v.no24hRest ? (
+                        <Badge color="orange" variant="light">İhlal</Badge>
+                      ) : (
+                        <Text c="dimmed">—</Text>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
+        )}
+      </Stack>
 
       {isAdmin ? (
         <Stack>

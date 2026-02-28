@@ -10,12 +10,16 @@ type Shift = { id: string; employeeId: string; employeeName?: string; start: str
 type Leave = { id: string; employeeId: string; type: string; reason?: string | null };
 type Day = { date: string; shifts: Shift[]; leaves?: Leave[] };
 
+export type AvailabilityHintType = 'UNAVAILABLE' | 'PREFER_NOT' | 'AVAILABLE_ONLY';
+
 type WeeklyGridProps = {
   employees: Employee[];
   days: Day[];
   onCreate: (employeeId: string, date: string) => void;
   onEdit: (shift: Shift & { note?: string }) => void;
   onMove: (payload: { shiftId: string; employeeId: string; targetDate: string }) => void;
+  /** Per (employeeId, date) availability hint for the cell (e.g. from availability blocks). */
+  availabilityHints?: Record<string, Record<string, AvailabilityHintType>>;
   scale?: number;
 };
 
@@ -72,12 +76,21 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void
   );
 }
 
+function availabilityHintStyle(hint: AvailabilityHintType | undefined): { backgroundColor?: string; borderLeft?: string } {
+  if (!hint) return {};
+  if (hint === 'UNAVAILABLE') return { backgroundColor: 'rgba(250, 82, 82, 0.08)', borderLeft: '3px solid var(--mantine-color-red-5)' };
+  if (hint === 'PREFER_NOT') return { backgroundColor: 'rgba(250, 176, 5, 0.08)', borderLeft: '3px solid var(--mantine-color-yellow-5)' };
+  if (hint === 'AVAILABLE_ONLY') return { backgroundColor: 'rgba(34, 197, 94, 0.06)', borderLeft: '3px solid var(--mantine-color-green-5)' };
+  return {};
+}
+
 /* ─── Drop Cell ─── */
 function ShiftCell({
   employeeId,
   day,
   shifts,
   leaves,
+  availabilityHint,
   onCreate,
   onEdit,
 }: {
@@ -85,6 +98,7 @@ function ShiftCell({
   day: string;
   shifts: Shift[];
   leaves?: Leave[];
+  availabilityHint?: AvailabilityHintType;
   onCreate: (employeeId: string, date: string) => void;
   onEdit: (shift: Shift) => void;
 }) {
@@ -121,6 +135,8 @@ function ShiftCell({
   const dropId = `${employeeId}::${day}`;
   const { setNodeRef, isOver } = useDroppable({ id: dropId, data: { employeeId, day } });
 
+  const hintStyle = availabilityHintStyle(availabilityHint);
+
   return (
     <Box
       ref={setNodeRef}
@@ -131,9 +147,11 @@ function ShiftCell({
         minHeight: 80,
         borderRadius: 'var(--mantine-radius-sm)',
         border: '1px solid var(--glass-border)',
-        background: isOver ? 'rgba(102, 126, 234, 0.12)' : 'transparent',
+        background: isOver ? 'rgba(102, 126, 234, 0.12)' : (hintStyle.backgroundColor ?? 'transparent'),
+        borderLeft: hintStyle.borderLeft,
         transition: 'background 0.15s ease',
       }}
+      title={availabilityHint === 'UNAVAILABLE' ? 'Müsait değil' : availabilityHint === 'PREFER_NOT' ? 'Tercih edilmez' : availabilityHint === 'AVAILABLE_ONLY' ? 'Sadece belirli saatler' : undefined}
     >
       <Button
         size="compact-xs"
@@ -154,7 +172,7 @@ function ShiftCell({
 }
 
 /* ─── Weekly Grid ─── */
-export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: WeeklyGridProps) {
+export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove, availabilityHints }: WeeklyGridProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -232,6 +250,7 @@ export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: Weekly
                         day={day.date}
                         shifts={day.shifts.filter((s) => s.employeeId === employee.id)}
                         leaves={day.leaves}
+                        availabilityHint={availabilityHints?.[employee.id]?.[day.date]}
                         onCreate={onCreate}
                         onEdit={onEdit}
                       />

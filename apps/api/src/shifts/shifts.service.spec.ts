@@ -13,6 +13,8 @@ describe('ShiftsService', () => {
         update: jest.Mock;
         findMany: jest.Mock;
       };
+      leaveRequest: { findFirst: jest.Mock };
+      shiftEvent: { create: jest.Mock };
       $transaction: jest.Mock;
     } = {
       availabilityBlock: { findMany: jest.fn() },
@@ -24,6 +26,8 @@ describe('ShiftsService', () => {
         update: jest.fn(),
         findMany: jest.fn()
       },
+      leaveRequest: { findFirst: jest.fn().mockResolvedValue(null) },
+      shiftEvent: { create: jest.fn().mockResolvedValue({}) },
       $transaction: jest.fn()
     };
 

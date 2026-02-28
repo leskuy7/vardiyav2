@@ -35,11 +35,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm install
+      - run: npm audit --audit-level=high || true
       - run: npm run -w @vardiya/api lint
       - run: npm run -w @vardiya/api prisma:generate
-      - run: npm run -w @vardiya/api prisma:push
+      - run: npm run -w @vardiya/api prisma:deploy
       - run: npm run -w @vardiya/api build
-      - run: npm run -w @vardiya/api test
+      - run: npm run -w @vardiya/api test -- --coverage
       - run: npm run -w @vardiya/api test:e2e
 
   web:
@@ -76,7 +77,7 @@ jobs:
       - run: npm install
       - run: npx playwright install --with-deps
       - run: npm run -w @vardiya/api prisma:generate
-      - run: npm run -w @vardiya/api prisma:push
+      - run: npm run -w @vardiya/api prisma:deploy
       - run: npm run -w @vardiya/api seed:test
       - run: npm run -w @vardiya/api build
       - run: npm run -w @vardiya/web build

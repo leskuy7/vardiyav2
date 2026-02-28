@@ -1,0 +1,24 @@
+{
+  "name": "Vardiya Planlama",
+  "short_name": "Vardiya",
+  "description": "Vardiya planlama sistemi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e1b4b",
+  "theme_color": "#4338ca",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

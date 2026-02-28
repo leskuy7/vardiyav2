@@ -29,4 +29,27 @@ describe('ReportsService', () => {
     expect(report.totals.overtimeHours).toBeCloseTo(4);
     expect(report.totals.cost).toBeCloseTo(2200);
   });
+
+  it('MANAGER actor ile weeklyHours sadece kendi departmanının vardiyalarını filtreler', async () => {
+    const shiftFindMany = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      employee: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'm1', department: 'Sales' })
+      },
+      shift: { findMany: shiftFindMany }
+    } as unknown as ConstructorParameters<typeof ReportsService>[0];
+
+    const service = new ReportsService(prisma);
+    await service.weeklyHours('2026-01-05', { role: 'MANAGER', employeeId: 'm1' });
+
+    expect(prisma.employee.findUnique).toHaveBeenCalledWith({ where: { id: 'm1' } });
+    expect(shiftFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          employee: { department: 'Sales' },
+          status: { in: ['PROPOSED', 'PUBLISHED', 'ACKNOWLEDGED'] }
+        })
+      })
+    );
+  });
 });

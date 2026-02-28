@@ -32,6 +32,31 @@ export type SecurityEvent = {
   recommendation: string;
 };
 
+export type ComplianceViolation = {
+  employeeId: string;
+  employeeName: string;
+  maxHoursViolation?: number;
+  no24hRest: boolean;
+};
+
+export type ComplianceViolationsReport = {
+  weekStart: string;
+  weekEnd: string;
+  violations: ComplianceViolation[];
+};
+
+export function useComplianceViolations(weekStart: string) {
+  return useQuery({
+    queryKey: ['reports', 'compliance-violations', weekStart],
+    queryFn: async () => {
+      const response = await api.get<ComplianceViolationsReport>(
+        `/reports/compliance-violations?weekStart=${weekStart}`
+      );
+      return response.data;
+    }
+  });
+}
+
 export function useSecurityEvents(
   enabled: boolean,
   filters?: { limit?: number; directive?: string; from?: string; to?: string }

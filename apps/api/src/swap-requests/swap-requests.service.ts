@@ -70,7 +70,7 @@ export class SwapRequestsService {
             throw new BadRequestException({ code: 'BAD_REQUEST', message: 'Target employee cannot be the requester' });
         }
 
-        return this.prisma.$transaction(async (trx: any) => {
+        const result = await this.prisma.$transaction(async (trx: any) => {
             // Update swap status
             const updatedSwap = await trx.swapRequest.update({
                 where: { id },
@@ -96,6 +96,21 @@ export class SwapRequestsService {
 
             return { request: updatedSwap, newShift };
         });
+
+        const userId = (actor as { sub?: string })?.sub;
+        if (userId) {
+            await this.prisma.shiftEvent.create({
+                data: {
+                    shiftId: swap.shiftId,
+                    actorUserId: userId,
+                    action: 'SWAPPED',
+                    previousStatus: swap.shift.status,
+                    newStatus: 'SWAPPED'
+                }
+            });
+        }
+
+        return result;
     }
 
     async reject(id: string, actor: { role: string; employeeId?: string }) {

@@ -116,6 +116,26 @@ export class ShiftsController {
     return result;
   }
 
+  @Post(':id/decline')
+  @Roles('EMPLOYEE')
+  @UseGuards(CsrfGuard)
+  async decline(
+    @Param('id') id: string,
+    @Body() body: { reason: string },
+    @Req() request: Request
+  ) {
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.shiftsService.decline(id, body.reason ?? '', actor);
+    await this.auditService.log({
+      userId: actor.sub,
+      action: 'SHIFT_DECLINE',
+      entityType: 'SHIFT',
+      entityId: id,
+      details: { reason: body.reason ? '***' : undefined }
+    });
+    return result;
+  }
+
   @Post('copy-week')
   @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)

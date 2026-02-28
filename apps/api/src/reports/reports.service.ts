@@ -44,7 +44,7 @@ export class ReportsService {
       where: {
         startTime: { gte: start },
         endTime: { lt: end },
-        status: { in: ['PUBLISHED', 'ACKNOWLEDGED'] },
+        status: { in: ['PROPOSED', 'PUBLISHED', 'ACKNOWLEDGED'] },
         ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
         ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
       },
@@ -104,6 +104,93 @@ export class ReportsService {
       weekEnd: end.toISOString(),
       employees: rows,
       totals
+    };
+  }
+
+  async complianceViolations(weekStart: string, actor?: { role: string; employeeId?: string }) {
+    const start = parseWeekStart(weekStart);
+    const end = plusDays(start, 7);
+    const scope = await getEmployeeScope(this.prisma, actor);
+
+    const shifts = await this.prisma.shift.findMany({
+      where: {
+        startTime: { gte: start },
+        endTime: { lt: end },
+        status: { not: 'CANCELLED' },
+        ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
+        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
+      },
+      include: {
+        employee: {
+          include: { user: true }
+        }
+      },
+      orderBy: { startTime: 'asc' }
+    });
+
+    const byEmployee = new Map<
+      string,
+      { employeeId: string; employeeName: string; maxWeeklyHours: number; shifts: { startTime: Date; endTime: Date }[] }
+    >();
+
+    for (const shift of shifts) {
+      const emp = shift.employee;
+      const existing = byEmployee.get(shift.employeeId);
+      if (!existing) {
+        byEmployee.set(shift.employeeId, {
+          employeeId: shift.employeeId,
+          employeeName: emp.user.name,
+          maxWeeklyHours: emp.maxWeeklyHours ?? 45,
+          shifts: [{ startTime: shift.startTime, endTime: shift.endTime }]
+        });
+      } else {
+        existing.shifts.push({ startTime: shift.startTime, endTime: shift.endTime });
+      }
+    }
+
+    const violations: Array<{
+      employeeId: string;
+      employeeName: string;
+      maxHoursViolation?: number;
+      no24hRest: boolean;
+    }> = [];
+
+    for (const [, item] of byEmployee) {
+      const totalHours = item.shifts.reduce(
+        (sum, s) => sum + (s.endTime.getTime() - s.startTime.getTime()) / (1000 * 60 * 60),
+        0
+      );
+      const maxHoursViolation =
+        totalHours > item.maxWeeklyHours ? Number((totalHours - item.maxWeeklyHours).toFixed(1)) : undefined;
+
+      const intervals = item.shifts.map((s) => ({ start: s.startTime.getTime(), end: s.endTime.getTime() }));
+      intervals.sort((a, b) => a.start - b.start);
+      let maxGapMs = 0;
+      let previousEnd = start.getTime();
+      for (const iv of intervals) {
+        const gap = iv.start - previousEnd;
+        if (gap > maxGapMs) maxGapMs = gap;
+        if (iv.end > previousEnd) previousEnd = iv.end;
+      }
+      const finalGap = end.getTime() - previousEnd;
+      if (finalGap > maxGapMs) maxGapMs = finalGap;
+      const maxGapHours = maxGapMs / (1000 * 60 * 60);
+      const no24hRest = maxGapHours < 24;
+
+      if (maxHoursViolation !== undefined || no24hRest) {
+        violations.push({
+          employeeId: item.employeeId,
+          employeeName: item.employeeName,
+          ...(maxHoursViolation !== undefined ? { maxHoursViolation } : {}),
+          no24hRest
+        });
+      }
+    }
+
+    return {
+      weekStart: start.toISOString(),
+      weekEnd: end.toISOString(),
+      violations
     };
   }
 
