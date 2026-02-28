@@ -18,7 +18,7 @@ export class ShiftsController {
   constructor(
     private readonly shiftsService: ShiftsService,
     private readonly auditService: AuditService
-  ) {}
+  ) { }
 
   @Get()
   list(
@@ -42,8 +42,8 @@ export class ShiftsController {
   @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async create(@Body() dto: CreateShiftDto, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.shiftsService.create(dto);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.shiftsService.create(dto, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'SHIFT_CREATE',
@@ -58,8 +58,8 @@ export class ShiftsController {
   @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async update(@Param('id') id: string, @Body() dto: UpdateShiftDto, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.shiftsService.update(id, dto);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.shiftsService.update(id, dto, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'SHIFT_UPDATE',
@@ -74,8 +74,8 @@ export class ShiftsController {
   @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async remove(@Param('id') id: string, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.shiftsService.remove(id);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.shiftsService.remove(id, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'SHIFT_CANCEL',
@@ -89,8 +89,8 @@ export class ShiftsController {
   @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async cancel(@Param('id') id: string, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.shiftsService.remove(id);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.shiftsService.remove(id, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'SHIFT_CANCEL',
@@ -120,8 +120,8 @@ export class ShiftsController {
   @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async copyWeek(@Body() dto: CopyWeekDto, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.shiftsService.copyWeek(dto.sourceWeekStart, dto.targetWeekStart);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.shiftsService.copyWeek(dto.sourceWeekStart, dto.targetWeekStart, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'SHIFT_COPY_WEEK',
@@ -136,8 +136,8 @@ export class ShiftsController {
   @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async bulk(@Body() dto: BulkShiftsDto, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.shiftsService.bulkCreate(dto.shifts);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.shiftsService.bulkCreate(dto.shifts, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'SHIFT_BULK_CREATE',

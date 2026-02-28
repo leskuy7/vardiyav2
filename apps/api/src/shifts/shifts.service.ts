@@ -98,6 +98,13 @@ export class ShiftsService {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access your own shifts' });
     }
 
+    if (scope.type === 'department' && employeeId) {
+      const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
+      if (emp?.department !== scope.department) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access shifts in your department' });
+      }
+    }
+
     const where: Prisma.ShiftWhereInput = {
       status: status as ShiftStatus | undefined,
       startTime: start || end ? { gte: start ? new Date(start) : undefined, lte: end ? new Date(end) : undefined } : undefined
@@ -105,8 +112,14 @@ export class ShiftsService {
 
     if (scope.type === 'all') {
       where.employeeId = employeeId;
-    } else { // scope.type must be 'self'
+    } else if (scope.type === 'self') {
       where.employeeId = scope.employeeId;
+    } else if (scope.type === 'department') {
+      if (employeeId) {
+        where.employeeId = employeeId;
+      } else {
+        where.employee = { department: scope.department };
+      }
     }
 
     return this.prisma.shift.findMany({
@@ -130,12 +143,28 @@ export class ShiftsService {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access your own shifts' });
     }
 
-
+    if (scope.type === 'department') {
+      const emp = await this.prisma.employee.findUnique({ where: { id: shift.employeeId } });
+      if (emp?.department !== scope.department) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access shifts in your department' });
+      }
+    }
 
     return shift;
   }
 
-  async create(dto: CreateShiftDto) {
+  async create(dto: CreateShiftDto, actor?: { role: string; employeeId?: string }) {
+    const scope = await getEmployeeScope(this.prisma, actor);
+    if (scope.type === 'self' && dto.employeeId !== scope.employeeId) {
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only assign shifts to yourself' });
+    }
+    if (scope.type === 'department') {
+      const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
+      if (emp?.department !== scope.department) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only assign shifts to employees in your department' });
+      }
+    }
+
     const startTime = new Date(dto.startTime);
     const endTime = new Date(dto.endTime);
 
@@ -170,10 +199,21 @@ export class ShiftsService {
     return { ...shift, warnings };
   }
 
-  async update(id: string, dto: UpdateShiftDto) {
-    const existing = await this.getById(id);
+  async update(id: string, dto: UpdateShiftDto, actor?: { role: string; employeeId?: string }) {
+    const existing = await this.getById(id, actor);
 
     const employeeId = dto.employeeId ?? existing.employeeId;
+
+    if (dto.employeeId && dto.employeeId !== existing.employeeId) {
+      const scope = await getEmployeeScope(this.prisma, actor);
+      if (scope.type === 'department') {
+        const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
+        if (emp?.department !== scope.department) {
+          throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only assign shifts to employees in your department' });
+        }
+      }
+    }
+
     const startTime = new Date(dto.startTime ?? existing.startTime.toISOString());
     const endTime = new Date(dto.endTime ?? existing.endTime.toISOString());
 
@@ -210,8 +250,8 @@ export class ShiftsService {
     return { ...shift, warnings };
   }
 
-  async remove(id: string) {
-    await this.getById(id);
+  async remove(id: string, actor?: { role: string; employeeId?: string }) {
+    await this.getById(id, actor);
     await this.prisma.shift.update({ where: { id }, data: { status: 'CANCELLED' } });
     return { message: 'Shift cancelled' };
   }
@@ -227,14 +267,14 @@ export class ShiftsService {
     return this.prisma.shift.update({ where: { id }, data: { status: 'ACKNOWLEDGED' } });
   }
 
-  async bulkCreate(payload: CreateShiftDto[]) {
+  async bulkCreate(payload: CreateShiftDto[], actor?: { role: string; employeeId?: string }) {
     const created: Array<unknown> = [];
     const failed: Array<{ index: number; reason: string }> = [];
 
     for (let index = 0; index < payload.length; index += 1) {
       try {
         const item = payload[index];
-        const shift = await this.create(item);
+        const shift = await this.create(item, actor);
         created.push(shift);
       } catch (error) {
         failed.push({ index, reason: (error as Error).message });
@@ -249,7 +289,8 @@ export class ShiftsService {
     };
   }
 
-  async copyWeek(sourceWeekStart: string, targetWeekStart: string) {
+  async copyWeek(sourceWeekStart: string, targetWeekStart: string, actor?: { role: string; employeeId?: string }) {
+    const scope = await getEmployeeScope(this.prisma, actor);
     const sourceStart = parseWeekStart(sourceWeekStart);
     const sourceEnd = plusDays(sourceStart, 7);
 
@@ -258,7 +299,9 @@ export class ShiftsService {
     const sourceShifts = await this.prisma.shift.findMany({
       where: {
         startTime: { gte: sourceStart, lt: sourceEnd },
-        status: { not: 'CANCELLED' }
+        status: { not: 'CANCELLED' },
+        ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
+        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
       }
     });
 

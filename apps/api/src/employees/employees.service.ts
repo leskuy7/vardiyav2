@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../database/prisma.service';
@@ -18,18 +18,27 @@ const USER_SAFE_SELECT = {
 export class EmployeesService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async list(active?: boolean) {
+  async list(active?: boolean, actor?: { role: string; employeeId?: string }) {
+    const where: Prisma.EmployeeWhereInput = {
+      isActive: active,
+      deletedAt: null
+    };
+
+    if (actor?.role === 'MANAGER' && actor.employeeId) {
+      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+      if (manager) {
+        where.department = manager.department;
+      }
+    }
+
     return this.prisma.employee.findMany({
-      where: {
-        isActive: active,
-        deletedAt: null
-      },
+      where,
       include: { user: { select: USER_SAFE_SELECT } },
       orderBy: [{ createdAt: 'desc' }]
     });
   }
 
-  async getById(id: string) {
+  async getById(id: string, actor?: { role: string; employeeId?: string }) {
     const employee = await this.prisma.employee.findFirst({
       where: { id, deletedAt: null },
       include: { user: { select: USER_SAFE_SELECT } }
@@ -39,10 +48,17 @@ export class EmployeesService {
       throw new NotFoundException({ code: 'EMPLOYEE_NOT_FOUND', message: 'Çalışan bulunamadı' });
     }
 
+    if (actor?.role === 'MANAGER' && actor.employeeId) {
+      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+      if (manager && employee.department !== manager.department) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access employees in your department' });
+      }
+    }
+
     return employee;
   }
 
-  async create(dto: CreateEmployeeDto) {
+  async create(dto: CreateEmployeeDto, actor?: { role: string; employeeId?: string }) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) {
       throw new BadRequestException({ code: 'EMAIL_ALREADY_USED', message: 'Bu e-posta zaten kayıtlı' });
@@ -50,6 +66,14 @@ export class EmployeesService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const name = `${dto.firstName} ${dto.lastName}`;
+
+    let targetDepartment = dto.department;
+    if (actor?.role === 'MANAGER' && actor.employeeId) {
+      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+      if (manager) {
+        targetDepartment = manager.department ?? undefined;
+      }
+    }
 
     return this.prisma.$transaction(async (trx: Prisma.TransactionClient) => {
       const user = await trx.user.create({
@@ -65,7 +89,7 @@ export class EmployeesService {
         data: {
           userId: user.id,
           position: dto.position,
-          department: dto.department,
+          department: targetDepartment ?? undefined,
           phone: dto.phone,
           hourlyRate: dto.hourlyRate,
           maxWeeklyHours: dto.maxWeeklyHours ?? 45
@@ -75,8 +99,8 @@ export class EmployeesService {
     });
   }
 
-  async update(id: string, dto: UpdateEmployeeDto) {
-    await this.getById(id);
+  async update(id: string, dto: UpdateEmployeeDto, actor?: { role: string; employeeId?: string }) {
+    await this.getById(id, actor);
 
     return this.prisma.employee.update({
       where: { id },
@@ -92,8 +116,8 @@ export class EmployeesService {
     });
   }
 
-  async remove(id: string) {
-    await this.getById(id);
+  async remove(id: string, actor?: { role: string; employeeId?: string }) {
+    await this.getById(id, actor);
 
     await this.prisma.employee.update({
       where: { id },

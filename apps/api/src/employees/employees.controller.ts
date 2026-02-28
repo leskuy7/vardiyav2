@@ -16,24 +16,26 @@ export class EmployeesController {
   constructor(
     private readonly employeesService: EmployeesService,
     private readonly auditService: AuditService
-  ) {}
+  ) { }
 
   @Get()
-  list(@Query('active') active?: string) {
-    if (active === undefined) return this.employeesService.list();
-    return this.employeesService.list(active === 'true');
+  list(@Req() request: Request, @Query('active') active?: string) {
+    const actor = request.user as { role: string; employeeId?: string };
+    if (active === undefined) return this.employeesService.list(undefined, actor);
+    return this.employeesService.list(active === 'true', actor);
   }
 
   @Get(':id')
-  getById(@Param('id') id: string) {
-    return this.employeesService.getById(id);
+  getById(@Param('id') id: string, @Req() request: Request) {
+    const actor = request.user as { role: string; employeeId?: string };
+    return this.employeesService.getById(id, actor);
   }
 
   @Post()
   @UseGuards(CsrfGuard)
   async create(@Body() dto: CreateEmployeeDto, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.employeesService.create(dto);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.employeesService.create(dto, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'EMPLOYEE_CREATE',
@@ -47,8 +49,8 @@ export class EmployeesController {
   @Patch(':id')
   @UseGuards(CsrfGuard)
   async update(@Param('id') id: string, @Body() dto: UpdateEmployeeDto, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.employeesService.update(id, dto);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.employeesService.update(id, dto, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'EMPLOYEE_UPDATE',
@@ -62,8 +64,8 @@ export class EmployeesController {
   @Delete(':id')
   @UseGuards(CsrfGuard)
   async remove(@Param('id') id: string, @Req() request: Request) {
-    const actor = request.user as { sub: string };
-    const result = await this.employeesService.remove(id);
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.employeesService.remove(id, actor);
     await this.auditService.log({
       userId: actor.sub,
       action: 'EMPLOYEE_ARCHIVE',
