@@ -17,4 +17,8 @@ export class CreateShiftDto {
   @IsOptional()
   @IsBoolean()
   forceOverride?: boolean;
+
+  @IsOptional()
+  @IsString()
+  status?: any; // any to avoid strict type mismatch before build, will cast in service
 }

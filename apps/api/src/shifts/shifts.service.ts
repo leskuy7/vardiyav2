@@ -141,6 +141,67 @@ export class ShiftsService {
     return warnings;
   }
 
+  private async buildComplianceWarnings(employeeId: string, startTime: Date, endTime: Date, forceOverride?: boolean, excludeShiftId?: string) {
+    const warnings: string[] = [];
+    const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
+    if (!emp) return warnings;
+
+    // Determine the week boundaries (assuming Monday start for TR standards)
+    const weekStart = parseWeekStart(startTime.toISOString());
+    const weekEnd = plusDays(weekStart, 7);
+
+    // Fetch all shifts in this week
+    const weekShifts = await this.prisma.shift.findMany({
+      where: {
+        employeeId,
+        status: { not: 'CANCELLED' },
+        startTime: { gte: weekStart, lt: weekEnd },
+        ...(excludeShiftId ? { id: { not: excludeShiftId } } : {})
+      },
+      orderBy: { startTime: 'asc' }
+    });
+
+    // 1. Max Weekly Hours Check
+    const newShiftDurationMs = endTime.getTime() - startTime.getTime();
+    const existingDurationMs = weekShifts.reduce((acc, s) => acc + (s.endTime.getTime() - s.startTime.getTime()), 0);
+    const totalWeeklyHours = (existingDurationMs + newShiftDurationMs) / (1000 * 60 * 60);
+
+    if (totalWeeklyHours > emp.maxWeeklyHours) {
+      const msg = `Haftalık yasal çalışma süresi (${emp.maxWeeklyHours} saat) aşıldı! Toplam: ${totalWeeklyHours.toFixed(1)} saat.`;
+      if (!forceOverride) throw new UnprocessableEntityException({ code: 'COMPLIANCE_MAX_HOURS', message: msg });
+      warnings.push(msg);
+    }
+
+    // 2. Continuous 24-hour weekly rest check
+    // Inject the new shift into the sorted timeline
+    const allIntervals = weekShifts.map(s => ({ start: s.startTime.getTime(), end: s.endTime.getTime() }));
+    allIntervals.push({ start: startTime.getTime(), end: endTime.getTime() });
+    allIntervals.sort((a, b) => a.start - b.start);
+
+    // Find the largest gap
+    let maxGapMs = 0;
+    let previousEnd = weekStart.getTime();
+
+    for (const interval of allIntervals) {
+      const gap = interval.start - previousEnd;
+      if (gap > maxGapMs) maxGapMs = gap;
+      // Overlapping intervals or immediate touches won't update maxGapMs
+      if (interval.end > previousEnd) previousEnd = interval.end;
+    }
+    // Check gap up to end of week
+    const finalGap = weekEnd.getTime() - previousEnd;
+    if (finalGap > maxGapMs) maxGapMs = finalGap;
+
+    const maxGapHours = maxGapMs / (1000 * 60 * 60);
+    if (maxGapHours < 24) {
+      const msg = `Personelin bu hafta 24 saatlik kesintisiz hafta tatili bulunmuyor! (En büyük boşluk: ${Math.floor(maxGapHours)} saat)`;
+      if (!forceOverride) throw new UnprocessableEntityException({ code: 'COMPLIANCE_NO_REST', message: msg });
+      warnings.push(msg);
+    }
+
+    return warnings;
+  }
+
   async list(employeeId?: string, start?: string, end?: string, status?: string, actor?: { role: string; employeeId?: string }) {
     const scope = await getEmployeeScope(this.prisma, actor);
 
@@ -235,14 +296,17 @@ export class ShiftsService {
       throw new ConflictException({ code: 'SHIFT_OVERLAP', message: 'Shift overlaps another shift' });
     }
 
-    const warnings = await this.buildAvailabilityWarnings(dto.employeeId, startTime, endTime, dto.forceOverride);
+    const availWarnings = await this.buildAvailabilityWarnings(dto.employeeId, startTime, endTime, dto.forceOverride);
+    const compWarnings = await this.buildComplianceWarnings(dto.employeeId, startTime, endTime, dto.forceOverride);
+    const warnings = [...availWarnings, ...compWarnings];
+
     const shift = await this.prisma.shift.create({
       data: {
         employeeId: dto.employeeId,
         startTime,
         endTime,
         note: dto.note,
-        status: 'PUBLISHED'
+        status: (dto.status as ShiftStatus) || 'PUBLISHED'
       }
     });
 
@@ -285,7 +349,9 @@ export class ShiftsService {
       throw new ConflictException({ code: 'SHIFT_OVERLAP', message: 'Shift overlaps another shift' });
     }
 
-    const warnings = await this.buildAvailabilityWarnings(employeeId, startTime, endTime, dto.forceOverride);
+    const availWarnings = await this.buildAvailabilityWarnings(employeeId, startTime, endTime, dto.forceOverride);
+    const compWarnings = await this.buildComplianceWarnings(employeeId, startTime, endTime, dto.forceOverride, id);
+    const warnings = [...availWarnings, ...compWarnings];
 
     const shift = await this.prisma.shift.update({
       where: { id },
@@ -293,7 +359,8 @@ export class ShiftsService {
         employeeId,
         startTime,
         endTime,
-        note: dto.note ?? existing.note
+        note: dto.note ?? existing.note,
+        ...(dto.status ? { status: dto.status as ShiftStatus } : {})
       }
     });
 
@@ -307,14 +374,32 @@ export class ShiftsService {
   }
 
   async acknowledge(id: string, actor: { role: string; employeeId?: string }) {
-    const shift = await this.getById(id);
+    const shift = await this.getById(id, actor);
     if (actor.role === 'EMPLOYEE' && actor.employeeId !== shift.employeeId) {
       throw new BadRequestException({ code: 'FORBIDDEN', message: 'You can only acknowledge your own shifts' });
     }
-    if (shift.status !== 'PUBLISHED') {
-      throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED shifts can be acknowledged' });
+    if (shift.status !== 'PUBLISHED' && shift.status !== 'PROPOSED') {
+      throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be acknowledged' });
     }
     return this.prisma.shift.update({ where: { id }, data: { status: 'ACKNOWLEDGED' } });
+  }
+
+  async decline(id: string, reason: string, actor: { role: string; employeeId?: string }) {
+    const shift = await this.getById(id, actor);
+    if (actor.role === 'EMPLOYEE' && actor.employeeId !== shift.employeeId) {
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only decline your own shifts' });
+    }
+    if (shift.status !== 'PUBLISHED' && shift.status !== 'PROPOSED') {
+      throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be declined' });
+    }
+
+    return this.prisma.shift.update({
+      where: { id },
+      data: {
+        status: 'DECLINED',
+        note: shift.note ? `${shift.note}\n--- Reddetme Nedeni: ${reason}` : `Reddetme Nedeni: ${reason}`
+      }
+    });
   }
 
   async bulkCreate(payload: CreateShiftDto[], actor?: { role: string; employeeId?: string }) {

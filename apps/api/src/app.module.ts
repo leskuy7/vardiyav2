@@ -12,6 +12,7 @@ import { ReportsModule } from './reports/reports.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { SecurityModule } from './security/security.module';
 import { ShiftsModule } from './shifts/shifts.module';
+import { SwapRequestsModule } from './swap-requests/swap-requests.module';
 
 @Module({
   imports: [
@@ -32,7 +33,8 @@ import { ShiftsModule } from './shifts/shifts.module';
     EmployeesModule,
     MetaModule,
     SecurityModule,
-    ReportsModule
+    ReportsModule,
+    SwapRequestsModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard }

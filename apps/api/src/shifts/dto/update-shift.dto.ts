@@ -20,4 +20,8 @@ export class UpdateShiftDto {
   @IsOptional()
   @IsBoolean()
   forceOverride?: boolean;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
 }
