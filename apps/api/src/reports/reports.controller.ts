@@ -1,4 +1,5 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
@@ -11,8 +12,9 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('weekly-hours')
-  weeklyHours(@Query('weekStart') weekStart: string) {
-    return this.reportsService.weeklyHours(weekStart);
+  weeklyHours(@Query('weekStart') weekStart: string, @Req() request: Request) {
+    const actor = request.user as { role: string; employeeId?: string };
+    return this.reportsService.weeklyHours(weekStart, actor);
   }
 
   @Get('security-events')

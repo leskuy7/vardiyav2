@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { getEmployeeScope } from '../common/employee-scope';
 import { parseWeekStart, plusDays } from '../common/time.utils';
 import { PrismaService } from '../database/prisma.service';
 
@@ -34,15 +35,18 @@ export class ReportsService {
     };
   }
 
-  async weeklyHours(weekStart: string) {
+  async weeklyHours(weekStart: string, actor?: { role: string; employeeId?: string }) {
     const start = parseWeekStart(weekStart);
     const end = plusDays(start, 7);
+    const scope = await getEmployeeScope(this.prisma, actor);
 
     const shifts = await this.prisma.shift.findMany({
       where: {
         startTime: { gte: start },
         endTime: { lt: end },
-        status: { in: ['PUBLISHED', 'ACKNOWLEDGED'] }
+        status: { in: ['PUBLISHED', 'ACKNOWLEDGED'] },
+        ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
+        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
       },
       include: {
         employee: {

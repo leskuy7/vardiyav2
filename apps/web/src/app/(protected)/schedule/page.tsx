@@ -258,6 +258,8 @@ export default function SchedulePage() {
           <Button
             size="xs"
             className="btn-gradient"
+            disabled={!(employees ?? []).length}
+            title={!(employees ?? []).length ? "Önce en az bir çalışan ekleyin." : undefined}
             onClick={() => {
               setSelectedShift(undefined);
               setSelectedEmployeeId((employees ?? [])[0]?.id ?? "");
