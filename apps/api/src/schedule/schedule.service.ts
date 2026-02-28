@@ -1,11 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { getEmployeeScope } from '../common/employee-scope';
 import { parseWeekStart, plusDays, toIsoDate } from '../common/time.utils';
 import { PrismaService } from '../database/prisma.service';
+import { ShiftsService } from '../shifts/shifts.service';
+
+type ShiftWithRelations = Prisma.ShiftGetPayload<{
+  include: {
+    employee: { include: { user: true } };
+    swapRequests: true;
+  }
+}>;
 
 @Injectable()
 export class ScheduleService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => ShiftsService)) private readonly shiftsService: ShiftsService
+  ) { }
 
   async getWeek(start: string, actor?: { role: string; employeeId?: string }) {
     const startDate = parseWeekStart(start);
@@ -25,30 +37,51 @@ export class ScheduleService {
           include: {
             user: true
           }
+        },
+        swapRequests: {
+          where: { status: 'PENDING' }
         }
       },
       orderBy: [{ startTime: 'asc' }]
     });
 
-    const days = Array.from({ length: 7 }).map((_, index) => {
-      const dayDate = plusDays(startDate, index);
-      const dayIso = toIsoDate(dayDate);
+    const days = await Promise.all(
+      Array.from({ length: 7 }).map(async (_, index) => {
+        const dayDate = plusDays(startDate, index);
+        const dayIso = toIsoDate(dayDate);
 
-      return {
-        date: dayIso,
-        shifts: shifts
-          .filter((shift: (typeof shifts)[number]) => toIsoDate(shift.startTime) === dayIso)
-          .map((shift: (typeof shifts)[number]) => ({
-            id: shift.id,
-            employeeId: shift.employeeId,
-            employeeName: shift.employee.user.name,
-            start: shift.startTime.toISOString(),
-            end: shift.endTime.toISOString(),
-            status: shift.status,
-            note: shift.note
-          }))
-      };
-    });
+        const dailyShifts = shifts.filter((shift: any) => toIsoDate(shift.startTime) === dayIso);
+
+        const mappedShifts = await Promise.all(
+          dailyShifts.map(async (shift: any) => {
+            const warnings = await this.shiftsService.buildComplianceWarnings(
+              shift.employeeId,
+              shift.startTime,
+              shift.endTime,
+              false,
+              shift.id // exclude self to get correct overlap limits 
+            );
+
+            return {
+              id: shift.id,
+              employeeId: shift.employeeId,
+              employeeName: shift.employee.user.name,
+              start: shift.startTime.toISOString(),
+              end: shift.endTime.toISOString(),
+              status: shift.status,
+              note: shift.note,
+              swapRequests: shift.swapRequests,
+              warnings
+            };
+          })
+        );
+
+        return {
+          date: dayIso,
+          shifts: mappedShifts
+        };
+      })
+    );
 
     return {
       start: startDate.toISOString(),

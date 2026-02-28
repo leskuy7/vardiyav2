@@ -141,7 +141,7 @@ export class ShiftsService {
     return warnings;
   }
 
-  private async buildComplianceWarnings(employeeId: string, startTime: Date, endTime: Date, forceOverride?: boolean, excludeShiftId?: string) {
+  async buildComplianceWarnings(employeeId: string, startTime: Date, endTime: Date, forceOverride?: boolean, excludeShiftId?: string) {
     const warnings: string[] = [];
     const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
     if (!emp) return warnings;

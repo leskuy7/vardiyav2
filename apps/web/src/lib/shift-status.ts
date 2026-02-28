@@ -1,18 +1,24 @@
-import { IconBan, IconCheck, IconClockHour4, IconSpeakerphone } from '@tabler/icons-react';
+import { IconBan, IconCheck, IconClockHour4, IconExchange, IconQuestionMark, IconSpeakerphone, IconX } from '@tabler/icons-react';
 
-export type ShiftStatus = 'DRAFT' | 'PUBLISHED' | 'ACKNOWLEDGED' | 'CANCELLED' | string;
+export type ShiftStatus = 'PROPOSED' | 'DRAFT' | 'PUBLISHED' | 'ACKNOWLEDGED' | 'DECLINED' | 'SWAPPED' | 'CANCELLED' | string;
 
 export const SHIFT_STATUS_LABELS: Record<string, string> = {
+  PROPOSED: 'Öneri',
   DRAFT: 'Taslak',
   PUBLISHED: 'Onay Bekliyor',
   ACKNOWLEDGED: 'Onaylandı',
+  DECLINED: 'Reddedildi',
+  SWAPPED: 'Takas Edildi',
   CANCELLED: 'İptal'
 };
 
 export const SHIFT_STATUS_COLORS: Record<string, string> = {
+  PROPOSED: 'violet',
   DRAFT: 'gray',
   PUBLISHED: 'blue',
   ACKNOWLEDGED: 'teal',
+  DECLINED: 'red',
+  SWAPPED: 'orange',
   CANCELLED: 'red'
 };
 
@@ -26,12 +32,18 @@ export function getShiftStatusColor(status: ShiftStatus) {
 
 export function getShiftStatusIcon(status: ShiftStatus) {
   switch (status) {
+    case 'PROPOSED':
+      return IconQuestionMark;
     case 'DRAFT':
       return IconClockHour4;
     case 'PUBLISHED':
       return IconSpeakerphone;
     case 'ACKNOWLEDGED':
       return IconCheck;
+    case 'DECLINED':
+      return IconX;
+    case 'SWAPPED':
+      return IconExchange;
     case 'CANCELLED':
       return IconBan;
     default:

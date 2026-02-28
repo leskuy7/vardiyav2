@@ -204,7 +204,20 @@ export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove }: Weekly
                     </Table.Td>
                   ))}
                   <Table.Td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                    <Badge variant="light" size="sm">{weeklyHours.toFixed(1)}s</Badge>
+                    {(() => {
+                      const trLimit = (employee as any).maxWeeklyHours || 45;
+                      const isBreach = weeklyHours > trLimit;
+
+                      if (isBreach) {
+                        return (
+                          <Badge variant="filled" color="red" size="sm" title={`${trLimit} saat sınırı aşıldı!`}>
+                            {weeklyHours.toFixed(1)}s (Aşım)
+                          </Badge>
+                        );
+                      }
+
+                      return <Badge variant="light" size="sm">{weeklyHours.toFixed(1)}s</Badge>;
+                    })()}
                   </Table.Td>
                 </Table.Tr>
               );

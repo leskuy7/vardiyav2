@@ -9,10 +9,12 @@ import {
   Stack,
   Text,
   Title,
+  Select,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   PageEmpty,
   PageError,
@@ -38,9 +40,59 @@ type ShiftItem = {
   status: string;
 };
 
+function SwapRequestModalContent({ shift, employees, currentUserId, onSuccess }: any) {
+  const [targetId, setTargetId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const options = employees
+    .filter((e: any) => e.id !== currentUserId)
+    .map((e: any) => ({
+      value: e.id,
+      label: `${e.user?.name || "Bilinmiyor"} (${e.department || "Departman Yok"})`,
+    }));
+
+  options.unshift({ value: "OPEN", label: "Herkese Açık / Herhangi Biri" });
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      await api.post("/swap-requests", {
+        shiftId: shift.id,
+        targetEmployeeId: targetId === "OPEN" || !targetId ? undefined : targetId,
+      });
+      notifications.show({ title: "Başarılı", message: "Takas isteği gönderildi.", color: "green" });
+      onSuccess();
+    } catch (err: any) {
+      notifications.show({ title: "Hata", message: err?.response?.data?.message || "Takas isteği başarısız.", color: "red" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Stack>
+      <Text size="sm">
+        Vardiyanızı kiminle takas etmek istiyorsunuz? Seçilen çalışan ya da yönetici onayladığında vardiya aktarılacaktır.
+      </Text>
+
+      <Select
+        label="Hedef Personel Seçimi:"
+        placeholder="Çalışan Seçin..."
+        data={options}
+        value={targetId}
+        onChange={setTargetId}
+        searchable
+      />
+      <Button loading={loading} onClick={handleSubmit} fullWidth mt="md">
+        Gönder
+      </Button>
+    </Stack>
+  );
+}
+
 export default function MyShiftsPage() {
   const weekStart = currentWeekStartIsoDate();
-  const { acknowledgeShift } = useShiftsActions(weekStart);
+  const { acknowledgeShift, declineShift } = useShiftsActions(weekStart);
 
   const { data: me } = useQuery({
     queryKey: ["auth", "me"],
@@ -59,6 +111,15 @@ export default function MyShiftsPage() {
       const response = await api.get<ShiftItem[]>(
         `/shifts?employeeId=${employeeId}`,
       );
+      return response.data;
+    },
+  });
+
+  const { data: employeesData } = useQuery({
+    queryKey: ["employees", "active"],
+    enabled: Boolean(employeeId), // fetch colleagues
+    queryFn: async () => {
+      const response = await api.get("/employees?active=true");
       return response.data;
     },
   });
@@ -153,32 +214,75 @@ export default function MyShiftsPage() {
                   >
                     {getShiftStatusLabel(shift.status)}
                   </Badge>
-                  {shift.status === "PUBLISHED" ? (
+                  {shift.status === "PUBLISHED" || shift.status === "PROPOSED" ? (
+                    <Group gap="xs">
+                      <Button
+                        size="xs"
+                        loading={acknowledgeShift.isPending}
+                        onClick={() =>
+                          acknowledgeShift.mutate(shift.id, {
+                            onSuccess: () =>
+                              notifications.show({
+                                title: "Onaylandı",
+                                message: "Vardiya başarıyla onaylandı.",
+                                color: "green",
+                              }),
+                            onError: (err: any) => {
+                              const msg =
+                                err?.response?.data?.message ??
+                                "Onay başarısız oldu.";
+                              notifications.show({
+                                title: "Hata",
+                                message: msg,
+                                color: "red",
+                              });
+                            },
+                          })
+                        }
+                      >
+                        Onayla
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="red"
+                        variant="light"
+                        loading={declineShift.isPending}
+                        onClick={() => {
+                          const reason = window.prompt("Lütfen vardiyayı reddetme nedeninizi yazın:");
+                          if (reason === null) return; // Cancelled
+                          if (reason.trim() === '') {
+                            notifications.show({ title: "Hata", message: "Reddetme nedeni boş bırakılamaz.", color: "red" });
+                            return;
+                          }
+                          declineShift.mutate({ shiftId: shift.id, reason }, {
+                            onSuccess: () => notifications.show({ title: "Reddedildi", message: "Vardiya reddedildi.", color: "orange" }),
+                            onError: (err: any) => notifications.show({ title: "Hata", message: err?.response?.data?.message ?? "Reddetme başarısız.", color: "red" })
+                          });
+                        }}
+                      >
+                        Reddet
+                      </Button>
+                    </Group>
+                  ) : shift.status === "ACKNOWLEDGED" ? (
                     <Button
                       size="xs"
-                      loading={acknowledgeShift.isPending}
-                      onClick={() =>
-                        acknowledgeShift.mutate(shift.id, {
-                          onSuccess: () =>
-                            notifications.show({
-                              title: "Onaylandı",
-                              message: "Vardiya başarıyla onaylandı.",
-                              color: "green",
-                            }),
-                          onError: (err: any) => {
-                            const msg =
-                              err?.response?.data?.message ??
-                              "Onay başarısız oldu.";
-                            notifications.show({
-                              title: "Hata",
-                              message: msg,
-                              color: "red",
-                            });
-                          },
-                        })
-                      }
+                      color="orange"
+                      variant="light"
+                      onClick={() => {
+                        modals.open({
+                          title: "Vardiya Takası İste",
+                          children: (
+                            <SwapRequestModalContent
+                              shift={shift}
+                              employees={employeesData ?? []}
+                              currentUserId={employeeId}
+                              onSuccess={() => modals.closeAll()}
+                            />
+                          ),
+                        });
+                      }}
                     >
-                      Onayla
+                      Takas İste
                     </Button>
                   ) : null}
                 </Group>

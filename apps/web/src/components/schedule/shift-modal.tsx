@@ -17,6 +17,7 @@ type ShiftModalProps = {
     start: string;
     end: string;
     note?: string;
+    swapRequests?: Array<{ id: string; requesterId: string; targetEmployeeId: string | null; status: string }>;
   };
 };
 
@@ -156,6 +157,61 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
             checked={forceOverride}
             onChange={(event) => setForceOverride(event.currentTarget.checked)}
           />
+
+          {initial?.swapRequests && initial.swapRequests.length > 0 && (
+            <Alert color="orange" title="Takas İsteği Bekliyor" variant="light">
+              <Text size="sm" mb="sm">
+                Bu vardiya için beklemede olan bir takas isteği var.
+                {initial.swapRequests[0]?.targetEmployeeId
+                  ? ` (Hedef: ${employees?.find(e => e.value === initial.swapRequests![0]?.targetEmployeeId)?.label || initial.swapRequests[0]?.targetEmployeeId})`
+                  : ' (Hedef: Herkese Açık)'
+                }
+              </Text>
+              <Group gap="xs">
+                <Button
+                  size="xs"
+                  color="green"
+                  onClick={() => {
+                    import('../../lib/api').then(({ api }) => {
+                      api.post(`/swap-requests/${initial.swapRequests![0]?.id}/approve`).then(() => {
+                        import('@mantine/notifications').then(({ notifications }) => {
+                          notifications.show({ title: 'Onaylandı', message: 'Takas isteği başarıyla onaylandı.', color: 'green' });
+                          onClose();
+                        });
+                      }).catch((err) => {
+                        import('@mantine/notifications').then(({ notifications }) => {
+                          notifications.show({ title: 'Hata', message: err?.response?.data?.message || 'Onay başarısız!', color: 'red' });
+                        });
+                      });
+                    });
+                  }}
+                >
+                  Takası Onayla
+                </Button>
+                <Button
+                  size="xs"
+                  color="red"
+                  variant="outline"
+                  onClick={() => {
+                    import('../../lib/api').then(({ api }) => {
+                      api.post(`/swap-requests/${initial.swapRequests![0]?.id}/reject`).then(() => {
+                        import('@mantine/notifications').then(({ notifications }) => {
+                          notifications.show({ title: 'Reddedildi', message: 'Takas isteği reddedildi.', color: 'orange' });
+                          onClose();
+                        });
+                      }).catch((err) => {
+                        import('@mantine/notifications').then(({ notifications }) => {
+                          notifications.show({ title: 'Hata', message: err?.response?.data?.message || 'Reddetme başarısız!', color: 'red' });
+                        });
+                      });
+                    });
+                  }}
+                >
+                  Takası Reddet
+                </Button>
+              </Group>
+            </Alert>
+          )}
 
           {error ? <Alert color="red" variant="light">{error}</Alert> : null}
 

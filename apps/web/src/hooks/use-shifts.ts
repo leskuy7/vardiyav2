@@ -14,6 +14,7 @@ export type Shift = {
   status: string;
   note?: string;
   warnings?: string[];
+  swapRequests?: Array<{ id: string; requesterId: string; targetEmployeeId: string | null; status: string }>;
 };
 
 export type WeeklySchedule = {
@@ -77,5 +78,13 @@ export function useShiftsActions(weekStart: string) {
     onSuccess: invalidate
   });
 
-  return { createShift, updateShift, acknowledgeShift, deleteShift, deleteShiftLegacy };
+  const declineShift = useMutation({
+    mutationFn: async (payload: { shiftId: string; reason: string }) => {
+      const response = await api.post(`/shifts/${payload.shiftId}/decline`, { reason: payload.reason });
+      return response.data as Shift;
+    },
+    onSuccess: invalidate
+  });
+
+  return { createShift, updateShift, acknowledgeShift, deleteShift, deleteShiftLegacy, declineShift };
 }

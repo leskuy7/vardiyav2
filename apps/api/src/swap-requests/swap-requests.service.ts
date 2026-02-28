@@ -46,26 +46,13 @@ export class SwapRequestsService {
         });
     }
 
-    async approve(id: string, actor: { role: string; employeeId?: string }) {
+    async approve(id: string, actor: { role: string; employeeId?: string }, providedTargetId?: string) {
         const swap = await this.prisma.swapRequest.findUnique({ where: { id }, include: { shift: true } });
         if (!swap || swap.status !== 'PENDING') {
             throw new NotFoundException({ code: 'NOT_FOUND', message: 'Valid pending swap request not found' });
         }
 
-        // Role checks
-        if (actor.role === 'EMPLOYEE') {
-            if (swap.targetEmployeeId && swap.targetEmployeeId !== actor.employeeId) {
-                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You are not the designated target for this swap' });
-            } else if (!swap.targetEmployeeId) {
-                // Open to anyone in the department. Validate department match.
-                const target = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
-                const requester = await this.prisma.employee.findUnique({ where: { id: swap.requesterId } });
-                if (target?.department !== requester?.department) {
-                    throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You must be in the same department to accept this swap' });
-                }
-            }
-        } else if (actor.role === 'MANAGER') {
-            // Manager can approve swaps, but must be in the same department
+        if (actor.role === 'MANAGER') {
             const requester = await this.prisma.employee.findUnique({ where: { id: swap.requesterId } });
             const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
             if (requester?.department !== manager?.department) {
@@ -73,9 +60,14 @@ export class SwapRequestsService {
             }
         }
 
-        const definitiveTargetId = actor.role === 'EMPLOYEE' ? actor.employeeId! : swap.targetEmployeeId;
+        const definitiveTargetId = swap.targetEmployeeId || providedTargetId;
         if (!definitiveTargetId) {
             throw new BadRequestException({ code: 'BAD_REQUEST', message: 'Target employee must be explicitly defined before manager approval' });
+        }
+
+        // Avoid self-swap
+        if (definitiveTargetId === swap.requesterId) {
+            throw new BadRequestException({ code: 'BAD_REQUEST', message: 'Target employee cannot be the requester' });
         }
 
         return this.prisma.$transaction(async (trx: any) => {

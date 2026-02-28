@@ -9,7 +9,17 @@ describe('ScheduleService', () => {
       shift: { findMany: jest.fn() }
     };
 
-    return { service: new ScheduleService(prisma as unknown as ConstructorParameters<typeof ScheduleService>[0]), prisma };
+    const mockShiftsService = {
+      buildComplianceWarnings: jest.fn().mockResolvedValue([])
+    };
+
+    return {
+      service: new ScheduleService(
+        prisma as unknown as ConstructorParameters<typeof ScheduleService>[0],
+        mockShiftsService as unknown as ConstructorParameters<typeof ScheduleService>[1]
+      ),
+      prisma
+    };
   }
 
   it('employee haftalık planı kendi employeeId kapsamına göre filtreler', async () => {
