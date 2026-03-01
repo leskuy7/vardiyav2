@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from 'react';
+import { useMediaQuery } from '@mantine/hooks';
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { Badge, Box, Button, Card, Group, ScrollArea, Stack, Table, Text, ThemeIcon } from '@mantine/core';
 import { getShiftStatusColor, getShiftStatusIcon, getShiftStatusLabel } from '../../lib/shift-status';
@@ -171,8 +173,81 @@ function ShiftCell({
   );
 }
 
+/* ─── Daily Mobile View ─── */
+function DailyScheduleView({ employees, days, onCreate, onEdit, availabilityHints }: WeeklyGridProps) {
+  const [selectedDate, setSelectedDate] = useState<string>(days[0]?.date || "");
+
+  if (!days || days.length === 0) return null;
+  const activeDate = selectedDate || days[0].date;
+  const activeDay = days.find((d) => d.date === activeDate) || days[0];
+
+  return (
+    <Stack gap="md" mt="sm">
+      <ScrollArea w="100%" type="never">
+        <Group wrap="nowrap" gap="xs" pb="xs">
+          {days.map((day) => {
+            const isSelected = day.date === activeDate;
+            const dateObj = new Date(day.date);
+            const dayName = dateObj.toLocaleDateString("tr-TR", { weekday: "short" });
+            const dayNum = dateObj.getDate();
+            return (
+              <Button
+                key={day.date}
+                variant={isSelected ? "filled" : "light"}
+                color={isSelected ? "indigo" : "gray"}
+                onClick={() => setSelectedDate(day.date)}
+                size="xs"
+                radius="md"
+                style={{ display: "flex", flexDirection: "column", gap: 2, height: 'auto', padding: '6px 16px' }}
+              >
+                <Text size="xs" fw={isSelected ? 700 : 500}>{dayName}</Text>
+                <Text size="lg" fw={700}>{dayNum}</Text>
+              </Button>
+            );
+          })}
+        </Group>
+      </ScrollArea>
+
+      <Stack gap="xs">
+        {employees.map((employee) => {
+          const empShifts = activeDay.shifts.filter((s) => s.employeeId === employee.id);
+          const hint = availabilityHints?.[employee.id]?.[activeDay.date];
+
+          return (
+            <Card key={employee.id} withBorder radius="md" p="sm">
+              <Group justify="space-between" mb="xs">
+                <Group gap="xs">
+                  <ThemeIcon variant="light" radius="xl" size="md">
+                    <Text size="xs" fw={700}>{getInitials(employee.user.name)}</Text>
+                  </ThemeIcon>
+                  <Text fw={600} size="sm">{employee.user.name}</Text>
+                </Group>
+              </Group>
+
+              <Box mt="xs">
+                <ShiftCell
+                  employeeId={employee.id}
+                  day={activeDay.date}
+                  shifts={empShifts}
+                  leaves={activeDay.leaves}
+                  availabilityHint={hint}
+                  onCreate={onCreate}
+                  onEdit={onEdit}
+                />
+              </Box>
+            </Card>
+          );
+        })}
+      </Stack>
+    </Stack>
+  );
+}
+
 /* ─── Weekly Grid ─── */
-export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove, availabilityHints }: WeeklyGridProps) {
+export function WeeklyGrid(props: WeeklyGridProps) {
+  const { employees, days, onCreate, onEdit, onMove, availabilityHints } = props;
+  const isMobile = useMediaQuery('(max-width: 62em)');
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -186,6 +261,14 @@ export function WeeklyGrid({ employees, days, onCreate, onEdit, onMove, availabi
     if (!over) return;
     const [employeeId, targetDate] = String(over.id).split('::');
     onMove({ shiftId: String(active.id), employeeId, targetDate });
+  }
+
+  if (isMobile) {
+    return (
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DailyScheduleView {...props} />
+      </DndContext>
+    );
   }
 
   return (

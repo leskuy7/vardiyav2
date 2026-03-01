@@ -79,8 +79,8 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
       <div className="app-shell-bg" />
 
       <AppShell
-        padding="lg"
-        header={{ height: 64 }}
+        padding={{ base: 'sm', sm: 'md', lg: 'lg' }}
+        header={{ height: { base: 56, xs: 64 } }}
         navbar={{ width: 280, breakpoint: 'md', collapsed: { mobile: !opened } }}
         styles={{
           root: { background: 'transparent' },
@@ -89,13 +89,15 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             background: 'var(--glass-bg)',
-            borderBottom: '1px solid var(--glass-border)'
+            borderBottom: '1px solid var(--glass-border)',
+            paddingTop: 'env(safe-area-inset-top, 0px)'
           },
           navbar: {
             background: 'var(--glass-bg)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            borderRight: '1px solid var(--glass-border)'
+            borderRight: '1px solid var(--glass-border)',
+            paddingTop: 'env(safe-area-inset-top, 0px)'
           }
         }}
       >

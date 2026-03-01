@@ -335,7 +335,7 @@ export default function EmployeesPage() {
         </Grid.Col>
       </Grid>
 
-      <ScrollArea>
+      <ScrollArea visibleFrom="md">
         <Table
           withTableBorder
           striped="odd"
@@ -424,6 +424,40 @@ export default function EmployeesPage() {
           </Table.Tbody>
         </Table>
       </ScrollArea>
+
+      <Stack hiddenFrom="md" gap="sm">
+        {rows.length === 0 ? (
+          <Card withBorder radius="md" p="xl" ta="center">
+            <Text c="dimmed">Sonuç bulunamadı.</Text>
+          </Card>
+        ) : (
+          rows.map((employee) => (
+            <Card key={employee.id} withBorder radius="md" p="md">
+              <Group justify="space-between" mb="xs">
+                <div>
+                  <Text fw={600} size="sm">{employee.user.name}</Text>
+                  <Text size="xs" c="dimmed">{employee.user.email}</Text>
+                </div>
+              </Group>
+              <Group gap="xs" mb="xs">
+                {employee.position ? (
+                  <Badge variant="light">{employee.position}</Badge>
+                ) : null}
+                {employee.department ? (
+                  <Badge variant="light" color="grape">{employee.department}</Badge>
+                ) : null}
+              </Group>
+              <Group justify="space-between" mt="md" align="center">
+                <Text size="xs" c="dimmed">Ücret: {employee.hourlyRate ? `₺${Number(employee.hourlyRate).toFixed(2)}` : "-"} | Limit: {employee.maxWeeklyHours ?? 45}s</Text>
+                <Group gap="xs">
+                  <Button size="xs" variant="light" onClick={() => openEditModal(employee)}>Düzenle</Button>
+                  <Button size="xs" variant="light" color="red" onClick={() => handleArchive(employee)} loading={archiveEmployee.isPending}>Arşivle</Button>
+                </Group>
+              </Group>
+            </Card>
+          ))
+        )}
+      </Stack>
 
       {/* Departman & Pozisyon Yönetimi */}
       {(departmentFormOptions.length > 0 || positionFormOptions.length > 0) && (
