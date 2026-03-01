@@ -1,7 +1,8 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { getAccessToken, setAccessToken } from './token-store';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+const envApiUrl = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+const API_URL = envApiUrl.endsWith('/') ? envApiUrl : `${envApiUrl}/`;
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -17,6 +18,12 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Normalize URL by removing leading slash to prevent Axios from overriding baseURL paths
+  if (config.url && config.url.startsWith('/')) {
+    config.url = config.url.substring(1);
+  }
+
   return config;
 });
 
