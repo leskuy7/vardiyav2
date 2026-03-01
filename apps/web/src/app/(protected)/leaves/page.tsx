@@ -76,9 +76,6 @@ export default function LeavesPage() {
         },
     });
 
-    if (leavesQuery.isLoading) return <PageLoading />;
-    if (leavesQuery.isError) return <PageError message="İzinler yüklenemedi." />;
-
     const leaves = leavesQuery.data || [];
     const role = me?.role;
 
@@ -171,134 +168,143 @@ export default function LeavesPage() {
                 )}
             </Group>
 
-            <Card withBorder radius="md" p="md" visibleFrom="md">
-                <Table verticalSpacing="sm">
-                    <Table.Thead>
-                        <Table.Tr>
-                            <Table.Th>Personel</Table.Th>
-                            <Table.Th>İzin Türü</Table.Th>
-                            <Table.Th>Tarih Aralığı</Table.Th>
-                            <Table.Th>Gerekçe</Table.Th>
-                            <Table.Th>Yönetici Notu</Table.Th>
-                            <Table.Th>Durum</Table.Th>
-                            <Table.Th align="right">İşlemler</Table.Th>
-                        </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
+            {leavesQuery.isLoading ? (
+                <PageLoading />
+            ) : leavesQuery.isError ? (
+                <PageError message="İzinler yüklenemedi. (Sunucu bağlantısı sağlanamadı)" />
+            ) : (
+                <>
+                    <Card withBorder radius="md" p="md" visibleFrom="md">
+                        <Table verticalSpacing="sm">
+                            <Table.Thead>
+                                <Table.Tr>
+                                    <Table.Th>Personel</Table.Th>
+                                    <Table.Th>İzin Türü</Table.Th>
+                                    <Table.Th>Tarih Aralığı</Table.Th>
+                                    <Table.Th>Gerekçe</Table.Th>
+                                    <Table.Th>Yönetici Notu</Table.Th>
+                                    <Table.Th>Durum</Table.Th>
+                                    <Table.Th align="right">İşlemler</Table.Th>
+                                </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>
+                                {leaves.length === 0 ? (
+                                    <Table.Tr>
+                                        <Table.Td colSpan={7}>
+                                            <Text c="dimmed" ta="center" py="xl">
+                                                Kayıtlı izin talebi bulunmuyor.
+                                            </Text>
+                                        </Table.Td>
+                                    </Table.Tr>
+                                ) : (
+                                    leaves.map((l: LeaveRequest) => (
+                                        <Table.Tr key={l.id}>
+                                            <Table.Td>
+                                                <Text fw={500} size="sm">
+                                                    {l.employee?.user.name}
+                                                </Text>
+                                                <Text size="xs" c="dimmed">
+                                                    {l.employee?.department}
+                                                </Text>
+                                            </Table.Td>
+                                            <Table.Td>{LEAVE_TYPES[l.type]}</Table.Td>
+                                            <Table.Td>
+                                                {formatDateShort(l.startDate)} - {formatDateShort(l.endDate)}
+                                            </Table.Td>
+                                            <Table.Td>
+                                                <Text size="sm" lineClamp={2} title={l.reason || ""}>
+                                                    {l.reason || "-"}
+                                                </Text>
+                                            </Table.Td>
+                                            <Table.Td>
+                                                <Text size="sm" c="dimmed" lineClamp={2} title={l.managerNote || ""}>
+                                                    {l.managerNote || "-"}
+                                                </Text>
+                                            </Table.Td>
+                                            <Table.Td>
+                                                <Badge color={STATUS_COLORS[l.status]} variant="light">
+                                                    {STATUS_LABELS[l.status]}
+                                                </Badge>
+                                            </Table.Td>
+                                            <Table.Td align="right">
+                                                <Group gap="xs" justify="flex-end">
+                                                    {l.status === "PENDING" && (role === "MANAGER" || role === "ADMIN") && (
+                                                        <>
+                                                            <Button size="xs" color="green" onClick={() => handleStatusUpdate(l.id, "APPROVED")}>
+                                                                Onayla
+                                                            </Button>
+                                                            <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l.id, "REJECTED")}>
+                                                                Reddet
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                    {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
+                                                        <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l.id)}>
+                                                            İptal Et
+                                                        </Button>
+                                                    )}
+                                                    {role === "ADMIN" && (
+                                                        <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l.id)}>
+                                                            Sil
+                                                        </Button>
+                                                    )}
+                                                </Group>
+                                            </Table.Td>
+                                        </Table.Tr>
+                                    ))
+                                )}
+                            </Table.Tbody>
+                        </Table>
+                    </Card>
+
+                    <Stack hiddenFrom="md" gap="sm">
                         {leaves.length === 0 ? (
-                            <Table.Tr>
-                                <Table.Td colSpan={7}>
-                                    <Text c="dimmed" ta="center" py="xl">
-                                        Kayıtlı izin talebi bulunmuyor.
-                                    </Text>
-                                </Table.Td>
-                            </Table.Tr>
+                            <Card withBorder radius="md" p="xl" ta="center">
+                                <Text c="dimmed">Kayıtlı izin talebi bulunmuyor.</Text>
+                            </Card>
                         ) : (
                             leaves.map((l: LeaveRequest) => (
-                                <Table.Tr key={l.id}>
-                                    <Table.Td>
-                                        <Text fw={500} size="sm">
-                                            {l.employee?.user.name}
-                                        </Text>
-                                        <Text size="xs" c="dimmed">
-                                            {l.employee?.department}
-                                        </Text>
-                                    </Table.Td>
-                                    <Table.Td>{LEAVE_TYPES[l.type]}</Table.Td>
-                                    <Table.Td>
-                                        {formatDateShort(l.startDate)} - {formatDateShort(l.endDate)}
-                                    </Table.Td>
-                                    <Table.Td>
-                                        <Text size="sm" lineClamp={2} title={l.reason || ""}>
-                                            {l.reason || "-"}
-                                        </Text>
-                                    </Table.Td>
-                                    <Table.Td>
-                                        <Text size="sm" c="dimmed" lineClamp={2} title={l.managerNote || ""}>
-                                            {l.managerNote || "-"}
-                                        </Text>
-                                    </Table.Td>
-                                    <Table.Td>
+                                <Card key={l.id} withBorder radius="md" p="md">
+                                    <Group justify="space-between" mb="xs">
+                                        <div>
+                                            <Text fw={600}>{l.employee?.user.name}</Text>
+                                            <Text size="xs" c="dimmed">{l.employee?.department}</Text>
+                                        </div>
                                         <Badge color={STATUS_COLORS[l.status]} variant="light">
                                             {STATUS_LABELS[l.status]}
                                         </Badge>
-                                    </Table.Td>
-                                    <Table.Td align="right">
-                                        <Group gap="xs" justify="flex-end">
-                                            {l.status === "PENDING" && (role === "MANAGER" || role === "ADMIN") && (
-                                                <>
-                                                    <Button size="xs" color="green" onClick={() => handleStatusUpdate(l.id, "APPROVED")}>
-                                                        Onayla
-                                                    </Button>
-                                                    <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l.id, "REJECTED")}>
-                                                        Reddet
-                                                    </Button>
-                                                </>
-                                            )}
-                                            {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
-                                                <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l.id)}>
-                                                    İptal Et
-                                                </Button>
-                                            )}
-                                            {role === "ADMIN" && (
-                                                <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l.id)}>
-                                                    Sil
-                                                </Button>
-                                            )}
-                                        </Group>
-                                    </Table.Td>
-                                </Table.Tr>
+                                    </Group>
+                                    <Group gap="xs" mb="xs">
+                                        <Badge color="indigo" variant="dot">{LEAVE_TYPES[l.type]}</Badge>
+                                        <Text size="xs" fw={500}>{formatDateShort(l.startDate)} - {formatDateShort(l.endDate)}</Text>
+                                    </Group>
+                                    {l.reason && (
+                                        <Text size="sm" c="dimmed" mb="xs">Gerekçe: {l.reason}</Text>
+                                    )}
+                                    {l.managerNote && (
+                                        <Text size="sm" c="dimmed" mb="xs">Yönetici Notu: {l.managerNote}</Text>
+                                    )}
+                                    <Group gap="xs" mt="sm" grow>
+                                        {l.status === "PENDING" && (role === "MANAGER" || role === "ADMIN") && (
+                                            <>
+                                                <Button size="xs" color="green" onClick={() => handleStatusUpdate(l.id, "APPROVED")}>Onayla</Button>
+                                                <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l.id, "REJECTED")}>Reddet</Button>
+                                            </>
+                                        )}
+                                        {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
+                                            <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l.id)}>İptal Et</Button>
+                                        )}
+                                        {role === "ADMIN" && (
+                                            <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l.id)}>Sil</Button>
+                                        )}
+                                    </Group>
+                                </Card>
                             ))
                         )}
-                    </Table.Tbody>
-                </Table>
-            </Card>
+                    </Stack>
+                </>
+            )}
 
-            <Stack hiddenFrom="md" gap="sm">
-                {leaves.length === 0 ? (
-                    <Card withBorder radius="md" p="xl" ta="center">
-                        <Text c="dimmed">Kayıtlı izin talebi bulunmuyor.</Text>
-                    </Card>
-                ) : (
-                    leaves.map((l: LeaveRequest) => (
-                        <Card key={l.id} withBorder radius="md" p="md">
-                            <Group justify="space-between" mb="xs">
-                                <div>
-                                    <Text fw={600}>{l.employee?.user.name}</Text>
-                                    <Text size="xs" c="dimmed">{l.employee?.department}</Text>
-                                </div>
-                                <Badge color={STATUS_COLORS[l.status]} variant="light">
-                                    {STATUS_LABELS[l.status]}
-                                </Badge>
-                            </Group>
-                            <Group gap="xs" mb="xs">
-                                <Badge color="indigo" variant="dot">{LEAVE_TYPES[l.type]}</Badge>
-                                <Text size="xs" fw={500}>{formatDateShort(l.startDate)} - {formatDateShort(l.endDate)}</Text>
-                            </Group>
-                            {l.reason && (
-                                <Text size="sm" c="dimmed" mb="xs">Gerekçe: {l.reason}</Text>
-                            )}
-                            {l.managerNote && (
-                                <Text size="sm" c="dimmed" mb="xs">Yönetici Notu: {l.managerNote}</Text>
-                            )}
-                            <Group gap="xs" mt="sm" grow>
-                                {l.status === "PENDING" && (role === "MANAGER" || role === "ADMIN") && (
-                                    <>
-                                        <Button size="xs" color="green" onClick={() => handleStatusUpdate(l.id, "APPROVED")}>Onayla</Button>
-                                        <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l.id, "REJECTED")}>Reddet</Button>
-                                    </>
-                                )}
-                                {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
-                                    <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l.id)}>İptal Et</Button>
-                                )}
-                                {role === "ADMIN" && (
-                                    <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l.id)}>Sil</Button>
-                                )}
-                            </Group>
-                        </Card>
-                    ))
-                )}
-            </Stack>
             <Modal opened={opened} onClose={close} title="Yeni İzin Talep Et">
                 <form onSubmit={handleSubmit}>
                     <Stack>
