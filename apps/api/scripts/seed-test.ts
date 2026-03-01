@@ -6,6 +6,9 @@ const prisma = new PrismaClient();
 async function main() {
   await prisma.shift.deleteMany();
   await prisma.availabilityBlock.deleteMany();
+  await prisma.leaveBalance.deleteMany();
+  await prisma.leaveRequest.deleteMany();
+  await prisma.leaveType.deleteMany();
   await prisma.employee.deleteMany();
   await prisma.user.deleteMany();
 
@@ -64,6 +67,36 @@ async function main() {
       dayOfWeek: 1,
       startTime: '08:00',
       endTime: '17:00'
+    }
+  });
+
+  // Create standard leave types
+  const annualLeave = await prisma.leaveType.create({
+    data: { code: 'ANNUAL', name: 'Yıllık İzin', isPaid: true, annualEntitlementDays: 14 }
+  });
+
+  await prisma.leaveType.create({
+    data: { code: 'SICK', name: 'Hastalık İzni', isPaid: true, requiresDocument: true }
+  });
+
+  await prisma.leaveType.create({
+    data: { code: 'UNPAID', name: 'Ücretsiz İzin', isPaid: false }
+  });
+
+  await prisma.leaveType.create({
+    data: { code: 'OTHER', name: 'Diğer', isPaid: true }
+  });
+
+  // Assign leave balance to employee for the current year
+  const currentYear = new Date().getFullYear();
+  const workdayMinutes = 8 * 60; // 480 minutes 
+
+  await prisma.leaveBalance.create({
+    data: {
+      employeeId: employee.id,
+      leaveCode: 'ANNUAL',
+      periodYear: currentYear,
+      accruedMinutes: 14 * workdayMinutes
     }
   });
 }

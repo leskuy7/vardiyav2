@@ -1,0 +1,38 @@
+FAIL test/app.e2e-spec.ts (6.041 s)
+  App (e2e)
+    ÔêÜ login ve /auth/me ├ğal─▒┼ş─▒r (23 ms)
+    ÔêÜ register endpoint kald─▒r─▒ld─▒ (404 d├Âner) (7 ms)
+    ÔêÜ employee, shift create i├ğin yetkisizdir (7 ms)
+    ÔêÜ shift overlap 409 d├Âner (62 ms)
+    ÔêÜ availability conflict 422 ve override warning ├╝retir (54 ms)
+    ÔêÜ schedule/week do─şru ┼şekil d├Âner (44 ms)
+    ├ù employee sadece kendi vardiyalar─▒n─▒ listeleyebilir (49 ms)
+    ÔêÜ employee schedule/week ├ğ─▒kt─▒s─▒nda yaln─▒z kendi vardiyalar─▒n─▒ g├Âr├╝r (21 ms)
+    ÔêÜ CSRF ba┼şl─▒─ş─▒ olmayan mutating istek bloklan─▒r (5 ms)
+
+  ÔùÅ App (e2e) ÔÇ║ employee sadece kendi vardiyalar─▒n─▒ listeleyebilir
+
+    expected 201 "Created", got 403 "Forbidden"
+
+      220 |         endTime: '2026-01-07T16:00:00.000Z'
+      221 |       })
+    > 222 |       .expect(201);
+          |        ^
+      223 |
+      224 |     const myShifts = await request(app.getHttpServer())
+      225 |       .get('/api/shifts')
+
+      at Object.<anonymous> (test/app.e2e-spec.ts:222:8)
+      ----
+      at Test._assertStatus (../../node_modules/supertest/lib/test.js:309:14)
+      at ../../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../../node_modules/supertest/lib/test.js:152:11)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 8 passed, 9 total
+Snapshots:   0 total
+Time:        6.26 s, estimated 7 s
+Ran all test suites.

@@ -240,8 +240,42 @@ async function seed() {
     }
     console.log(`  ✅ ${availCount} müsaitlik bloğu oluşturuldu`);
 
+    console.log('\n🏝️ İzin türleri ve bakiyeleri oluşturuluyor...');
+    // Create standard leave types
+    await prisma.leaveType.createMany({
+        data: [
+            { code: 'ANNUAL', name: 'Yıllık İzin', isPaid: true, annualEntitlementDays: 14 },
+            { code: 'SICK', name: 'Hastalık İzni', isPaid: true, requiresDocument: true },
+            { code: 'UNPAID', name: 'Ücretsiz İzin', isPaid: false },
+            { code: 'OTHER', name: 'Diğer', isPaid: true }
+        ],
+        skipDuplicates: true
+    });
+
+    const currentYear = new Date().getFullYear();
+    const workdayMinutes = 8 * 60; // 480 minutes 
+    let balanceCount = 0;
+
+    for (const email of Object.keys(employeeMap)) {
+        const eid = employeeMap[email];
+        await prisma.leaveBalance.upsert({
+            where: {
+                employeeId_leaveCode_periodYear: { employeeId: eid, leaveCode: 'ANNUAL', periodYear: currentYear }
+            },
+            update: {},
+            create: {
+                employeeId: eid,
+                leaveCode: 'ANNUAL',
+                periodYear: currentYear,
+                accruedMinutes: 14 * workdayMinutes
+            }
+        });
+        balanceCount++;
+    }
+    console.log(`  ✅ İzin türleri ve ${balanceCount} çalışanın izin bakiyesi oluşturuldu`);
+
     console.log('\n🎉 Seed tamamlandı!');
-    console.log(`   ${accounts.length} kullanıcı, ${shiftCount} vardiya, ${availCount} müsaitlik`);
+    console.log(`   ${accounts.length} kullanıcı, ${shiftCount} vardiya, ${availCount} müsaitlik, ${balanceCount} izin bakiyesi`);
     console.log('   Tüm hesapların şifresi: Test12345!');
 }
 

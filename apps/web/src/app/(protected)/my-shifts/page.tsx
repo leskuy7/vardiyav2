@@ -20,6 +20,7 @@ import {
   PageError,
   PageLoading,
 } from "../../../components/page-states";
+import { useAuth } from "../../../hooks/use-auth";
 import { useShiftsActions } from "../../../hooks/use-shifts";
 import {
   getShiftStatusColor,
@@ -93,14 +94,7 @@ function SwapRequestModalContent({ shift, employees, currentUserId, onSuccess }:
 export default function MyShiftsPage() {
   const weekStart = currentWeekStartIsoDate();
   const { acknowledgeShift, declineShift } = useShiftsActions(weekStart);
-
-  const { data: me } = useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: async () => {
-      const response = await api.get("/auth/me");
-      return response.data as { employee?: { id: string } };
-    },
-  });
+  const { data: me } = useAuth();
 
   const employeeId = me?.employee?.id;
 

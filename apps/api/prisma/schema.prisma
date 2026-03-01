@@ -36,7 +36,10 @@ enum SwapRequestStatus {
   CANCELLED
 }
 
-enum LeaveType {
+/**
+ * Leave type kodu artik enum; detaylar leave_types tablosunda.
+ */
+enum LeaveTypeCode {
   ANNUAL
   SICK
   UNPAID
@@ -50,6 +53,30 @@ enum LeaveStatus {
   CANCELLED
 }
 
+enum LeaveUnit {
+  DAY       // tam gun veya cok gun
+  HALF_DAY  // yarim gun
+  HOUR      // saat bazli
+}
+
+enum TimeEntryStatus {
+  OPEN
+  CLOSED
+  VOID
+}
+
+enum TimeEntrySource {
+  MANUAL
+  KIOSK
+  MOBILE
+  IMPORT
+}
+
+enum OvertimeStrategy {
+  PLANNED  // vardiya uzerinden
+  ACTUAL   // time_entries uzerinden
+}
+
 model User {
   id               String   @id @default(uuid())
   email            String   @unique
@@ -59,42 +86,79 @@ model User {
   refreshTokenHash String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
   employee         Employee?
   auditLogs        AuditLog[]
 }
 
+model Branch {
+  id        String   @id @default(uuid())
+  name      String
+  city      String?
+  timezone  String   @default("Europe/Istanbul")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees Employee[]
+
+  @@unique([name])
+  @@map("branches")
+}
+
 model Employee {
-  id             String              @id @default(uuid())
-  userId         String              @unique
-  position       String?
-  department     String?
-  phone          String?
-  hourlyRate     Decimal?
-  maxWeeklyHours Int                 @default(45)
-  isActive       Boolean             @default(true)
-  deletedAt      DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shifts         Shift[]
-  availability   AvailabilityBlock[]
-  leaveRequests  LeaveRequest[]
-  swapRequestsSent SwapRequest[]     @relation("SwapRequester")
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  branchId        String?
+  position        String?
+  department      String?
+  phone           String?
+  hourlyRate      Decimal?
+  maxWeeklyHours  Int      @default(45)
+
+  // izin/mesai icin gercek hayatta isine yarar alanlar
+  hireDate        DateTime? @db.Date
+  isActive        Boolean   @default(true)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch          Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  shifts          Shift[]
+  availability    AvailabilityBlock[]
+  leaveRequests   LeaveRequest[]
+  leaveBalances   LeaveBalance[]
+  timeEntries     TimeEntry[]
+  overtimeRecords OvertimeRecord[]
+
+  swapRequestsSent     SwapRequest[] @relation("SwapRequester")
   swapRequestsReceived SwapRequest[] @relation("SwapTarget")
 }
 
 model Shift {
-  id          String       @id @default(uuid())
+  id          String      @id @default(uuid())
   employeeId  String
-  startTime   DateTime     @db.Timestamptz
-  endTime     DateTime     @db.Timestamptz
+  startTime   DateTime    @db.Timestamptz
+  endTime     DateTime    @db.Timestamptz
   note        String?
-  status      ShiftStatus  @default(PUBLISHED)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  employee    Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  status      ShiftStatus @default(PUBLISHED)
+
+  // izin onayi ile iptale iz surmek icin
+  cancelledByLeaveRequestId String?
+  cancelledReason           String?
+
+  // active boolean for overlap exclusion logic without CANCELLED shifts
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   swapRequests SwapRequest[]
-  shiftEvents ShiftEvent[]
+  shiftEvents  ShiftEvent[]
+  timeEntries  TimeEntry[]
 
   @@index([employeeId, startTime, endTime])
 }
@@ -109,16 +173,17 @@ enum ShiftEventAction {
 }
 
 model ShiftEvent {
-  id            String           @id @default(uuid())
-  shiftId       String
-  actorUserId   String
-  action        ShiftEventAction
+  id             String           @id @default(uuid())
+  shiftId        String
+  actorUserId    String
+  action         ShiftEventAction
   previousStatus ShiftStatus?
-  newStatus     ShiftStatus?
-  reason        String?
-  ip            String?
-  createdAt     DateTime         @default(now())
-  shift         Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  newStatus      ShiftStatus?
+  reason         String?
+  ip             String?
+  createdAt      DateTime @default(now())
+
+  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
 
   @@index([shiftId])
   @@index([createdAt])
@@ -130,12 +195,12 @@ model SwapRequest {
   requesterId      String
   targetEmployeeId String?
   status           SwapRequestStatus @default(PENDING)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  shift            Shift             @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  requester        Employee          @relation("SwapRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  targetEmployee   Employee?         @relation("SwapTarget", fields: [targetEmployeeId], references: [id], onDelete: Cascade)
+  shift          Shift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  requester      Employee  @relation("SwapRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  targetEmployee Employee? @relation("SwapTarget", fields: [targetEmployeeId], references: [id], onDelete: Cascade)
 
   @@index([shiftId])
   @@index([requesterId])
@@ -143,18 +208,19 @@ model SwapRequest {
 }
 
 model AvailabilityBlock {
-  id        String           @id @default(uuid())
+  id         String           @id @default(uuid())
   employeeId String
-  type      AvailabilityType
-  dayOfWeek Int
-  startTime String?
-  endTime   String?
-  startDate DateTime?        @db.Date
-  endDate   DateTime?        @db.Date
-  note      String?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  employee  Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type       AvailabilityType
+  dayOfWeek  Int
+  startTime  String?
+  endTime    String?
+  startDate  DateTime? @db.Date
+  endDate    DateTime? @db.Date
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId, dayOfWeek])
 }
@@ -167,23 +233,141 @@ model AuditLog {
   entityId   String
   details    Json?
   createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model LeaveType {
+  id              String       @id @default(uuid())
+  code            LeaveTypeCode @unique
+  name            String
+  isPaid          Boolean @default(true)
+
+  annualEntitlementDays Int? // orn. 14
+  accrualMethod         String? // "YEARLY" | "MONTHLY" | vs
+  requiresDocument      Boolean @default(false) // rapor vb.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
+
+  @@map("leave_types")
+}
+
+model LeaveBalance {
+  id          String        @id @default(uuid())
+  employeeId  String
+  leaveCode   LeaveTypeCode
+  periodYear  Int           // 2026 gibi
+
+  accruedMinutes Int @default(0)
+  usedMinutes    Int @default(0)
+  carryMinutes   Int @default(0)
+  adjustedMinutes Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveCode], references: [code])
+
+  @@unique([employeeId, leaveCode, periodYear])
+  @@index([employeeId, periodYear])
+  @@map("leave_balances")
 }
 
 model LeaveRequest {
   id          String      @id @default(uuid())
   employeeId  String
-  type        LeaveType
-  startDate   DateTime    @db.Date
-  endDate     DateTime    @db.Date
+
+  leaveCode   LeaveTypeCode
+  unit        LeaveUnit @default(DAY)
+
+  // UI icin gun bazli aralik
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+
+  // gercek cakisma/hesap icin zaman damgasi
+  startAt     DateTime @db.Timestamptz
+  endAt       DateTime @db.Timestamptz
+
   status      LeaveStatus @default(PENDING)
   reason      String?
   managerNote String?
+
+  approvedByUserId String?
+  approvedAt       DateTime? @db.Timestamptz
+  rejectedByUserId String?
+  rejectedAt       DateTime? @db.Timestamptz
+  cancelledAt      DateTime? @db.Timestamptz
+
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType   LeaveType   @relation(fields: [leaveCode], references: [code])
+
+  @@index([employeeId, startAt, endAt])
   @@index([employeeId, startDate, endDate])
+  @@map("leave_requests")
+}
+
+model TimeEntry {
+  id          String   @id @default(uuid())
+  employeeId  String
+  shiftId     String?
+
+  checkInAt   DateTime @db.Timestamptz
+  checkOutAt  DateTime? @db.Timestamptz
+
+  // DB-level exclusion constraint icin ek endpoint alani
+  // asil null olan durum uygulamada overlap engellenmeli
+  endAt       DateTime? @db.Timestamptz
+
+  status      TimeEntryStatus @default(OPEN)
+  source      TimeEntrySource @default(MANUAL)
+  note        String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift    Shift?    @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, checkInAt])
+  @@index([shiftId])
+  @@map("time_entries")
+}
+
+model OvertimeRecord {
+  id          String   @id @default(uuid())
+  employeeId  String
+  weekStart   DateTime @db.Date // Pazartesi
+  strategy    OvertimeStrategy
+
+  plannedMinutes Int @default(0)
+  actualMinutes  Int @default(0)
+
+  regularMinutes Int @default(0)
+  overtimeMinutes Int @default(0)
+
+  overtimeMultiplier Decimal @default(1.5)
+  currency       String @default("TRY")
+
+  estimatedPay    Decimal? // hesaplanmis toplam
+  breakdown       Json?    
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, weekStart, strategy])
+  @@index([weekStart])
+  @@map("overtime_records")
 }

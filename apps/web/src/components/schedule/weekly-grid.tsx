@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useMediaQuery } from '@mantine/hooks';
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
-import { Badge, Box, Button, Card, Group, ScrollArea, Stack, Table, Text, ThemeIcon } from '@mantine/core';
+import { Badge, Box, Button, Card, Group, Popover, ScrollArea, Stack, Table, Text, ThemeIcon } from '@mantine/core';
+import { IconInfoCircle } from '@tabler/icons-react';
 import { getShiftStatusColor, getShiftStatusIcon, getShiftStatusLabel } from '../../lib/shift-status';
 import { formatIstanbul } from '../../lib/time';
 
@@ -24,6 +25,43 @@ type WeeklyGridProps = {
   availabilityHints?: Record<string, Record<string, AvailabilityHintType>>;
   scale?: number;
 };
+
+function ColorLegendPopover() {
+  return (
+    <Popover width={320} position="bottom-end" withArrow shadow="md">
+      <Popover.Target>
+        <Button
+          size="compact-sm"
+          variant="light"
+          color="gray"
+          leftSection={<IconInfoCircle size={14} />}
+        >
+          Renk Açıklamaları
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Stack gap={8}>
+          <Text size="sm" fw={700}>Müsaitlik çizgileri</Text>
+          <Group gap="xs" wrap="nowrap">
+            <Box w={16} h={16} style={{ background: 'rgba(250, 82, 82, 0.16)', borderLeft: '5px solid var(--mantine-color-red-5)', borderRadius: 2 }} />
+            <Text size="xs">Kırmızı: Müsait değil</Text>
+          </Group>
+          <Group gap="xs" wrap="nowrap">
+            <Box w={16} h={16} style={{ background: 'rgba(250, 176, 5, 0.16)', borderLeft: '5px solid var(--mantine-color-yellow-5)', borderRadius: 2 }} />
+            <Text size="xs">Sarı: Tercih edilmez</Text>
+          </Group>
+          <Group gap="xs" wrap="nowrap">
+            <Box w={16} h={16} style={{ background: 'rgba(34, 197, 94, 0.12)', borderLeft: '5px solid var(--mantine-color-green-5)', borderRadius: 2 }} />
+            <Text size="xs">Yeşil: Sadece belirli saatler</Text>
+          </Group>
+
+          <Text size="sm" fw={700} mt={4}>Vardiya durumları</Text>
+          <Text size="xs">Rozet üzerindeki metin durumun ne olduğunu gösterir (Onay Bekliyor, Onaylı, vb.).</Text>
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
 
 function formatDayHeader(isoDate: string) {
   const date = new Date(`${isoDate}T00:00:00.000Z`);
@@ -58,7 +96,7 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         opacity: isDragging ? 0.5 : 1,
-        borderLeft: `3px solid var(--mantine-color-${getShiftStatusColor(shift.status)}-6)`,
+        borderLeft: `4px solid var(--mantine-color-${getShiftStatusColor(shift.status)}-6)`,
         fontSize: '0.75rem',
       }}
       {...listeners}
@@ -80,9 +118,9 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void
 
 function availabilityHintStyle(hint: AvailabilityHintType | undefined): { backgroundColor?: string; borderLeft?: string } {
   if (!hint) return {};
-  if (hint === 'UNAVAILABLE') return { backgroundColor: 'rgba(250, 82, 82, 0.08)', borderLeft: '3px solid var(--mantine-color-red-5)' };
-  if (hint === 'PREFER_NOT') return { backgroundColor: 'rgba(250, 176, 5, 0.08)', borderLeft: '3px solid var(--mantine-color-yellow-5)' };
-  if (hint === 'AVAILABLE_ONLY') return { backgroundColor: 'rgba(34, 197, 94, 0.06)', borderLeft: '3px solid var(--mantine-color-green-5)' };
+  if (hint === 'UNAVAILABLE') return { backgroundColor: 'rgba(250, 82, 82, 0.08)', borderLeft: '5px solid var(--mantine-color-red-5)' };
+  if (hint === 'PREFER_NOT') return { backgroundColor: 'rgba(250, 176, 5, 0.08)', borderLeft: '5px solid var(--mantine-color-yellow-5)' };
+  if (hint === 'AVAILABLE_ONLY') return { backgroundColor: 'rgba(34, 197, 94, 0.06)', borderLeft: '5px solid var(--mantine-color-green-5)' };
   return {};
 }
 
@@ -244,7 +282,7 @@ function DailyScheduleView({ employees, days, onCreate, onEdit, availabilityHint
 }
 
 /* ─── Weekly Grid ─── */
-export function WeeklyGrid(props: WeeklyGridProps) {
+function WeeklyGridComponent(props: WeeklyGridProps) {
   const { employees, days, onCreate, onEdit, onMove, availabilityHints } = props;
   const isMobile = useMediaQuery('(max-width: 62em)');
 
@@ -266,21 +304,30 @@ export function WeeklyGrid(props: WeeklyGridProps) {
   if (isMobile) {
     return (
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <DailyScheduleView {...props} />
+        <Stack gap="sm">
+          <Group justify="flex-end">
+            <ColorLegendPopover />
+          </Group>
+          <DailyScheduleView {...props} />
+        </Stack>
       </DndContext>
     );
   }
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <ScrollArea type="always" scrollbars="x" offsetScrollbars>
-        <Table
-          withTableBorder
-          highlightOnHover
-          verticalSpacing={4}
-          horizontalSpacing={4}
-          style={{ tableLayout: 'fixed', minWidth: employees.length > 0 ? 130 * days.length + 200 : undefined }}
-        >
+      <Stack gap="sm">
+        <Group justify="flex-end">
+          <ColorLegendPopover />
+        </Group>
+        <ScrollArea type="always" scrollbars="x" offsetScrollbars>
+          <Table
+            withTableBorder
+            highlightOnHover
+            verticalSpacing={4}
+            horizontalSpacing={4}
+            style={{ tableLayout: 'fixed', minWidth: employees.length > 0 ? 130 * days.length + 200 : undefined }}
+          >
           <Table.Thead>
             <Table.Tr>
               <Table.Th style={{ width: 160, position: 'sticky', left: 0, zIndex: 2, background: 'var(--glass-bg)', backdropFilter: 'blur(8px)' }}>
@@ -359,8 +406,11 @@ export function WeeklyGrid(props: WeeklyGridProps) {
               );
             })}
           </Table.Tbody>
-        </Table>
-      </ScrollArea>
+          </Table>
+        </ScrollArea>
+      </Stack>
     </DndContext>
   );
 }
+
+export const WeeklyGrid = memo(WeeklyGridComponent);

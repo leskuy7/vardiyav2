@@ -3,7 +3,7 @@
 import { ActionIcon, Badge, Card, Grid, Group, List, Paper, Stack, Text, ThemeIcon, Title, Tooltip } from '@mantine/core';
 import { IconAlertTriangle, IconBell, IconChevronRight, IconClockHour4, IconUsers } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
 import { useEmployees } from '../../../hooks/use-employees';
 import { useWeeklyReport } from '../../../hooks/use-reports';
@@ -14,11 +14,7 @@ import { currentWeekStartIsoDate, formatDateShort, formatTimeOnly } from '../../
 export default function DashboardPage() {
   const router = useRouter();
   const weekStart = currentWeekStartIsoDate();
-  const [todayStr, setTodayStr] = useState('');
-
-  useEffect(() => {
-    setTodayStr(new Date().toLocaleDateString('tr-TR'));
-  }, []);
+  const [todayStr] = useState(() => new Date().toLocaleDateString('tr-TR'));
 
   const { data: employees, isLoading: employeesLoading, isError: employeesError } = useEmployees(true);
   const { data: schedule, isLoading: scheduleLoading, isError: scheduleError } = useWeeklySchedule(weekStart);

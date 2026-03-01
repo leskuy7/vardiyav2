@@ -1,0 +1,22 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../database/prisma.service';
+import { LeaveTypesService } from './leave-types.service';
+
+describe('LeaveTypesService', () => {
+  let service: LeaveTypesService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        LeaveTypesService,
+        { provide: PrismaService, useValue: {} },
+      ],
+    }).compile();
+
+    service = module.get<LeaveTypesService>(LeaveTypesService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+});

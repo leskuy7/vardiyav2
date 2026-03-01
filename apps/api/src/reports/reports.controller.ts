@@ -3,6 +3,8 @@ import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
+import { WeekStartQueryDto } from '../common/dto/week-start-query.dto';
+import { currentWeekStartIso } from '../common/time.utils';
 import { ReportsService } from './reports.service';
 
 @Controller('reports')
@@ -12,14 +14,16 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('weekly-hours')
-  weeklyHours(@Query('weekStart') weekStart: string, @Req() request: Request) {
+  weeklyHours(@Query() query: WeekStartQueryDto, @Req() request: Request) {
     const actor = request.user as { role: string; employeeId?: string };
+    const weekStart = query.weekStart ?? currentWeekStartIso();
     return this.reportsService.weeklyHours(weekStart, actor);
   }
 
   @Get('compliance-violations')
-  complianceViolations(@Query('weekStart') weekStart: string, @Req() request: Request) {
+  complianceViolations(@Query() query: WeekStartQueryDto, @Req() request: Request) {
     const actor = request.user as { role: string; employeeId?: string };
+    const weekStart = query.weekStart ?? currentWeekStartIso();
     return this.reportsService.complianceViolations(weekStart, actor);
   }
 

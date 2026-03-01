@@ -12,14 +12,15 @@ import {
     Text,
     TextInput,
     Title,
+    SimpleGrid,
+    Progress,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../lib/api";
 import { LeaveRequest, useLeaves } from "../../../hooks/use-leaves";
+import { useAuth } from "../../../hooks/use-auth";
 import { PageError, PageLoading } from "../../../components/page-states";
 import { formatDateShort } from "../../../lib/time";
 
@@ -45,52 +46,64 @@ const STATUS_LABELS = {
 };
 
 export default function LeavesPage() {
-    const { leavesQuery, createLeave, updateStatus, deleteLeave } = useLeaves();
+    const { leavesQuery, createLeave, updateStatus, deleteLeave, balancesQuery, typesQuery } = useLeaves();
     const [opened, { open, close }] = useDisclosure(false);
+    const { data: me } = useAuth();
+    const currentEmployeeId = me?.employee?.id;
 
-    const { data: me } = useQuery({
-        queryKey: ["auth", "me"],
-        queryFn: async () => {
-            const { data } = await api.get("/auth/me");
-            return data;
-        },
-    });
+    const currentYear = new Date().getFullYear();
+    const { data: balancesRaw, isLoading: balancesLoading } = balancesQuery(currentEmployeeId, currentYear);
+    const balances = balancesRaw && currentEmployeeId ? balancesRaw.filter((b) => b.employeeId === currentEmployeeId) : [];
 
     const form = useForm({
         initialValues: {
-            type: "ANNUAL",
+            leaveCode: "ANNUAL",
+            unit: "DAY",
             startDate: null as Date | null,
             endDate: null as Date | null,
+            startTime: "09:00",
+            endTime: "13:00",
             reason: "",
         },
         validate: {
-            type: (v: string) => (!v ? "İzin türü zorunludur" : null),
+            leaveCode: (v: string) => (!v ? "İzin türü zorunludur" : null),
             startDate: (v: Date | null) => (!v ? "Başlangıç tarihi zorunludur" : null),
-            endDate: (v: Date | null, values: { startDate: Date | null }) => {
-                if (!v) return "Bitiş tarihi zorunludur";
-                if (values.startDate && v < values.startDate) {
-                    return "Bitiş tarihi, başlangıç tarihinden önce olamaz";
+            endDate: (v: Date | null, values: any) => {
+                if (values.unit === "DAY") {
+                    if (!v) return "Bitiş tarihi zorunludur";
+                    if (values.startDate && v < values.startDate) {
+                        return "Bitiş tarihi, başlangıç tarihinden önce olamaz";
+                    }
                 }
                 return null;
             },
+            startTime: (v: string, values: any) => (values.unit === "HOUR" && !v ? "Başlangıç saati zorunludur" : null),
+            endTime: (v: string, values: any) => (values.unit === "HOUR" && !v ? "Bitiş saati zorunludur" : null),
         },
     });
 
     const leaves = leavesQuery.data || [];
     const role = me?.role;
 
-    const handleSubmit = form.onSubmit((values: { type: string; startDate: Date | null; endDate: Date | null; reason: string }) => {
-        if (!values.startDate || !values.endDate) return;
+    const handleSubmit = form.onSubmit((values: any) => {
+        if (!values.startDate) return;
 
         // Normalize to noon UTC to avoid timezone shift dropping dates
         const start = new Date(values.startDate.getTime() - values.startDate.getTimezoneOffset() * 60000);
-        const end = new Date(values.endDate.getTime() - values.endDate.getTimezoneOffset() * 60000);
+        let end = start;
+
+        if (values.unit === "DAY" && values.endDate) {
+            end = new Date(values.endDate.getTime() - values.endDate.getTimezoneOffset() * 60000);
+        }
 
         createLeave.mutate(
             {
-                type: values.type,
+                leaveCode: values.leaveCode,
+                unit: values.unit,
                 startDate: start.toISOString(),
                 endDate: end.toISOString(),
+                startTime: values.unit === "HOUR" ? values.startTime : undefined,
+                endTime: values.unit === "HOUR" ? values.endTime : undefined,
                 reason: values.reason,
             },
             {
@@ -116,10 +129,13 @@ export default function LeavesPage() {
 
     const handleStatusUpdate = (id: string, status: string) => {
         let note;
-        if (status === "REJECTED") {
+        if (status === "APPROVED") {
+            if (!window.confirm("Dikkat: Bu izin onaylandığında, personelin izin tarihleriyle çakışan onaylanmış vardiyaları otomatik iptal edilecektir. Onaylıyor musunuz?")) return;
+        } else if (status === "REJECTED") {
             note = window.prompt("Reddetme nedeninizi yazın (opsiyonel):");
             if (note === null) return;
         }
+
         updateStatus.mutate(
             { id, status, managerNote: note },
             {
@@ -168,6 +184,40 @@ export default function LeavesPage() {
                 )}
             </Group>
 
+            {/* Leave Balances Grid for Current User */}
+            {balances && balances.length > 0 && (
+                <Stack mb="md" gap="xs">
+                    <Text fw={600} size="sm" c="dimmed">Güncel İzin Bakiyeleriniz ({currentYear})</Text>
+                    <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
+                        {balances.map((b) => {
+                            const total = b.accruedMinutes + b.carryMinutes + b.adjustedMinutes;
+                            const remaining = total - b.usedMinutes;
+                            const totalDays = total / (8 * 60);
+                            const remainingDays = remaining / (8 * 60);
+                            const percent = total > 0 ? (remaining / total) * 100 : 0;
+                            return (
+                                <Card key={b.id} withBorder radius="md" p="sm">
+                                    <Text size="sm" fw={600} mb="xs">
+                                        {b.leaveType?.name || b.leaveCode}
+                                    </Text>
+                                    <Group justify="space-between" mb={4}>
+                                        <Text size="xs" c="dimmed">Kalan Hak:</Text>
+                                        <Text size="sm" fw={700} c={percent < 20 ? "red" : "blue"}>
+                                            {Number.isInteger(remainingDays) ? remainingDays : remainingDays.toFixed(1)} Gün
+                                        </Text>
+                                    </Group>
+                                    <Progress value={Math.max(0, percent)} size="sm" color={percent < 20 ? "red" : "blue"} mb={4} />
+                                    <Group justify="space-between">
+                                        <Text size="xs" c="dimmed">Toplam: {Number.isInteger(totalDays) ? totalDays : totalDays.toFixed(1)}</Text>
+                                        <Text size="xs" c="dimmed">Kullanılan: {Number.isInteger(b.usedMinutes / 480) ? (b.usedMinutes / 480) : +(b.usedMinutes / 480).toFixed(1)}</Text>
+                                    </Group>
+                                </Card>
+                            );
+                        })}
+                    </SimpleGrid>
+                </Stack>
+            )}
+
             {leavesQuery.isLoading ? (
                 <PageLoading />
             ) : leavesQuery.isError ? (
@@ -207,7 +257,7 @@ export default function LeavesPage() {
                                                     {l.employee?.department}
                                                 </Text>
                                             </Table.Td>
-                                            <Table.Td>{LEAVE_TYPES[l.type]}</Table.Td>
+                                            <Table.Td>{l.type && l.type in LEAVE_TYPES ? LEAVE_TYPES[l.type as keyof typeof LEAVE_TYPES] : l.leaveCode}</Table.Td>
                                             <Table.Td>
                                                 {formatDateShort(l.startDate)} - {formatDateShort(l.endDate)}
                                             </Table.Td>
@@ -275,7 +325,7 @@ export default function LeavesPage() {
                                         </Badge>
                                     </Group>
                                     <Group gap="xs" mb="xs">
-                                        <Badge color="indigo" variant="dot">{LEAVE_TYPES[l.type]}</Badge>
+                                        <Badge color="indigo" variant="dot">{l.type && l.type in LEAVE_TYPES ? LEAVE_TYPES[l.type as keyof typeof LEAVE_TYPES] : l.leaveCode}</Badge>
                                         <Text size="xs" fw={500}>{formatDateShort(l.startDate)} - {formatDateShort(l.endDate)}</Text>
                                     </Group>
                                     {l.reason && (
@@ -317,25 +367,65 @@ export default function LeavesPage() {
                                 { value: "UNPAID", label: "Ücretsiz İzin" },
                                 { value: "OTHER", label: "Diğer Mazeret İzni" },
                             ]}
-                            {...form.getInputProps("type")}
+                            {...form.getInputProps("leaveCode")}
                             withAsterisk
                         />
-                        <Group grow>
+                        <Select
+                            label="Süre (Birim)"
+                            placeholder="Seçiniz..."
+                            data={[
+                                { value: "DAY", label: "Tam Gün" },
+                                { value: "HALF_DAY", label: "Yarım Gün" },
+                                { value: "HOUR", label: "Saatlik" },
+                            ]}
+                            {...form.getInputProps("unit")}
+                            withAsterisk
+                        />
+
+                        {form.values.unit === "DAY" ? (
+                            <Group grow>
+                                <DateInput
+                                    label="Başlangıç Tarihi"
+                                    placeholder="Örn: 2026-05-10"
+                                    {...form.getInputProps("startDate")}
+                                    withAsterisk
+                                    minDate={new Date()}
+                                />
+                                <DateInput
+                                    label="Bitiş Tarihi"
+                                    placeholder="Örn: 2026-05-15"
+                                    {...form.getInputProps("endDate")}
+                                    withAsterisk
+                                    minDate={form.values.startDate || new Date()}
+                                />
+                            </Group>
+                        ) : (
                             <DateInput
-                                label="Başlangıç Tarihi"
+                                label="Tarih"
                                 placeholder="Örn: 2026-05-10"
                                 {...form.getInputProps("startDate")}
                                 withAsterisk
                                 minDate={new Date()}
                             />
-                            <DateInput
-                                label="Bitiş Tarihi"
-                                placeholder="Örn: 2026-05-15"
-                                {...form.getInputProps("endDate")}
-                                withAsterisk
-                                minDate={form.values.startDate || new Date()}
-                            />
-                        </Group>
+                        )}
+
+                        {form.values.unit === "HOUR" && (
+                            <Group grow>
+                                <TextInput
+                                    type="time"
+                                    label="Başlangıç Saati"
+                                    {...form.getInputProps("startTime")}
+                                    withAsterisk
+                                />
+                                <TextInput
+                                    type="time"
+                                    label="Bitiş Saati"
+                                    {...form.getInputProps("endTime")}
+                                    withAsterisk
+                                />
+                            </Group>
+                        )}
+
                         <TextInput
                             label="Gerekçe / Açıklama"
                             placeholder="Zorunlu değil, isteğe bağlı detaylandırın."

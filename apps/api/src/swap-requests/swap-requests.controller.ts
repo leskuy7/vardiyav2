@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
+import { ApproveSwapRequestDto } from './dto/approve-swap-request.dto';
 import { CreateSwapRequestDto } from './dto/create-swap-request.dto';
 import { SwapRequestsService } from './swap-requests.service';
 
@@ -20,7 +21,7 @@ export class SwapRequestsController {
 
     @Post(':id/approve')
     @Roles('ADMIN', 'MANAGER')
-    async approve(@Param('id') id: string, @Body() body: { targetEmployeeId?: string }, @Req() req: Request) {
+    async approve(@Param('id') id: string, @Body() body: ApproveSwapRequestDto, @Req() req: Request) {
         const actor = req.user as { role: string; employeeId?: string };
         return this.swapRequestsService.approve(id, actor, body?.targetEmployeeId);
     }

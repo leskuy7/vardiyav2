@@ -14,6 +14,10 @@ import { SecurityModule } from './security/security.module';
 import { ShiftsModule } from './shifts/shifts.module';
 import { SwapRequestsModule } from './swap-requests/swap-requests.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
+import { LeaveTypesModule } from './leave-types/leave-types.module';
+import { LeaveBalancesModule } from './leave-balances/leave-balances.module';
+import { TimeEntriesModule } from './time-entries/time-entries.module';
+import { OvertimeModule } from './overtime/overtime.module';
 
 @Module({
   imports: [
@@ -36,7 +40,11 @@ import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
     SecurityModule,
     ReportsModule,
     SwapRequestsModule,
-    LeaveRequestsModule
+    LeaveRequestsModule,
+    LeaveTypesModule,
+    LeaveBalancesModule,
+    TimeEntriesModule,
+    OvertimeModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard }

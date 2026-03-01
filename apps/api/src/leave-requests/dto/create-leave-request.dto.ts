@@ -1,10 +1,20 @@
 import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { LeaveType } from '@prisma/client';
+import { LeaveTypeCode, LeaveUnit } from '@prisma/client';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
 export class CreateLeaveRequestDto {
-    @IsEnum(LeaveType)
-    @IsNotEmpty()
-    type: LeaveType;
+    /** İzin türü (zorunlu). type alanı geriye dönük uyumluluk için opsiyonel. */
+    @IsEnum(LeaveTypeCode)
+    @IsNotEmpty({ message: 'İzin türü (leaveCode) zorunludur' })
+    leaveCode!: LeaveTypeCode;
+
+    @IsEnum(LeaveTypeCode)
+    @IsOptional()
+    type?: LeaveTypeCode;
+
+    @IsEnum(LeaveUnit)
+    @IsOptional()
+    unit?: LeaveUnit;
 
     @IsDateString()
     @IsNotEmpty()
@@ -13,6 +23,16 @@ export class CreateLeaveRequestDto {
     @IsDateString()
     @IsNotEmpty()
     endDate: string;
+
+    @ApiPropertyOptional({ example: '09:00' })
+    @IsString()
+    @IsOptional()
+    startTime?: string;
+
+    @ApiPropertyOptional({ example: '13:00' })
+    @IsString()
+    @IsOptional()
+    endTime?: string;
 
     @IsString()
     @IsOptional()

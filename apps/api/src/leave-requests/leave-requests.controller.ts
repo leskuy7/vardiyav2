@@ -31,9 +31,13 @@ export class LeaveRequestsController {
     async updateStatus(
         @Param('id') id: string,
         @Body() dto: UpdateLeaveRequestStatusDto,
-        @Req() req: Request,
+        @Req() req: any,
     ) {
-        const actor = req.user as { role: string; employeeId?: string };
+        const actor = {
+            role: req.user?.role,
+            employeeId: req.user?.employeeId,
+            sub: req.user?.userId
+        };
         return this.leaveRequestsService.updateStatus(id, dto, actor);
     }
 

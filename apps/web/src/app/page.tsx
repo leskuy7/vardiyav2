@@ -44,7 +44,7 @@ export default function HomePage() {
             </Group>
             <Group gap="sm">
               <ThemeToggle />
-              <Button component={Link} href="/login" variant="light" radius="xl">Giriş Yap</Button>
+              <Button component={Link} href="/login" variant="filled" color="indigo" radius="xl">Giriş Yap</Button>
             </Group>
           </Group>
 
@@ -88,7 +88,9 @@ export default function HomePage() {
                       component={Link}
                       href="/login"
                       size="lg"
-                      className="btn-gradient"
+                      variant="filled"
+                      color="indigo"
+                      radius="xl"
                       rightSection={<IconArrowRight size={18} />}
                     >
                       Hemen Başla
@@ -97,7 +99,7 @@ export default function HomePage() {
                       component={Link}
                       href="/login?demo=admin"
                       size="lg"
-                      variant="outline"
+                      variant="light"
                       color="gray"
                       radius="xl"
                       style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#c7d2fe' }}

@@ -1,12 +1,13 @@
 "use client";
 
-import { Badge, Button, Card, Grid, Group, ScrollArea, Stack, Table, Text, TextInput, Title } from '@mantine/core';
-import { IconDownload } from '@tabler/icons-react';
+import { Badge, Button, Card, Grid, Group, ScrollArea, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
+import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { currentWeekStartIsoDate } from '../../../lib/time';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
 import { useAuth } from '../../../hooks/use-auth';
-import { useComplianceViolations, useSecurityEvents, useWeeklyReport } from '../../../hooks/use-reports';
+import { useComplianceViolations, useSecurityEvents } from '../../../hooks/use-reports';
+import { useOvertime } from '../../../hooks/use-overtime';
 
 function shiftWeek(isoDate: string, dayOffset: number) {
   const value = new Date(`${isoDate}T00:00:00.000Z`);
@@ -25,11 +26,15 @@ function formatWeekRange(isoDate: string) {
 
 export default function ReportsPage() {
   const [weekStart, setWeekStart] = useState(currentWeekStartIsoDate());
+  const [strategy, setStrategy] = useState<"PLANNED" | "ACTUAL">("ACTUAL");
   const [securityDirective, setSecurityDirective] = useState('');
   const [securityFrom, setSecurityFrom] = useState('');
   const [securityTo, setSecurityTo] = useState('');
   const { data: me } = useAuth();
-  const { data, isLoading, isError } = useWeeklyReport(weekStart);
+
+  const { weeklyOvertimeQuery, recalculateOvertime } = useOvertime();
+  const { data: overtimeData, isLoading, isError } = weeklyOvertimeQuery(weekStart, strategy);
+
   const { data: complianceData, isLoading: complianceLoading } = useComplianceViolations(weekStart);
   const isAdmin = me?.role === 'ADMIN';
   const {
@@ -72,8 +77,21 @@ export default function ReportsPage() {
     return 'blue';
   }
 
-  if (isLoading) return <PageLoading />;
-  if (isError || !data) return <PageError message="Rapor yüklenemedi." />;
+  const handleRecalculate = () => {
+    recalculateOvertime.mutate({ weekStart, strategy });
+  };
+
+  const totals = useMemo(() => {
+    if (!overtimeData) return { hours: 0, overtime: 0, cost: 0 };
+    return overtimeData.reduce((acc, row) => ({
+      hours: acc.hours + ((row.regularMinutes + row.overtimeMinutes) / 60),
+      overtime: acc.overtime + (row.overtimeMinutes / 60),
+      cost: acc.cost + (row.estimatedPay || 0),
+    }), { hours: 0, overtime: 0, cost: 0 });
+  }, [overtimeData]);
+
+  if (isLoading && !overtimeData) return <PageLoading />;
+  if (isError) return <PageError message="Rapor yüklenemedi." />;
 
   return (
     <Stack>
@@ -92,87 +110,101 @@ export default function ReportsPage() {
           <Badge size="lg" variant="light">{formatWeekRange(weekStart)}</Badge>
           <Button variant="light" onClick={() => setWeekStart((value) => shiftWeek(value, 7))}>Sonraki</Button>
         </Group>
-        <Button
-          variant="light"
-          leftSection={<IconDownload size={16} />}
-          onClick={() => {
-            if (!data) return;
-            const headers = ['Çalışan', 'Normal Saat', 'Toplam Saat', 'Fazla Mesai', 'Maliyet'];
-            const rows = data.employees.map((r) => [
-              r.employeeName,
-              (r.hours - r.overtimeHours).toFixed(2),
-              r.hours.toFixed(2),
-              r.overtimeHours.toFixed(2),
-              r.cost.toFixed(2)
-            ]);
-            const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-            const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `rapor_${weekStart}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
-        >
-          CSV İndir
-        </Button>
       </Group>
 
-      <Grid>
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Card withBorder radius="md" p="md">
-            <Text c="dimmed" size="sm">Toplam Saat</Text>
-            <Title order={3}>{data.totals.hours.toFixed(2)}</Title>
-          </Card>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Card withBorder radius="md" p="md">
-            <Text c="dimmed" size="sm">Toplam Fazla Mesai</Text>
-            <Title order={3}>{data.totals.overtimeHours.toFixed(2)}</Title>
-          </Card>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Card withBorder radius="md" p="md">
-            <Text c="dimmed" size="sm">Toplam Maliyet</Text>
-            <Title order={3}>₺{data.totals.cost.toFixed(2)}</Title>
-          </Card>
-        </Grid.Col>
-      </Grid>
+      <Tabs value={strategy} onChange={(v) => setStrategy(v as "PLANNED" | "ACTUAL")}>
+        <Tabs.List mb="md">
+          <Tabs.Tab value="ACTUAL">Gerçekleşen (Puantaj)</Tabs.Tab>
+          <Tabs.Tab value="PLANNED">Planlanan (Vardiya)</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value={strategy}>
+          <Group justify="flex-end" mb="md">
+            <Button variant="subtle" leftSection={<IconRefresh size={16} />} onClick={handleRecalculate} loading={recalculateOvertime.isPending}>
+              Yeniden Hesapla
+            </Button>
+            <Button
+              variant="light"
+              leftSection={<IconDownload size={16} />}
+              onClick={() => {
+                if (!overtimeData) return;
+                const headers = ['Çalışan', 'Normal Saat', 'Toplam Saat', 'Fazla Mesai', 'Maliyet'];
+                const rows = overtimeData.map((r) => [
+                  r.employee?.user.name || "Bilinmeyen",
+                  (r.regularMinutes / 60).toFixed(2),
+                  ((r.regularMinutes + r.overtimeMinutes) / 60).toFixed(2),
+                  (r.overtimeMinutes / 60).toFixed(2),
+                  (r.estimatedPay || 0).toFixed(2)
+                ]);
+                const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+                const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `rapor_${weekStart}_${strategy}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              CSV İndir
+            </Button>
+          </Group>
 
-      {data.employees.length === 0 ? (
-        <PageEmpty title="Rapor verisi bulunamadı" description="Seçilen hafta için çalışan kırılımı henüz oluşmamış." />
-      ) : (
-        <ScrollArea>
-          <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Çalışan</Table.Th>
-                <Table.Th>Normal Saat</Table.Th>
-                <Table.Th>Toplam Saat</Table.Th>
-                <Table.Th>Fazla Mesai</Table.Th>
-                <Table.Th>Maliyet</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {data.employees.map((row) => (
-                <Table.Tr key={row.employeeId}>
-                  <Table.Td>
-                    <Stack gap={0}>
-                      <Text fw={600}>{row.employeeName}</Text>
-                      <Text c="dimmed" size="xs">#{row.employeeId.slice(0, 8)}</Text>
-                    </Stack>
-                  </Table.Td>
-                  <Table.Td>{(row.hours - row.overtimeHours).toFixed(2)}</Table.Td>
-                  <Table.Td>{row.hours.toFixed(2)}</Table.Td>
-                  <Table.Td>{row.overtimeHours.toFixed(2)}</Table.Td>
-                  <Table.Td>₺{row.cost.toFixed(2)}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </ScrollArea>
-      )}
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card withBorder radius="md" p="md">
+                <Text c="dimmed" size="sm">Toplam Saat</Text>
+                <Title order={3}>{totals.hours.toFixed(2)}</Title>
+              </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card withBorder radius="md" p="md">
+                <Text c="dimmed" size="sm">Toplam Fazla Mesai</Text>
+                <Title order={3}>{totals.overtime.toFixed(2)}</Title>
+              </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card withBorder radius="md" p="md">
+                <Text c="dimmed" size="sm">Toplam Maliyet</Text>
+                <Title order={3}>₺{totals.cost.toFixed(2)}</Title>
+              </Card>
+            </Grid.Col>
+          </Grid>
+
+          {!overtimeData || overtimeData.length === 0 ? (
+            <PageEmpty title="Rapor verisi bulunamadı" description="Seçilen strateji ve hafta için mesai kaydı hesaplanmamış." />
+          ) : (
+            <ScrollArea>
+              <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="md" horizontalSpacing="sm" mt="md">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Çalışan</Table.Th>
+                    <Table.Th>Normal Saat</Table.Th>
+                    <Table.Th>Toplam Saat</Table.Th>
+                    <Table.Th>Fazla Mesai</Table.Th>
+                    <Table.Th>Maliyet</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {overtimeData.map((row) => (
+                    <Table.Tr key={row.id}>
+                      <Table.Td>
+                        <Stack gap={0}>
+                          <Text fw={600}>{row.employee?.user.name}</Text>
+                          <Text c="dimmed" size="xs">#{row.employeeId.slice(0, 8)}</Text>
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>{(row.regularMinutes / 60).toFixed(2)}</Table.Td>
+                      <Table.Td>{((row.regularMinutes + row.overtimeMinutes) / 60).toFixed(2)}</Table.Td>
+                      <Table.Td>{(row.overtimeMinutes / 60).toFixed(2)}</Table.Td>
+                      <Table.Td>₺{(row.estimatedPay || 0).toFixed(2)}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          )}
+        </Tabs.Panel>
+      </Tabs>
 
       <Stack gap="sm">
         <Title order={3}>Uyum İhlalleri (ÇSGB / 4857)</Title>

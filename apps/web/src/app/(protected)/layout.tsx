@@ -209,9 +209,7 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
         </AppShell.Navbar>
 
         <AppShell.Main>
-          <div className="page-enter" style={{ padding: 'var(--mantine-spacing-md)' }}>
-            {children}
-          </div>
+          <div className="page-enter">{children}</div>
         </AppShell.Main>
       </AppShell>
     </>

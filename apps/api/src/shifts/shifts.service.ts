@@ -12,6 +12,66 @@ type ActorWithSub = { role: string; employeeId?: string; sub?: string };
 export class ShiftsService {
   constructor(private readonly prisma: PrismaService) { }
 
+  private getWeekBounds(reference: Date) {
+    const day = reference.getUTCDay();
+    const diff = day === 0 ? 6 : day - 1;
+    const weekStart = new Date(reference.getTime() - diff * 24 * 60 * 60 * 1000);
+    weekStart.setUTCHours(0, 0, 0, 0);
+    const weekEnd = plusDays(weekStart, 7);
+    return { weekStart, weekEnd };
+  }
+
+  private calculateLargestGapHours(
+    intervals: Array<{ startTime: Date; endTime: Date }>,
+    weekStart: Date,
+    weekEnd: Date
+  ) {
+    const allIntervals = intervals
+      .map((s) => ({ start: s.startTime.getTime(), end: s.endTime.getTime() }))
+      .sort((a, b) => a.start - b.start);
+
+    let maxGapMs = 0;
+    let previousEnd = weekStart.getTime();
+
+    for (const interval of allIntervals) {
+      const gap = interval.start - previousEnd;
+      if (gap > maxGapMs) maxGapMs = gap;
+      if (interval.end > previousEnd) previousEnd = interval.end;
+    }
+
+    const finalGap = weekEnd.getTime() - previousEnd;
+    if (finalGap > maxGapMs) maxGapMs = finalGap;
+
+    return maxGapMs / (1000 * 60 * 60);
+  }
+
+  private computeComplianceWarnings(
+    maxWeeklyHours: number,
+    weekShifts: Array<{ startTime: Date; endTime: Date }>,
+    weekStart: Date,
+    weekEnd: Date
+  ) {
+    const warnings: string[] = [];
+    const totalWeeklyHours =
+      weekShifts.reduce((acc, s) => acc + (s.endTime.getTime() - s.startTime.getTime()), 0) /
+      (1000 * 60 * 60);
+
+    if (totalWeeklyHours > maxWeeklyHours) {
+      warnings.push(
+        `Haftalık yasal çalışma süresi (${maxWeeklyHours} saat) aşıldı! Toplam: ${totalWeeklyHours.toFixed(1)} saat.`
+      );
+    }
+
+    const maxGapHours = this.calculateLargestGapHours(weekShifts, weekStart, weekEnd);
+    if (maxGapHours < 24) {
+      warnings.push(
+        `Personelin bu hafta 24 saatlik kesintisiz hafta tatili bulunmuyor! (En büyük boşluk: ${Math.floor(maxGapHours)} saat)`
+      );
+    }
+
+    return warnings;
+  }
+
   private async recordShiftEvent(
     shiftId: string,
     actorUserId: string,
@@ -164,13 +224,9 @@ export class ShiftsService {
   }
 
   async buildComplianceWarnings(employeeId: string, startTime: Date, endTime: Date, forceOverride?: boolean, excludeShiftId?: string) {
-    const warnings: string[] = [];
     const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
-    if (!emp) return warnings;
-
-    // Determine the week boundaries (assuming Monday start for TR standards)
-    const weekStart = parseWeekStart(startTime.toISOString());
-    const weekEnd = plusDays(weekStart, 7);
+    if (!emp) return [];
+    const { weekStart, weekEnd } = this.getWeekBounds(startTime);
 
     // Fetch all shifts in this week
     const weekShifts = await this.prisma.shift.findMany({
@@ -183,45 +239,62 @@ export class ShiftsService {
       orderBy: { startTime: 'asc' }
     });
 
-    // 1. Max Weekly Hours Check
-    const newShiftDurationMs = endTime.getTime() - startTime.getTime();
-    const existingDurationMs = weekShifts.reduce((acc, s) => acc + (s.endTime.getTime() - s.startTime.getTime()), 0);
-    const totalWeeklyHours = (existingDurationMs + newShiftDurationMs) / (1000 * 60 * 60);
+    const warnings = this.computeComplianceWarnings(
+      emp.maxWeeklyHours,
+      [...weekShifts, { startTime, endTime }],
+      weekStart,
+      weekEnd
+    );
 
-    if (totalWeeklyHours > emp.maxWeeklyHours) {
-      const msg = `Haftalık yasal çalışma süresi (${emp.maxWeeklyHours} saat) aşıldı! Toplam: ${totalWeeklyHours.toFixed(1)} saat.`;
-      if (!forceOverride) throw new UnprocessableEntityException({ code: 'COMPLIANCE_MAX_HOURS', message: msg });
-      warnings.push(msg);
-    }
-
-    // 2. Continuous 24-hour weekly rest check
-    // Inject the new shift into the sorted timeline
-    const allIntervals = weekShifts.map(s => ({ start: s.startTime.getTime(), end: s.endTime.getTime() }));
-    allIntervals.push({ start: startTime.getTime(), end: endTime.getTime() });
-    allIntervals.sort((a, b) => a.start - b.start);
-
-    // Find the largest gap
-    let maxGapMs = 0;
-    let previousEnd = weekStart.getTime();
-
-    for (const interval of allIntervals) {
-      const gap = interval.start - previousEnd;
-      if (gap > maxGapMs) maxGapMs = gap;
-      // Overlapping intervals or immediate touches won't update maxGapMs
-      if (interval.end > previousEnd) previousEnd = interval.end;
-    }
-    // Check gap up to end of week
-    const finalGap = weekEnd.getTime() - previousEnd;
-    if (finalGap > maxGapMs) maxGapMs = finalGap;
-
-    const maxGapHours = maxGapMs / (1000 * 60 * 60);
-    if (maxGapHours < 24) {
-      const msg = `Personelin bu hafta 24 saatlik kesintisiz hafta tatili bulunmuyor! (En büyük boşluk: ${Math.floor(maxGapHours)} saat)`;
-      if (!forceOverride) throw new UnprocessableEntityException({ code: 'COMPLIANCE_NO_REST', message: msg });
-      warnings.push(msg);
+    if (!forceOverride && warnings.length > 0) {
+      const first = warnings[0];
+      if (first.includes('yasal çalışma süresi')) {
+        throw new UnprocessableEntityException({ code: 'COMPLIANCE_MAX_HOURS', message: first });
+      }
+      throw new UnprocessableEntityException({ code: 'COMPLIANCE_NO_REST', message: first });
     }
 
     return warnings;
+  }
+
+  async buildComplianceWarningsForWeek(
+    shifts: Array<{ id: string; employeeId: string; startTime: Date; endTime: Date }>
+  ): Promise<Map<string, string[]>> {
+    const warningsByShiftId = new Map<string, string[]>();
+    if (shifts.length === 0) return warningsByShiftId;
+
+    const employeeIds = Array.from(new Set(shifts.map((s) => s.employeeId)));
+    const employees = await this.prisma.employee.findMany({
+      where: { id: { in: employeeIds } },
+      select: { id: true, maxWeeklyHours: true }
+    });
+    const employeeMap = new Map(employees.map((e) => [e.id, e]));
+
+    const shiftsByEmployee = new Map<string, Array<{ id: string; startTime: Date; endTime: Date }>>();
+    for (const shift of shifts) {
+      const list = shiftsByEmployee.get(shift.employeeId) ?? [];
+      list.push({ id: shift.id, startTime: shift.startTime, endTime: shift.endTime });
+      shiftsByEmployee.set(shift.employeeId, list);
+    }
+
+    for (const [employeeId, employeeShifts] of shiftsByEmployee.entries()) {
+      const emp = employeeMap.get(employeeId);
+      if (!emp || employeeShifts.length === 0) continue;
+
+      const { weekStart, weekEnd } = this.getWeekBounds(employeeShifts[0].startTime);
+      const warnings = this.computeComplianceWarnings(
+        emp.maxWeeklyHours,
+        employeeShifts.map((s) => ({ startTime: s.startTime, endTime: s.endTime })),
+        weekStart,
+        weekEnd
+      );
+
+      for (const shift of employeeShifts) {
+        warningsByShiftId.set(shift.id, warnings);
+      }
+    }
+
+    return warningsByShiftId;
   }
 
   async list(employeeId?: string, start?: string, end?: string, status?: string, actor?: { role: string; employeeId?: string }) {
@@ -440,10 +513,10 @@ export class ShiftsService {
   async acknowledge(id: string, actor: { role: string; employeeId?: string }) {
     const shift = await this.getById(id, actor);
     if (actor.role === 'EMPLOYEE' && actor.employeeId !== shift.employeeId) {
-      throw new BadRequestException({ code: 'FORBIDDEN', message: 'You can only acknowledge your own shifts' });
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only acknowledge your own shifts' });
     }
     if (shift.status !== 'PUBLISHED' && shift.status !== 'PROPOSED') {
-      throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be acknowledged' });
+      throw new UnprocessableEntityException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be acknowledged' });
     }
     const updated = await this.prisma.shift.update({ where: { id }, data: { status: 'ACKNOWLEDGED' } });
     const userId = (actor as ActorWithSub)?.sub;
@@ -459,7 +532,7 @@ export class ShiftsService {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only decline your own shifts' });
     }
     if (shift.status !== 'PUBLISHED' && shift.status !== 'PROPOSED') {
-      throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be declined' });
+      throw new UnprocessableEntityException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be declined' });
     }
 
     const updated = await this.prisma.shift.update({

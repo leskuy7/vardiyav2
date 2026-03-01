@@ -47,8 +47,8 @@ describe('App (e2e)', () => {
       }
     });
 
-    const managerEmployee = await prisma.employee.create({ data: { userId: managerUser.id, hourlyRate: 100 } });
-    const employeeEmployee = await prisma.employee.create({ data: { userId: employeeUser.id, hourlyRate: 100 } });
+    const managerEmployee = await prisma.employee.create({ data: { userId: managerUser.id, hourlyRate: 100, department: 'Engineering' } });
+    const employeeEmployee = await prisma.employee.create({ data: { userId: employeeUser.id, hourlyRate: 100, department: 'Engineering' } });
 
     const outsiderUser = await prisma.user.create({
       data: {
@@ -60,7 +60,7 @@ describe('App (e2e)', () => {
     });
 
     const outsiderEmployee = await prisma.employee.create({
-      data: { userId: outsiderUser.id, hourlyRate: 120, department: 'Sales' }
+      data: { userId: outsiderUser.id, hourlyRate: 120, department: 'Engineering' }
     });
 
     managerEmployeeId = managerEmployee.id;

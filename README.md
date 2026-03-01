@@ -49,7 +49,8 @@ Production-ready hedefli vardiya planlama sistemi (monorepo).
 
 ### Web (`apps/web/.env`)
 
-- `NEXT_PUBLIC_API_URL` (public olması gereken tek değer)
+- `NEXT_PUBLIC_API_URL` — İstemci tarafı API base URL (varsayılan: `/api`). Local'de proxy kullanıyorsanız `http://localhost:4000/api` veya boş bırakılabilir.
+- **Production:** Rewrite'ların ve CSP `connect-src`'in doğru çalışması için `NEXT_PUBLIC_API_BASE` ayarlanmalı (API sunucusu origin, örn. `https://api.sirket.com`). Build sırasında set edilmezse uyarı verilir.
 
 ## Local Development
 

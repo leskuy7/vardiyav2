@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
+const AVAILABILITY_STALE_TIME = 2 * 60 * 1000;
+
 export type AvailabilityType = 'UNAVAILABLE' | 'PREFER_NOT' | 'AVAILABLE_ONLY';
 
 export type AvailabilityItem = {
@@ -31,6 +33,7 @@ export type CreateAvailabilityPayload = {
 export function useAvailability(employeeId?: string) {
   return useQuery({
     queryKey: ['availability', employeeId ?? 'all'],
+    staleTime: AVAILABILITY_STALE_TIME,
     queryFn: async () => {
       const query = employeeId ? `?employeeId=${employeeId}` : '';
       const response = await api.get<AvailabilityItem[]>(`/availability${query}`);

@@ -44,6 +44,14 @@ export class ScheduleService {
       },
       orderBy: [{ startTime: 'asc' }]
     });
+    const warningsByShiftId = await this.shiftsService.buildComplianceWarningsForWeek(
+      shifts.map((shift) => ({
+        id: shift.id,
+        employeeId: shift.employeeId,
+        startTime: shift.startTime,
+        endTime: shift.endTime
+      }))
+    );
 
     const leaves = await this.prisma.leaveRequest.findMany({
       where: {
@@ -60,8 +68,7 @@ export class ScheduleService {
       }
     });
 
-    const days = await Promise.all(
-      Array.from({ length: 7 }).map(async (_, index) => {
+    const days = Array.from({ length: 7 }).map((_, index) => {
         const dayDate = plusDays(startDate, index);
         const dayIso = toIsoDate(dayDate);
 
@@ -73,29 +80,17 @@ export class ScheduleService {
           return dayIso >= lStart && dayIso <= lEnd;
         });
 
-        const mappedShifts = await Promise.all(
-          dailyShifts.map(async (shift: any) => {
-            const warnings = await this.shiftsService.buildComplianceWarnings(
-              shift.employeeId,
-              shift.startTime,
-              shift.endTime,
-              false,
-              shift.id // exclude self to get correct overlap limits 
-            );
-
-            return {
-              id: shift.id,
-              employeeId: shift.employeeId,
-              employeeName: shift.employee.user.name,
-              start: shift.startTime.toISOString(),
-              end: shift.endTime.toISOString(),
-              status: shift.status,
-              note: shift.note,
-              swapRequests: shift.swapRequests,
-              warnings
-            };
-          })
-        );
+        const mappedShifts = dailyShifts.map((shift: any) => ({
+          id: shift.id,
+          employeeId: shift.employeeId,
+          employeeName: shift.employee.user.name,
+          start: shift.startTime.toISOString(),
+          end: shift.endTime.toISOString(),
+          status: shift.status,
+          note: shift.note,
+          swapRequests: shift.swapRequests,
+          warnings: warningsByShiftId.get(shift.id) ?? []
+        }));
 
         return {
           date: dayIso,
@@ -108,8 +103,7 @@ export class ScheduleService {
             reason: l.reason
           }))
         };
-      })
-    );
+      });
 
     return {
       start: startDate.toISOString(),

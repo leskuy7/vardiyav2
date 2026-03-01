@@ -16,26 +16,43 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { useForm } from "@mantine/form";
 import Link from "next/link";
 import { IconArrowRight, IconEye, IconEyeOff, IconAt } from "@tabler/icons-react";
 import { AxiosError } from "axios";
-import React, { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/theme-toggle";
 import { useAuth } from "../../hooks/use-auth";
 import { api } from "../../lib/api";
 import { setAccessToken } from "../../lib/token-store";
 
+const darkInputStyles = {
+  input: {
+    background: "rgba(255, 255, 255, 0.06)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    color: "#e0e7ff",
+    "&::placeholder": { color: "rgba(199, 210, 254, 0.4)" },
+  },
+  label: { color: "#c7d2fe" },
+  description: { color: "rgba(199, 210, 254, 0.5)" },
+} as const;
+
 export default function LoginPage() {
   const router = useRouter();
   const { data: user, isLoading: isAuthLoading } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const formRef = React.useRef<HTMLFormElement>(null);
+  const form = useForm({
+    initialValues: { email: "", password: "" },
+    validate: {
+      email: (v) => (!v ? "E-posta veya kullanıcı adı girin" : null),
+      password: (v) => (!v ? "Şifre girin" : v.length < 8 ? "Şifre en az 8 karakter olmalı" : null),
+    },
+  });
 
   const demoAccounts = [
     {
@@ -59,36 +76,21 @@ export default function LoginPage() {
   ];
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
+    if (typeof window === "undefined") return;
     const demo = new URLSearchParams(window.location.search).get("demo");
     const selected =
-      demo === "admin"
-        ? demoAccounts[0]
-        : demo === "manager"
-          ? demoAccounts[1]
-          : demo === "employee"
-            ? demoAccounts[2]
-            : null;
-
+      demo === "admin" ? demoAccounts[0] : demo === "manager" ? demoAccounts[1] : demo === "employee" ? demoAccounts[2] : null;
     if (selected) {
-      setEmail(selected.email);
-      setPassword(selected.password);
-      setTimeout(() => {
-        formRef.current?.requestSubmit();
-      }, 300);
+      form.setValues({ email: selected.email, password: selected.password });
+      setTimeout(() => formRef.current?.requestSubmit(), 300);
     }
   }, []);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const handleSubmit = form.onSubmit(async (values) => {
     setError(null);
     setSubmitting(true);
-
     try {
-      const response = await api.post("/auth/login", { email, password });
+      const response = await api.post("/auth/login", { email: values.email, password: values.password });
       setAccessToken(response.data.accessToken);
       const role = response.data.user?.role as "ADMIN" | "MANAGER" | "EMPLOYEE";
       router.push(role === "EMPLOYEE" ? "/my-shifts" : "/dashboard");
@@ -98,7 +100,7 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   useEffect(() => {
     if (user) {
@@ -258,13 +260,7 @@ export default function LoginPage() {
                       <Title order={3} style={{ color: "#fff" }}>
                         Giriş Yap
                       </Title>
-                      <Badge
-                        variant="light"
-                        style={{
-                          background: "rgba(102, 126, 234, 0.3)",
-                          color: "#a5b4fc",
-                        }}
-                      >
+                      <Badge variant="light" style={{ background: "rgba(102, 126, 234, 0.3)", color: "#a5b4fc" }}>
                         BETA
                       </Badge>
                     </Group>
@@ -273,65 +269,35 @@ export default function LoginPage() {
                       label="Kullanıcı Adı / E-posta"
                       description="Size verilen 6 haneli kod veya e-postanız ile giriş yapın"
                       placeholder="örn. a1b2c3 veya admin@shiftplanner.com"
-                      name="email"
-                      autoComplete="username"
-                      autoCapitalize="none"
-                      spellCheck={false}
                       leftSection={<IconAt size={18} />}
                       size="md"
                       radius="lg"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      required
-                      styles={{
-                        input: {
-                          background: "rgba(255, 255, 255, 0.06)",
-                          borderColor: "rgba(255, 255, 255, 0.1)",
-                          color: "#e0e7ff",
-                          "&::placeholder": {
-                            color: "rgba(199, 210, 254, 0.4)",
-                          },
-                        },
-                        label: { color: "#c7d2fe" },
-                        description: { color: "rgba(199, 210, 254, 0.5)" },
-                      }}
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      styles={darkInputStyles}
+                      {...form.getInputProps("email")}
                     />
 
                     <TextInput
                       label="Şifre"
-                      placeholder="Şifren"
+                      placeholder="Şifreniz"
                       type={showPassword ? "text" : "password"}
-                      name="password"
                       autoComplete="current-password"
                       size="md"
                       radius="lg"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
                       rightSection={
                         <ActionIcon
                           variant="subtle"
                           color="gray"
-                          onClick={() => setShowPassword((value) => !value)}
-                          aria-label={
-                            showPassword ? "Şifreyi gizle" : "Şifreyi göster"
-                          }
+                          onClick={() => setShowPassword((v) => !v)}
+                          aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
                         >
-                          {showPassword ? (
-                            <IconEyeOff size={16} />
-                          ) : (
-                            <IconEye size={16} />
-                          )}
+                          {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                         </ActionIcon>
                       }
-                      required
-                      styles={{
-                        input: {
-                          background: "rgba(255, 255, 255, 0.06)",
-                          borderColor: "rgba(255, 255, 255, 0.1)",
-                          color: "#e0e7ff",
-                        },
-                        label: { color: "#c7d2fe" },
-                      }}
+                      styles={darkInputStyles}
+                      {...form.getInputProps("password")}
                     />
 
                     <Button
@@ -339,36 +305,27 @@ export default function LoginPage() {
                       fullWidth
                       size="md"
                       loading={submitting}
-                      className="btn-gradient"
-                      rightSection={
-                        !submitting ? <IconArrowRight size={18} /> : undefined
-                      }
+                      variant="filled"
+                      color="indigo"
+                      rightSection={!submitting ? <IconArrowRight size={18} /> : undefined}
                     >
                       Giriş Yap
                     </Button>
 
                     <Stack gap="xs">
-                      <Text
-                        size="xs"
-                        ta="center"
-                        style={{ color: "rgba(199, 210, 254, 0.5)" }}
-                      >
+                      <Text size="xs" ta="center" style={{ color: "rgba(199, 210, 254, 0.5)" }}>
                         Demo Hesaplar
                       </Text>
                       <Group grow>
                         {demoAccounts.map((account) => (
                           <Button
                             key={account.label}
-                            variant="default"
+                            variant="light"
+                            color="gray"
                             type="button"
-                            style={{
-                              background: "rgba(255, 255, 255, 0.06)",
-                              borderColor: "rgba(255, 255, 255, 0.1)",
-                              color: "#c7d2fe",
-                            }}
+                            style={{ background: "rgba(255, 255, 255, 0.06)", borderColor: "rgba(255, 255, 255, 0.1)", color: "#c7d2fe" }}
                             onClick={() => {
-                              setEmail(account.email);
-                              setPassword(account.password);
+                              form.setValues({ email: account.email, password: account.password });
                             }}
                           >
                             {account.label}

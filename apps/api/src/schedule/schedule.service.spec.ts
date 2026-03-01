@@ -5,12 +5,14 @@ describe('ScheduleService', () => {
   function createService() {
     const prisma: {
       shift: { findMany: jest.Mock };
+      leaveRequest: { findMany: jest.Mock };
     } = {
-      shift: { findMany: jest.fn() }
+      shift: { findMany: jest.fn() },
+      leaveRequest: { findMany: jest.fn().mockResolvedValue([]) },
     };
 
     const mockShiftsService = {
-      buildComplianceWarnings: jest.fn().mockResolvedValue([])
+      buildComplianceWarningsForWeek: jest.fn().mockResolvedValue(new Map())
     };
 
     return {

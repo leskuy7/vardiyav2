@@ -11,15 +11,23 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useMemo, useState } from "react";
 import { PageError, PageLoading } from "../../../components/page-states";
 import { useAvailability } from "../../../hooks/use-availability";
 import { useEmployees } from "../../../hooks/use-employees";
 import { useShiftsActions, useWeeklySchedule } from "../../../hooks/use-shifts";
 import type { AvailabilityHintType } from "../../../components/schedule/weekly-grid";
 import { currentWeekStartIsoDate, isoToLocalTimeString, localTimeToIso } from "../../../lib/time";
-import { ShiftModal } from "../../../components/schedule/shift-modal";
-import { WeeklyGrid } from "../../../components/schedule/weekly-grid";
+
+const WeeklyGrid = dynamic(
+  () => import("../../../components/schedule/weekly-grid").then((m) => m.WeeklyGrid),
+  { loading: () => <PageLoading /> }
+);
+const ShiftModal = dynamic(
+  () => import("../../../components/schedule/shift-modal").then((m) => m.ShiftModal),
+  { loading: () => <PageLoading /> }
+);
 
 function shiftIsoDate(isoDate: string, days: number) {
   const value = new Date(`${isoDate}T00:00:00.000Z`);
@@ -149,22 +157,22 @@ export default function SchedulePage() {
     return out;
   }, [availabilityList, filteredEmployees, data?.days]);
 
-  function openCreate(employeeId: string, date: string) {
+  const openCreate = useCallback((employeeId: string, date: string) => {
     setSelectedShift(undefined);
     setSelectedEmployeeId(employeeId);
     const start = localTimeToIso(date, "06:00");
     const end = localTimeToIso(date, "14:00");
     setSelectedShift({ id: "", employeeId, start, end });
     setModalOpen(true);
-  }
+  }, []);
 
-  function openEdit(shift: {
+  const openEdit = useCallback((shift: {
     id: string;
     employeeId: string;
     start: string;
     end: string;
     note?: string;
-  }) {
+  }) => {
     setSelectedEmployeeId(shift.employeeId);
     setSelectedShift({
       id: shift.id,
@@ -174,15 +182,15 @@ export default function SchedulePage() {
       note: shift.note,
     });
     setModalOpen(true);
-  }
+  }, []);
 
-  async function handleSubmit(payload: {
+  const handleSubmit = useCallback(async (payload: {
     employeeId: string;
     startTime: string;
     endTime: string;
     note?: string;
     forceOverride?: boolean;
-  }) {
+  }) => {
     try {
       if (selectedShift?.id) {
         const result = await updateShift.mutateAsync({
@@ -215,13 +223,13 @@ export default function SchedulePage() {
         color: "red",
       });
     }
-  }
+  }, [selectedShift, updateShift, createShift]);
 
-  async function handleMove(payload: {
+  const handleMove = useCallback(async (payload: {
     shiftId: string;
     employeeId: string;
     targetDate: string;
-  }) {
+  }) => {
     const shift = shiftIndex.get(payload.shiftId);
     if (!shift) return;
     const start = new Date(shift.start);
@@ -252,7 +260,43 @@ export default function SchedulePage() {
         color: "red",
       });
     }
-  }
+  }, [shiftIndex, updateShift]);
+
+  const closeWarning = useCallback(() => setWarning(null), []);
+  const closeModal = useCallback(() => setModalOpen(false), []);
+  const openQuickCreate = useCallback(() => {
+    setSelectedShift(undefined);
+    setSelectedEmployeeId((employees ?? [])[0]?.id ?? "");
+    setModalOpen(true);
+  }, [employees]);
+
+  const employeeOptions = useMemo(
+    () =>
+      (employees ?? []).map((e) => ({
+        value: e.id,
+        label: e.user.name,
+      })),
+    [employees]
+  );
+
+  const handleDelete = useCallback(async () => {
+    if (!selectedShift?.id) return;
+    try {
+      await deleteShift.mutateAsync(selectedShift.id);
+      setModalOpen(false);
+      notifications.show({
+        title: "Başarılı",
+        message: "Vardiya iptal edildi.",
+        color: "green",
+      });
+    } catch {
+      notifications.show({
+        title: "Hata",
+        message: "Vardiya iptal edilemedi.",
+        color: "red",
+      });
+    }
+  }, [selectedShift?.id, deleteShift]);
 
   if (isLoading) return <PageLoading />;
   if (isError || !data) return <PageError message="Plan yüklenemedi." />;
@@ -290,11 +334,7 @@ export default function SchedulePage() {
             className="btn-gradient"
             disabled={!(employees ?? []).length}
             title={!(employees ?? []).length ? "Önce en az bir çalışan ekleyin." : undefined}
-            onClick={() => {
-              setSelectedShift(undefined);
-              setSelectedEmployeeId((employees ?? [])[0]?.id ?? "");
-              setModalOpen(true);
-            }}
+            onClick={openQuickCreate}
           >
             Vardiya Ekle
           </Button>
@@ -343,7 +383,7 @@ export default function SchedulePage() {
           variant="light"
           title="Planlama Uyarısı"
           withCloseButton
-          onClose={() => setWarning(null)}
+          onClose={closeWarning}
         >
           {warning}
         </Alert>
@@ -355,25 +395,15 @@ export default function SchedulePage() {
         days={data.days}
         availabilityHints={availabilityHints}
         onCreate={openCreate}
-        onEdit={(shift) =>
-          openEdit({
-            id: shift.id,
-            employeeId: shift.employeeId,
-            start: shift.start,
-            end: shift.end,
-          })
-        }
+        onEdit={openEdit}
         onMove={handleMove}
       />
 
       <ShiftModal
         opened={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         employeeId={selectedEmployeeId}
-        employees={(employees ?? []).map((e) => ({
-          value: e.id,
-          label: e.user.name,
-        }))}
+        employees={employeeOptions}
         initial={
           selectedShift
             ? {
@@ -384,27 +414,7 @@ export default function SchedulePage() {
             : undefined
         }
         onSubmit={handleSubmit}
-        onDelete={
-          selectedShift?.id
-            ? async () => {
-              try {
-                await deleteShift.mutateAsync(selectedShift.id);
-                setModalOpen(false);
-                notifications.show({
-                  title: "Başarılı",
-                  message: "Vardiya iptal edildi.",
-                  color: "green",
-                });
-              } catch {
-                notifications.show({
-                  title: "Hata",
-                  message: "Vardiya iptal edilemedi.",
-                  color: "red",
-                });
-              }
-            }
-            : undefined
-        }
+        onDelete={selectedShift?.id ? handleDelete : undefined}
       />
     </Stack>
   );

@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
+const LONG_STALE_TIME = 5 * 60 * 1000;
+
 export type EmployeeItem = {
   id: string;
   user: { id: string; name: string; email: string };
@@ -17,6 +19,7 @@ export type EmployeeItem = {
 export function useEmployees(active = true) {
   return useQuery({
     queryKey: ["employees", active],
+    staleTime: LONG_STALE_TIME,
     queryFn: async () => {
       const response = await api.get<EmployeeItem[]>(
         `/employees?active=${active}`,
@@ -29,6 +32,7 @@ export function useEmployees(active = true) {
 export function useMetaDepartments() {
   return useQuery({
     queryKey: ["meta", "departments"],
+    staleTime: LONG_STALE_TIME,
     queryFn: async () => {
       const response = await api.get<string[]>("/meta/departments");
       const defaults = ["Mutfak", "Servis", "Yönetim", "Temizlik"];
@@ -42,6 +46,7 @@ export function useMetaDepartments() {
 export function useMetaPositions() {
   return useQuery({
     queryKey: ["meta", "positions"],
+    staleTime: LONG_STALE_TIME,
     queryFn: async () => {
       const response = await api.get<string[]>("/meta/positions");
       const defaults = ["Aşçı", "Garson", "Komi", "Barmen", "Müdür", "Kasiyer"];
