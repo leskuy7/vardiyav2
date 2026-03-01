@@ -3,9 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "npm run prisma:generate && npm run prisma:deploy && nest build && npx tsc scripts/seed-prod.ts --outDir dist --esModuleInterop --resolveJsonModule --skipLibCheck",
+    "build": "npm run prisma:generate && nest build && npx tsc scripts/seed-prod.ts --outDir dist --esModuleInterop --resolveJsonModule --skipLibCheck",
     "start": "node dist/main",
-    "start:prod": "node dist/main",
+    "start:prod": "prisma migrate deploy && node dist/main",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "jest --config jest.config.ts",
     "test:e2e": "npm run prisma:push && jest --config test/jest-e2e.json",
