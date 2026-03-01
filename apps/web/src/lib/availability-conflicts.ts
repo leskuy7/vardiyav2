@@ -64,10 +64,10 @@ export function getAvailabilityConflicts(
       : block.startTime ? `${block.startTime}–24:00` : block.endTime ? `00:00–${block.endTime}` : "00:00–24:00";
     const label =
       block.type === "UNAVAILABLE"
-        ? "Bu günde çalışan “Müsait değil” olarak işaretlemiş."
+        ? `Bu günde (${timeRange}) çalışan "Müsait değil" olarak işaretlemiş.`
         : block.type === "PREFER_NOT"
-          ? "Bu günde çalışan “Tercih etmiyorum” olarak işaretlemiş."
-          : "Vardiya, çalışanın “Sadece belirli saatler” aralığıyla kısmen çakışıyor.";
+          ? `Bu günde (${timeRange}) çalışan "Tercih etmiyorum" olarak işaretlemiş.`
+          : `Vardiya, çalışanın "Sadece belirli saatler" aralığıyla (${timeRange}) kısmen çakışıyor.`;
     conflicts.push({ type: block.type, label, timeRange, note: block.note });
   }
 
@@ -88,10 +88,10 @@ export function getAvailabilityConflicts(
         : block.startTime ? `${block.startTime}–24:00` : block.endTime ? `00:00–${block.endTime}` : "00:00–24:00";
       const label =
         block.type === "UNAVAILABLE"
-          ? "Bitiş gününde çalışan “Müsait değil” olarak işaretlemiş."
+          ? `Bitiş gününde (${timeRange}) çalışan "Müsait değil" olarak işaretlemiş.`
           : block.type === "PREFER_NOT"
-            ? "Bitiş gününde çalışan “Tercih etmiyorum” olarak işaretlemiş."
-            : "Bitiş gününde “Sadece belirli saatler” aralığıyla çakışma var.";
+            ? `Bitiş gününde (${timeRange}) çalışan "Tercih etmiyorum" olarak işaretlemiş.`
+            : `Bitiş gününde "Sadece belirli saatler" aralığıyla (${timeRange}) çakışma var.`;
       conflicts.push({ type: block.type, label, timeRange, note: block.note });
     }
   }

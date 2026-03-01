@@ -12,6 +12,7 @@ import {
   IconLogout,
   IconUsers
 } from '@tabler/icons-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
 import { PropsWithChildren, useEffect } from 'react';
 import { ThemeToggle } from '../../components/theme-toggle';
@@ -22,6 +23,7 @@ import { getAccessToken, setAccessToken } from '../../lib/token-store';
 export default function ProtectedLayout({ children }: PropsWithChildren) {
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const [opened, { toggle, close }] = useDisclosure(false);
 
   const { data, isLoading, isError } = useAuth();
@@ -83,6 +85,7 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
     try {
       await api.post('/auth/logout');
     } finally {
+      queryClient.removeQueries({ queryKey: ['auth', 'me'] });
       setAccessToken(null);
       router.replace('/login');
     }

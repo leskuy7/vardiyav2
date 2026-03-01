@@ -59,8 +59,8 @@ export default function LeavesPage() {
         initialValues: {
             leaveCode: "ANNUAL",
             unit: "DAY",
-            startDate: null as Date | null,
-            endDate: null as Date | null,
+            startDate: new Date() as Date | null,
+            endDate: new Date() as Date | null,
             startTime: "09:00",
             endTime: "13:00",
             reason: "",

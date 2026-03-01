@@ -1,9 +1,11 @@
 "use client";
 
 import { createTheme, MantineProvider, localStorageColorSchemeManager } from '@mantine/core';
+import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
 import { ModalsProvider } from '@mantine/modals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import 'dayjs/locale/tr';
 import { PropsWithChildren, useState } from 'react';
 import { COLOR_SCHEME_STORAGE_KEY, DEFAULT_COLOR_SCHEME } from '../lib/color-scheme';
 
@@ -94,12 +96,14 @@ export function AppProvider({ children }: PropsWithChildren) {
 
   return (
     <MantineProvider theme={theme} defaultColorScheme={DEFAULT_COLOR_SCHEME} colorSchemeManager={colorSchemeManager}>
-      <Notifications position="top-right" autoClose={3000} />
-      <QueryClientProvider client={queryClient}>
-        <ModalsProvider>
-          {children}
-        </ModalsProvider>
-      </QueryClientProvider>
+      <DatesProvider settings={{ locale: 'tr' }}>
+        <Notifications position="top-right" autoClose={3000} />
+        <QueryClientProvider client={queryClient}>
+          <ModalsProvider>
+            {children}
+          </ModalsProvider>
+        </QueryClientProvider>
+      </DatesProvider>
     </MantineProvider>
   );
 }

@@ -167,9 +167,8 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
               <Stack gap="xs">
                 {availabilityConflicts.map((c, i) => (
                   <div key={i}>
-                    <Text size="sm">{c.label}</Text>
-                    {c.timeRange ? <Text size="xs" fw={600} mt={2}>Saatler: {c.timeRange}</Text> : null}
-                    {c.note ? <Text size="xs" c="dimmed" mt={4}>Açıklama: {c.note}</Text> : null}
+                    {c.timeRange ? <Text size="sm" fw={600}>Saatler: {c.timeRange}</Text> : null}
+                    {c.note ? <Text size="sm" mt={2}>Neden: {c.note}</Text> : <Text size="sm" mt={c.timeRange ? 2 : 0}>{c.label}</Text>}
                   </div>
                 ))}
                 <Text size="xs" c="dimmed" mt="xs">

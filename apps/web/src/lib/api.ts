@@ -1,7 +1,13 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { getAccessToken, setAccessToken } from './token-store';
 
-const envApiUrl = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+// Production (Vercel): set NEXT_PUBLIC_API_BASE to Railway API root (e.g. https://xxx.up.railway.app)
+// or NEXT_PUBLIC_API_URL to full API path (e.g. https://xxx.up.railway.app/api)
+const envApiUrl =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NEXT_PUBLIC_API_BASE
+    ? `${process.env.NEXT_PUBLIC_API_BASE.replace(/\/$/, '')}/api`
+    : '/api');
 const API_URL = envApiUrl.endsWith('/') ? envApiUrl : `${envApiUrl}/`;
 
 export const api = axios.create({

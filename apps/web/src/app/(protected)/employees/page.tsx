@@ -241,10 +241,11 @@ export default function EmployeesPage() {
       }
 
       setModalOpen(false);
-    } catch {
+    } catch (error: unknown) {
+      const apiMessage = (error as { response?: { data?: { message?: string; code?: string } } })?.response?.data?.message;
       notifications.show({
         title: "Hata",
-        message: "İşlem başarısız. Alanları kontrol edip tekrar dene.",
+        message: apiMessage ?? "İşlem başarısız.",
         color: "red",
       });
     }

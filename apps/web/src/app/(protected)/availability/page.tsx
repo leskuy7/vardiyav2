@@ -15,6 +15,7 @@ import {
   Textarea,
   Title
 } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { TimeInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { useMemo, useState } from 'react';
@@ -213,10 +214,24 @@ export default function AvailabilityPage() {
                         color="red"
                         size="xs"
                         loading={deleteAvailability.isPending}
-                        onClick={() => deleteAvailability.mutate(item.id, {
-                          onSuccess: () => notifications.show({ title: 'Silindi', message: 'Müsaitlik kaydı silindi.', color: 'green' }),
-                          onError: () => notifications.show({ title: 'Hata', message: 'Silme başarısız.', color: 'red' }),
-                        })}
+                        onClick={() => {
+                          modals.openConfirmModal({
+                            title: 'Müsaitlik kaydını sil',
+                            centered: true,
+                            children: (
+                              <Text size="sm" c="dimmed">
+                                Bu müsaitlik kaydını silmek istediğinize emin misiniz?
+                              </Text>
+                            ),
+                            labels: { confirm: 'Sil', cancel: 'İptal' },
+                            confirmProps: { color: 'red' },
+                            onConfirm: () =>
+                              deleteAvailability.mutate(item.id, {
+                                onSuccess: () => notifications.show({ title: 'Silindi', message: 'Müsaitlik kaydı silindi.', color: 'green' }),
+                                onError: () => notifications.show({ title: 'Hata', message: 'Silme başarısız.', color: 'red' }),
+                              }),
+                          });
+                        }}
                       >
                         Sil
                       </Button>
