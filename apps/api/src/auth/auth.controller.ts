@@ -5,6 +5,8 @@ import type { Request, Response } from 'express';
 import { AuditService } from '../common/audit.service';
 import { CsrfGuard } from '../common/auth/csrf.guard';
 import { AuthService } from './auth.service';
+import { BootstrapGuard } from './bootstrap.guard';
+import { BootstrapAdminDto } from './dto/bootstrap-admin.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -15,6 +17,12 @@ export class AuthController {
     private readonly config: ConfigService,
     private readonly auditService: AuditService
   ) { }
+
+  @Post('bootstrap-admin')
+  @UseGuards(BootstrapGuard)
+  async bootstrapAdmin(@Body() dto: BootstrapAdminDto) {
+    return this.authService.bootstrapAdmin(dto);
+  }
 
   @Post('login')
   @Throttle({

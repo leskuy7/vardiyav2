@@ -3,6 +3,8 @@ import type { AvailabilityItem } from "../hooks/use-availability";
 export type AvailabilityConflict = {
   type: "UNAVAILABLE" | "PREFER_NOT" | "AVAILABLE_ONLY";
   label: string;
+  /** Çakışan bloğun saat aralığı (örn. "09:00–17:00"). */
+  timeRange?: string | null;
   note?: string | null;
 };
 
@@ -57,13 +59,16 @@ export function getAvailabilityConflicts(
     const blockEnd = block.endTime ? parseTimeToMinutes(block.endTime) : 24 * 60;
     if (!intervalsOverlap(shiftStart1, shiftEnd1, blockStart, blockEnd)) continue;
 
+    const timeRange = block.startTime && block.endTime
+      ? `${block.startTime}–${block.endTime}`
+      : block.startTime ? `${block.startTime}–24:00` : block.endTime ? `00:00–${block.endTime}` : "00:00–24:00";
     const label =
       block.type === "UNAVAILABLE"
-        ? "Bu tarih/saatte çalışan “Müsait değil” olarak işaretlemiş."
+        ? "Bu günde çalışan “Müsait değil” olarak işaretlemiş."
         : block.type === "PREFER_NOT"
-          ? "Bu tarih/saatte çalışan “Tercih etmiyorum” olarak işaretlemiş."
+          ? "Bu günde çalışan “Tercih etmiyorum” olarak işaretlemiş."
           : "Vardiya, çalışanın “Sadece belirli saatler” aralığıyla kısmen çakışıyor.";
-    conflicts.push({ type: block.type, label, note: block.note });
+    conflicts.push({ type: block.type, label, timeRange, note: block.note });
   }
 
   if (isCrossDay) {
@@ -78,13 +83,16 @@ export function getAvailabilityConflicts(
       const blockEnd = block.endTime ? parseTimeToMinutes(block.endTime) : 24 * 60;
       if (!intervalsOverlap(shiftStart2, shiftEnd2, blockStart, blockEnd)) continue;
 
+      const timeRange = block.startTime && block.endTime
+        ? `${block.startTime}–${block.endTime}`
+        : block.startTime ? `${block.startTime}–24:00` : block.endTime ? `00:00–${block.endTime}` : "00:00–24:00";
       const label =
         block.type === "UNAVAILABLE"
           ? "Bitiş gününde çalışan “Müsait değil” olarak işaretlemiş."
           : block.type === "PREFER_NOT"
             ? "Bitiş gününde çalışan “Tercih etmiyorum” olarak işaretlemiş."
             : "Bitiş gününde “Sadece belirli saatler” aralığıyla çakışma var.";
-      conflicts.push({ type: block.type, label, note: block.note });
+      conflicts.push({ type: block.type, label, timeRange, note: block.note });
     }
   }
 

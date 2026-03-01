@@ -9,25 +9,8 @@ export default function manifest(): MetadataRoute.Manifest {
         display: 'standalone',
         background_color: '#0A0B12',
         theme_color: '#4338ca',
-        icons: [
-            {
-                src: '/icons/icon-192.png',
-                sizes: '192x192',
-                type: 'image/png',
-                purpose: 'any',
-            },
-            {
-                src: '/icons/icon-512.png',
-                sizes: '512x512',
-                type: 'image/png',
-                purpose: 'any',
-            },
-            {
-                src: '/icons/icon-512.png',
-                sizes: '512x512',
-                type: 'image/png',
-                purpose: 'maskable',
-            }
-        ],
+        // İkonlar public/icons/ içine icon-192.png (192×192) ve icon-512.png (512×512) eklenince açılmalı.
+        // Eksik/yanlış boyutlu ikon konsol uyarısı verir; eklenene kadar boş bırakıyoruz.
+        icons: [],
     };
 }

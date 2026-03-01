@@ -4,21 +4,33 @@ import { EmployeesService } from './employees.service';
 describe('EmployeesService', () => {
   function createService() {
     const prisma = {
-      user: {
-        findUnique: jest.fn()
-      },
+      user: { findUnique: jest.fn() },
       employee: {
         findMany: jest.fn(),
         findFirst: jest.fn(),
+        findUnique: jest.fn(),
         create: jest.fn(),
         update: jest.fn()
       },
+      organization: { findUnique: jest.fn() },
+      userCredentialVault: { create: jest.fn() },
       $transaction: jest.fn()
+    };
+    const config = {
+      get: jest.fn((key: string) =>
+        key === 'ENCRYPTION_KEY' || key === 'JWT_ACCESS_SECRET'
+          ? 'test-secret'
+          : undefined
+      )
     };
 
     return {
-      service: new EmployeesService(prisma as unknown as ConstructorParameters<typeof EmployeesService>[0]),
-      prisma
+      service: new EmployeesService(
+        prisma as unknown as ConstructorParameters<typeof EmployeesService>[0],
+        config as unknown as ConstructorParameters<typeof EmployeesService>[1]
+      ),
+      prisma,
+      config
     };
   }
 

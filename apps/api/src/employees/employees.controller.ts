@@ -20,14 +20,20 @@ export class EmployeesController {
 
   @Get()
   list(@Req() request: Request, @Query('active') active?: string) {
-    const actor = request.user as { role: string; employeeId?: string };
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
     if (active === undefined) return this.employeesService.list(undefined, actor);
     return this.employeesService.list(active === 'true', actor);
   }
 
+  @Get(':id/credentials')
+  getCredentials(@Param('id') id: string, @Req() request: Request) {
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
+    return this.employeesService.getCredentials(id, actor);
+  }
+
   @Get(':id')
   getById(@Param('id') id: string, @Req() request: Request) {
-    const actor = request.user as { role: string; employeeId?: string };
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
     return this.employeesService.getById(id, actor);
   }
 
@@ -36,12 +42,14 @@ export class EmployeesController {
   async create(@Body() dto: CreateEmployeeDto, @Req() request: Request) {
     const actor = request.user as { sub: string; role: string; employeeId?: string };
     const result = await this.employeesService.create(dto, actor);
+    const employee = 'employee' in result ? result.employee : result;
+    const emp = employee as unknown as { id: string; user: { role: string } };
     await this.auditService.log({
       userId: actor.sub,
       action: 'EMPLOYEE_CREATE',
       entityType: 'EMPLOYEE',
-      entityId: result.id,
-      details: { role: result.user.role }
+      entityId: emp.id,
+      details: { role: emp.user.role }
     });
     return result;
   }

@@ -6,7 +6,7 @@ import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, us
 import { Badge, Box, Button, Card, Group, Popover, ScrollArea, Stack, Table, Text, ThemeIcon } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { getShiftStatusColor, getShiftStatusIcon, getShiftStatusLabel } from '../../lib/shift-status';
-import { formatIstanbul } from '../../lib/time';
+import { formatTimeOnly } from '../../lib/time';
 
 type Employee = { id: string; user: { name: string } };
 type Shift = { id: string; employeeId: string; employeeName?: string; start: string; end: string; status: string };
@@ -102,7 +102,7 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void
       {...listeners}
       {...attributes}
     >
-      <Text size="xs" fw={700} lh={1.2}>{formatIstanbul(shift.start)} - {formatIstanbul(shift.end)}</Text>
+      <Text size="xs" fw={700} lh={1.2}>{formatTimeOnly(shift.start)} – {formatTimeOnly(shift.end)}</Text>
       <Text size="xs" c="dimmed" lh={1.2}>{shiftHours(shift.start, shift.end)} saat</Text>
       <Group justify="space-between" mt={2} gap={4}>
         <Badge size="xs" color={getShiftStatusColor(shift.status)} variant="light" leftSection={<StatusIcon size={10} />}>

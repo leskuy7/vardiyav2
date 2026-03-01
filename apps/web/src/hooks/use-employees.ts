@@ -35,10 +35,7 @@ export function useMetaDepartments() {
     staleTime: LONG_STALE_TIME,
     queryFn: async () => {
       const response = await api.get<string[]>("/meta/departments");
-      const defaults = ["Mutfak", "Servis", "Yönetim", "Temizlik"];
-      return Array.from(new Set([...defaults, ...(response.data ?? [])])).sort(
-        (a, b) => a.localeCompare(b, "tr"),
-      );
+      return (response.data ?? []).sort((a, b) => a.localeCompare(b, "tr"));
     },
   });
 }
@@ -49,17 +46,14 @@ export function useMetaPositions() {
     staleTime: LONG_STALE_TIME,
     queryFn: async () => {
       const response = await api.get<string[]>("/meta/positions");
-      const defaults = ["Aşçı", "Garson", "Komi", "Barmen", "Müdür", "Kasiyer"];
-      return Array.from(new Set([...defaults, ...(response.data ?? [])])).sort(
-        (a, b) => a.localeCompare(b, "tr"),
-      );
+      return (response.data ?? []).sort((a, b) => a.localeCompare(b, "tr"));
     },
   });
 }
 
-type CreateEmployeePayload = {
-  email: string;
-  password: string;
+export type CreateEmployeePayload = {
+  email?: string;
+  password?: string;
   firstName: string;
   lastName: string;
   role?: "MANAGER" | "EMPLOYEE";
@@ -69,6 +63,10 @@ type CreateEmployeePayload = {
   hourlyRate?: number;
   maxWeeklyHours?: number;
 };
+
+export type CreateEmployeeResult =
+  | EmployeeItem
+  | { employee: EmployeeItem; generatedEmail: string; generatedPassword: string };
 
 type UpdateEmployeePayload = {
   id: string;
@@ -93,7 +91,7 @@ export function useEmployeeActions() {
   const createEmployee = useMutation({
     mutationFn: async (payload: CreateEmployeePayload) => {
       const response = await api.post("/employees", payload);
-      return response.data as EmployeeItem;
+      return response.data as CreateEmployeeResult;
     },
     onSuccess: invalidate,
   });

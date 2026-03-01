@@ -163,6 +163,118 @@ export class AuthService {
     }
   }
 
+  async bootstrapAdmin(dto: {
+    businessTypeCode: string;
+    organizationName?: string;
+    adminName?: string;
+  }) {
+    const businessType = await this.prisma.businessType.findUnique({
+      where: { code: dto.businessTypeCode.toUpperCase() },
+      include: { businessTemplates: true },
+    });
+    if (!businessType) {
+      throw new UnauthorizedException({
+        code: "UNKNOWN_BUSINESS_TYPE",
+        message: `Unknown business type: ${dto.businessTypeCode}`,
+      });
+    }
+
+    const login = await this.generateUniqueLogin();
+    const tempPassword = this.generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    const name = (dto.adminName ?? "Admin").trim() || "Admin";
+    const orgName = (dto.organizationName ?? businessType.name).trim() || businessType.name;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: login,
+          name,
+          passwordHash,
+          role: "ADMIN",
+        },
+      });
+
+      const organization = await tx.organization.create({
+        data: {
+          name: orgName,
+          businessTypeId: businessType.id,
+          adminUserId: user.id,
+        },
+      });
+
+      if (businessType.businessTemplates.length > 0) {
+        await tx.orgSuggestion.createMany({
+          data: businessType.businessTemplates.map((t) => ({
+            organizationId: organization.id,
+            kind: t.kind,
+            value: t.value,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return { user, organization };
+    });
+
+    const tokens = await this.issueTokens(
+      result.user.id,
+      result.user.email,
+      result.user.role,
+      undefined,
+    );
+    await this.storeRefreshTokenHash(result.user.id, tokens.refreshToken);
+
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        role: result.user.role,
+        employee: null,
+      },
+      organization: {
+        id: result.organization.id,
+        name: result.organization.name,
+        businessTypeCode: businessType.code,
+      },
+      generatedEmail: result.user.email,
+      generatedPassword: tempPassword,
+    };
+  }
+
+  private async generateUniqueLogin(): Promise<string> {
+    const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+    for (let attempt = 0; attempt < 50; attempt++) {
+      let login = "";
+      for (let i = 0; i < 6; i++) {
+        login += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const existing = await this.prisma.user.findUnique({ where: { email: login } });
+      if (!existing) return login;
+    }
+    throw new Error("Could not generate unique login");
+  }
+
+  private generateTempPassword(): string {
+    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lower = "abcdefghjkmnpqrstuvwxyz";
+    const digits = "23456789";
+    const special = "!@#$%&*";
+    let p = "";
+    p += upper.charAt(Math.floor(Math.random() * upper.length));
+    p += lower.charAt(Math.floor(Math.random() * lower.length));
+    p += digits.charAt(Math.floor(Math.random() * digits.length));
+    p += special.charAt(Math.floor(Math.random() * special.length));
+    for (let i = 0; i < 8; i++) {
+      const pool = upper + lower + digits + special;
+      p += pool.charAt(Math.floor(Math.random() * pool.length));
+    }
+    return p.split("").sort(() => Math.random() - 0.5).join("");
+  }
+
   private async issueTokens(
     userId: string,
     email: string,

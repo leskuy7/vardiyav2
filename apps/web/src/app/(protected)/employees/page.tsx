@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ActionIcon,
   Autocomplete,
   Badge,
   Button,
@@ -13,6 +12,7 @@ import {
   NumberInput,
   Paper,
   ScrollArea,
+  SegmentedControl,
   Select,
   Stack,
   Table,
@@ -21,12 +21,7 @@ import {
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import {
-  IconBuilding,
-  IconEye,
-  IconEyeOff,
-  IconTag,
-} from "@tabler/icons-react";
+import { IconBuilding, IconTag } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useMemo, useState } from "react";
 import { PageError, PageLoading } from "../../../components/page-states";
@@ -72,8 +67,12 @@ function nameParts(name: string) {
   };
 }
 
+type ActiveTab = "active" | "archive";
+
 export default function EmployeesPage() {
-  const { data, isLoading, isError } = useEmployees(true);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("active");
+  const isActiveList = activeTab === "active";
+  const { data, isLoading, isError } = useEmployees(isActiveList);
   const { data: metaDepartments } = useMetaDepartments();
   const { data: metaPositions } = useMetaPositions();
   const { createEmployee, updateEmployee, archiveEmployee, bulkClearField } =
@@ -87,7 +86,11 @@ export default function EmployeesPage() {
     null,
   );
   const [form, setForm] = useState<EmployeeForm>(initialForm);
-  const [newCredentials, setNewCredentials] = useState<{ email: string, password: string, name: string } | null>(null);
+  const [newCredentials, setNewCredentials] = useState<{
+    email: string;
+    password: string;
+    name: string;
+  } | null>(null);
 
   const departmentOptions = useMemo(() => {
     const departments = (metaDepartments ?? []).filter(Boolean);
@@ -192,12 +195,7 @@ export default function EmployeesPage() {
           return;
         }
 
-        const generatedEmail = Math.random().toString(16).slice(2, 8).toLowerCase();
-        const generatedPassword = Math.random().toString(36).slice(-8);
-
-        await createEmployee.mutateAsync({
-          email: generatedEmail,
-          password: generatedPassword,
+        const result = await createEmployee.mutateAsync({
           firstName: form.firstName,
           lastName: form.lastName,
           position: form.position || undefined,
@@ -207,11 +205,18 @@ export default function EmployeesPage() {
           maxWeeklyHours: form.maxWeeklyHours || undefined,
         });
 
-        setNewCredentials({
-          email: generatedEmail,
-          password: generatedPassword,
-          name: `${form.firstName} ${form.lastName}`.trim()
-        });
+        const employee =
+          "employee" in result ? result.employee : result;
+        if (
+          "generatedEmail" in result &&
+          "generatedPassword" in result
+        ) {
+          setNewCredentials({
+            email: result.generatedEmail,
+            password: result.generatedPassword,
+            name: employee.user.name,
+          });
+        }
 
         notifications.show({
           title: "Başarılı",
@@ -279,10 +284,20 @@ export default function EmployeesPage() {
           </Text>
         </Stack>
         <Group>
+          <SegmentedControl
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as ActiveTab)}
+            data={[
+              { label: "Aktif", value: "active" },
+              { label: "Arşiv", value: "archive" },
+            ]}
+          />
           <Badge size="lg" variant="light">
             Toplam: {total}
           </Badge>
-          <Button onClick={openCreateModal}>Çalışan Ekle</Button>
+          {isActiveList && (
+            <Button onClick={openCreateModal}>Çalışan Ekle</Button>
+          )}
         </Group>
       </Group>
 
@@ -290,7 +305,7 @@ export default function EmployeesPage() {
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Card withBorder radius="md" p="md">
             <Text c="dimmed" size="sm">
-              Aktif Çalışan
+              {isActiveList ? "Aktif Çalışan" : "Arşivlenen"}
             </Text>
             <Title order={3}>{total}</Title>
           </Card>
@@ -373,6 +388,11 @@ export default function EmployeesPage() {
                       <Text size="xs" c="dimmed">
                         #{employee.id.slice(0, 8)}
                       </Text>
+                      {!isActiveList && (
+                        <Badge size="sm" variant="outline" color="gray" mt={4}>
+                          Arşivlendi
+                        </Badge>
+                      )}
                     </Stack>
                   </Table.Td>
                   <Table.Td>{employee.user.email}</Table.Td>
@@ -399,24 +419,26 @@ export default function EmployeesPage() {
                   </Table.Td>
                   <Table.Td>{employee.maxWeeklyHours ?? 45} saat</Table.Td>
                   <Table.Td>
-                    <Group gap="xs">
-                      <Button
-                        size="xs"
-                        variant="light"
-                        onClick={() => openEditModal(employee)}
-                      >
-                        Düzenle
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        color="red"
-                        onClick={() => handleArchive(employee)}
-                        loading={archiveEmployee.isPending}
-                      >
-                        Arşivle
-                      </Button>
-                    </Group>
+                    {isActiveList && (
+                      <Group gap="xs">
+                        <Button
+                          size="xs"
+                          variant="light"
+                          onClick={() => openEditModal(employee)}
+                        >
+                          Düzenle
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="light"
+                          color="red"
+                          onClick={() => handleArchive(employee)}
+                          loading={archiveEmployee.isPending}
+                        >
+                          Arşivle
+                        </Button>
+                      </Group>
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ))
@@ -437,6 +459,11 @@ export default function EmployeesPage() {
                 <div>
                   <Text fw={600} size="sm">{employee.user.name}</Text>
                   <Text size="xs" c="dimmed">{employee.user.email}</Text>
+                  {!isActiveList && (
+                    <Badge size="sm" variant="outline" color="gray" mt={4}>
+                      Arşivlendi
+                    </Badge>
+                  )}
                 </div>
               </Group>
               <Group gap="xs" mb="xs">
@@ -449,18 +476,20 @@ export default function EmployeesPage() {
               </Group>
               <Group justify="space-between" mt="md" align="center">
                 <Text size="xs" c="dimmed">Ücret: {employee.hourlyRate ? `₺${Number(employee.hourlyRate).toFixed(2)}` : "-"} | Limit: {employee.maxWeeklyHours ?? 45}s</Text>
-                <Group gap="xs">
-                  <Button size="xs" variant="light" onClick={() => openEditModal(employee)}>Düzenle</Button>
-                  <Button size="xs" variant="light" color="red" onClick={() => handleArchive(employee)} loading={archiveEmployee.isPending}>Arşivle</Button>
-                </Group>
+                {isActiveList && (
+                  <Group gap="xs">
+                    <Button size="xs" variant="light" onClick={() => openEditModal(employee)}>Düzenle</Button>
+                    <Button size="xs" variant="light" color="red" onClick={() => handleArchive(employee)} loading={archiveEmployee.isPending}>Arşivle</Button>
+                  </Group>
+                )}
               </Group>
             </Card>
           ))
         )}
       </Stack>
 
-      {/* Departman & Pozisyon Yönetimi */}
-      {(departmentFormOptions.length > 0 || positionFormOptions.length > 0) && (
+      {/* Departman & Pozisyon Yönetimi - sadece aktif listede */}
+      {isActiveList && (departmentFormOptions.length > 0 || positionFormOptions.length > 0) && (
         <Paper withBorder radius="md" p="md" className="gradient-card">
           <Stack gap="sm">
             <Title order={5}>Departman & Pozisyon Yönetimi</Title>

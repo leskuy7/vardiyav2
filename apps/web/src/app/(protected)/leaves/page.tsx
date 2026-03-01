@@ -221,7 +221,15 @@ export default function LeavesPage() {
             {leavesQuery.isLoading ? (
                 <PageLoading />
             ) : leavesQuery.isError ? (
-                <PageError message="İzinler yüklenemedi. (Sunucu bağlantısı sağlanamadı)" />
+                <PageError
+                    message={(() => {
+                        const err = leavesQuery.error as { response?: { status?: number; data?: { message?: string } } } | undefined;
+                        const apiMsg = err?.response?.data?.message;
+                        const status = err?.response?.status;
+                        const detail = apiMsg ?? (status ? `HTTP ${status}` : 'Sunucu bağlantısı sağlanamadı');
+                        return `İzinler yüklenemedi. (${detail})`;
+                    })()}
+                />
             ) : (
                 <>
                     <Card withBorder radius="md" p="md" visibleFrom="md">

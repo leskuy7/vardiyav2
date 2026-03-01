@@ -1,12 +1,14 @@
-import { IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
 
 export class CreateEmployeeDto {
+  @IsOptional()
   @IsString()
-  email!: string;
+  email?: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(8)
-  password!: string;
+  @MinLength(8, { message: 'Şifre en az 8 karakter olmalı' })
+  password?: string;
 
   @IsString()
   firstName!: string;
