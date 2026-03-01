@@ -3,26 +3,11 @@
 import { Badge, Button, Card, Grid, Group, ScrollArea, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
-import { currentWeekStartIsoDate } from '../../../lib/time';
+import { currentWeekStartIsoDate, formatWeekRange, shiftIsoDate } from '../../../lib/time';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
 import { useAuth } from '../../../hooks/use-auth';
 import { useComplianceViolations, useSecurityEvents } from '../../../hooks/use-reports';
 import { useOvertime } from '../../../hooks/use-overtime';
-
-function shiftWeek(isoDate: string, dayOffset: number) {
-  const value = new Date(`${isoDate}T00:00:00.000Z`);
-  value.setUTCDate(value.getUTCDate() + dayOffset);
-  return value.toISOString().slice(0, 10);
-}
-
-function formatWeekRange(isoDate: string) {
-  const start = new Date(`${isoDate}T00:00:00.000Z`);
-  const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 6);
-  const startText = start.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
-  const endText = end.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `${startText} - ${endText}`;
-}
 
 export default function ReportsPage() {
   const [weekStart, setWeekStart] = useState(currentWeekStartIsoDate());
@@ -106,9 +91,9 @@ export default function ReportsPage() {
         </Stack>
 
         <Group>
-          <Button variant="light" onClick={() => setWeekStart((value) => shiftWeek(value, -7))}>Önceki</Button>
+          <Button variant="light" onClick={() => setWeekStart((value) => shiftIsoDate(value, -7))}>Önceki</Button>
           <Badge size="lg" variant="light">{formatWeekRange(weekStart)}</Badge>
-          <Button variant="light" onClick={() => setWeekStart((value) => shiftWeek(value, 7))}>Sonraki</Button>
+          <Button variant="light" onClick={() => setWeekStart((value) => shiftIsoDate(value, 7))}>Sonraki</Button>
         </Group>
       </Group>
 

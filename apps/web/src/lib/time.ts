@@ -44,6 +44,23 @@ export function currentWeekStartIsoDate() {
   return monday.toISOString().slice(0, 10);
 }
 
+/** ISO hafta başı tarihine gün ekleyip yeni ISO tarih (YYYY-MM-DD) döner. */
+export function shiftIsoDate(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Hafta başı ISO tarihi için "1 Ocak – 7 Ocak 2026" formatında metin (tr-TR). */
+export function formatWeekRange(isoDate: string): string {
+  const start = new Date(`${isoDate}T00:00:00.000Z`);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
+  const startText = start.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+  const endText = end.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  return `${startText} – ${endText}`;
+}
+
 const DEFAULT_TIMEZONE = "Europe/Istanbul";
 
 /** Europe/Istanbul UTC offset in minutes (fixed +3, no DST since 2016). */

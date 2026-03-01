@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell, Avatar, Badge, Box, Burger, Button, Group, Paper, Stack, Text, ThemeIcon, UnstyledButton } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconCalendarEvent,
@@ -16,7 +17,7 @@ import { PropsWithChildren, useEffect } from 'react';
 import { ThemeToggle } from '../../components/theme-toggle';
 import { useAuth } from '../../hooks/use-auth';
 import { api } from '../../lib/api';
-import { setAccessToken } from '../../lib/token-store';
+import { getAccessToken, setAccessToken } from '../../lib/token-store';
 
 export default function ProtectedLayout({ children }: PropsWithChildren) {
   const router = useRouter();
@@ -26,9 +27,8 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
   const { data, isLoading, isError } = useAuth();
 
   useEffect(() => {
-    if (isError) {
-      router.replace('/login');
-    }
+    if (typeof window === 'undefined') return;
+    if (!getAccessToken() || isError) router.replace('/login');
   }, [isError, router]);
 
   useEffect(() => {
@@ -64,7 +64,22 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
 
   const currentPageLabel = links.find((link) => link.href === pathname)?.label ?? 'Panel';
 
-  async function logout() {
+  function openLogoutConfirm() {
+    modals.openConfirmModal({
+      title: 'Çıkış yap',
+      centered: true,
+      children: (
+        <Text size="sm" c="dimmed">
+          Oturumunuzu kapatmak istediğinize emin misiniz?
+        </Text>
+      ),
+      labels: { confirm: 'Çıkış yap', cancel: 'İptal' },
+      confirmProps: { color: 'red', leftSection: <IconLogout size={16} /> },
+      onConfirm: performLogout,
+    });
+  }
+
+  async function performLogout() {
     try {
       await api.post('/auth/logout');
     } finally {
@@ -113,7 +128,7 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
               <Button
                 variant="light"
                 color="red"
-                onClick={logout}
+                onClick={openLogoutConfirm}
                 data-testid="logout-action"
                 size="sm"
                 radius="xl"

@@ -18,7 +18,7 @@ import { useAvailability } from "../../../hooks/use-availability";
 import { useEmployees } from "../../../hooks/use-employees";
 import { useShiftsActions, useWeeklySchedule } from "../../../hooks/use-shifts";
 import type { AvailabilityHintType } from "../../../components/schedule/weekly-grid";
-import { currentWeekStartIsoDate, isoToLocalTimeString, localTimeToIso } from "../../../lib/time";
+import { currentWeekStartIsoDate, formatWeekRange, isoToLocalTimeString, localTimeToIso, shiftIsoDate } from "../../../lib/time";
 
 const WeeklyGrid = dynamic(
   () => import("../../../components/schedule/weekly-grid").then((m) => m.WeeklyGrid),
@@ -28,28 +28,6 @@ const ShiftModal = dynamic(
   () => import("../../../components/schedule/shift-modal").then((m) => m.ShiftModal),
   { loading: () => <PageLoading /> }
 );
-
-function shiftIsoDate(isoDate: string, days: number) {
-  const value = new Date(`${isoDate}T00:00:00.000Z`);
-  value.setUTCDate(value.getUTCDate() + days);
-  return value.toISOString().slice(0, 10);
-}
-
-function formatWeekRange(isoDate: string) {
-  const start = new Date(`${isoDate}T00:00:00.000Z`);
-  const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 6);
-  const startText = start.toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "long",
-  });
-  const endText = end.toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  return `${startText} - ${endText}`;
-}
 
 export default function SchedulePage() {
   const [weekStart, setWeekStart] = useState(currentWeekStartIsoDate());
@@ -404,6 +382,7 @@ export default function SchedulePage() {
         onClose={closeModal}
         employeeId={selectedEmployeeId}
         employees={employeeOptions}
+        availabilityList={availabilityList ?? undefined}
         initial={
           selectedShift
             ? {

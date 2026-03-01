@@ -8,7 +8,7 @@ import { useEmployees } from "../../../../hooks/use-employees";
 import { useWeeklyOvertime } from "../../../../hooks/use-overtime";
 import type { Shift, WeeklySchedule } from "../../../../hooks/use-shifts";
 import { useWeeklySchedule } from "../../../../hooks/use-shifts";
-import { currentWeekStartIsoDate } from "../../../../lib/time";
+import { currentWeekStartIsoDate, formatWeekRange } from "../../../../lib/time";
 
 const DAY_NAMES = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 
@@ -26,19 +26,6 @@ function formatDateShort(iso: string) {
     day: "numeric",
     month: "short",
   });
-}
-
-function formatWeekRange(isoDate: string) {
-  const start = new Date(`${isoDate}T00:00:00Z`);
-  const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 6);
-  const s = start.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
-  const e = end.toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  return `${s} – ${e}`;
 }
 
 function PrintPageContent() {

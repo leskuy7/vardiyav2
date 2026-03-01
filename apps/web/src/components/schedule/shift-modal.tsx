@@ -3,6 +3,8 @@
 import { Alert, Button, Checkbox, Group, Modal, Select, Stack, TextInput, Text } from '@mantine/core';
 import { DateTimePicker } from '@mantine/dates';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import type { AvailabilityItem } from '../../hooks/use-availability';
+import { getAvailabilityConflicts } from '../../lib/availability-conflicts';
 
 type EmployeeOption = { value: string; label: string };
 
@@ -13,6 +15,7 @@ type ShiftModalProps = {
   onDelete?: () => Promise<void>;
   employeeId: string;
   employees?: EmployeeOption[];
+  availabilityList?: AvailabilityItem[];
   initial?: {
     start: string;
     end: string;
@@ -40,7 +43,7 @@ function applyTemplate(baseDate: Date, startHour: number, endHour: number) {
   return { startAt, endAt };
 }
 
-export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, employees, initial }: ShiftModalProps) {
+export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, employees, availabilityList, initial }: ShiftModalProps) {
   const [startAt, setStartAt] = useState<Date | null>(null);
   const [endAt, setEndAt] = useState<Date | null>(null);
   const [note, setNote] = useState('');
@@ -51,6 +54,11 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
   const [deleting, setDeleting] = useState(false);
 
   const isEdit = Boolean(initial);
+
+  const availabilityConflicts = useMemo(
+    () => getAvailabilityConflicts(availabilityList, selectedEmployeeId, startAt, endAt),
+    [availabilityList, selectedEmployeeId, startAt, endAt]
+  );
 
   useEffect(() => {
     setStartAt(initial?.start ? new Date(initial.start) : null);
@@ -98,8 +106,9 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
         forceOverride
       });
       onClose();
-    } catch {
-      setError('Vardiya kaydedilemedi. Alanları kontrol edip tekrar dene.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? 'Vardiya kaydedilemedi. Alanları kontrol edip tekrar dene.');
     } finally {
       setSubmitting(false);
     }
@@ -152,10 +161,27 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
           <DateTimePicker label="Başlangıç" value={startAt} onChange={setStartAt} required data-testid="shift-start" />
           <DateTimePicker label="Bitiş" value={endAt} onChange={setEndAt} required data-testid="shift-end" />
           <TextInput label="Not" value={note} onChange={(event) => setNote(event.currentTarget.value)} />
+
+          {availabilityConflicts.length > 0 && (
+            <Alert color="orange" title="Müsaitlik çakışması" variant="light">
+              <Stack gap="xs">
+                {availabilityConflicts.map((c, i) => (
+                  <div key={i}>
+                    <Text size="sm">{c.label}</Text>
+                    {c.note ? <Text size="xs" c="dimmed" mt={4}>Açıklama: {c.note}</Text> : null}
+                  </div>
+                ))}
+                <Text size="xs" c="dimmed" mt="xs">
+                  Yine de bu vardiyayı atamak isterseniz aşağıdaki kutucuğu işaretleyip kaydedebilirsiniz.
+                </Text>
+              </Stack>
+            </Alert>
+          )}
           <Checkbox
             label="Müsaitlik çakışmasını override et"
             checked={forceOverride}
             onChange={(event) => setForceOverride(event.currentTarget.checked)}
+            disabled={availabilityConflicts.length === 0}
           />
 
           {initial?.swapRequests && initial.swapRequests.length > 0 && (
