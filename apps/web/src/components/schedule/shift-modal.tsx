@@ -174,15 +174,15 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
                 <Text size="xs" c="dimmed" mt="xs">
                   Yine de bu vardiyayı atamak isterseniz aşağıdaki kutucuğu işaretleyip kaydedebilirsiniz.
                 </Text>
+                <Checkbox
+                  mt="xs"
+                  label="Müsaitlik çakışmasını override et"
+                  checked={forceOverride}
+                  onChange={(event) => setForceOverride(event.currentTarget.checked)}
+                />
               </Stack>
             </Alert>
           )}
-          <Checkbox
-            label="Müsaitlik çakışmasını override et"
-            checked={forceOverride}
-            onChange={(event) => setForceOverride(event.currentTarget.checked)}
-            disabled={availabilityConflicts.length === 0}
-          />
 
           {initial?.swapRequests && initial.swapRequests.length > 0 && (
             <Alert color="orange" title="Takas İsteği Bekliyor" variant="light">
