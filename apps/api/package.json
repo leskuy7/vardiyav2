@@ -14,7 +14,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "seed:test": "ts-node scripts/seed-test.ts",
-    "seed:prod": "node dist/seed-prod.js"
+    "seed:prod": "node dist/seed-prod.js",
+    "fix:baseline": "ts-node scripts/fix-baseline-migration.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
