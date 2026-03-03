@@ -33,19 +33,32 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
+function forceLogout() {
+  setAccessToken(null);
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.assign('/login');
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
     const isRefreshCall = originalRequest?.url?.includes('/auth/refresh');
 
-    if (!originalRequest || error.response?.status !== 401 || originalRequest._retry || isRefreshCall) {
+    if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    if (isRefreshCall) {
+      forceLogout();
       return Promise.reject(error);
     }
 
     // Only try refresh if we had sent a token (expired). No token → avoid extra 401 from refresh.
     const hadToken = !!originalRequest.headers?.Authorization;
     if (!hadToken) {
+      forceLogout();
       return Promise.reject(error);
     }
 
@@ -69,10 +82,7 @@ api.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${token}`;
       return api(originalRequest);
     } catch (refreshError) {
-      setAccessToken(null);
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+      forceLogout();
       return Promise.reject(refreshError);
     }
   }
