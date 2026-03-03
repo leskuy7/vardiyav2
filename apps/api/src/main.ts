@@ -18,7 +18,9 @@ function validateRequiredEnv() {
 async function bootstrap() {
   validateRequiredEnv();
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : undefined
+  });
   app.set('trust proxy', 1);
 
   app.use(helmet());
