@@ -1,0 +1,22 @@
+# Dependencies and build outputs
+node_modules
+.next
+dist
+coverage
+*.log
+
+# Git and env
+.git
+.env
+.env.*
+!.env.example
+
+# Docs and misc
+*.md
+!README.md
+playwright-report
+test-results
+
+# Lock files from other package managers
+pnpm-lock.yaml
+yarn.lock
