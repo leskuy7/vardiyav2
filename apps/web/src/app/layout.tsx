@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body style={{ background: 'var(--mantine-color-body)', minHeight: '100vh' }}>
+      <body suppressHydrationWarning style={{ background: 'var(--mantine-color-body)', minHeight: '100vh' }}>
         <AppProvider>{children}</AppProvider>
       </body>
     </html>

@@ -32,13 +32,13 @@ const SHIFT_TEMPLATES = [
 
 function applyTemplate(baseDate: Date, startHour: number, endHour: number) {
   const dayStart = new Date(baseDate);
-  dayStart.setUTCHours(0, 0, 0, 0);
+  dayStart.setHours(0, 0, 0, 0);
 
   const startAt = new Date(dayStart);
-  startAt.setUTCHours(startHour, 0, 0, 0);
+  startAt.setHours(startHour, 0, 0, 0);
 
   const endAt = new Date(dayStart);
-  endAt.setUTCHours(endHour, 0, 0, 0);
+  endAt.setHours(endHour, 0, 0, 0);
 
   return { startAt, endAt };
 }

@@ -603,6 +603,8 @@ export default function EmployeesPage() {
               <Group grow>
                 <TextInput
                   label="Ad"
+                  name="firstName"
+                  id="employee-firstName"
                   value={form.firstName}
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -614,6 +616,8 @@ export default function EmployeesPage() {
                 />
                 <TextInput
                   label="Soyad"
+                  name="lastName"
+                  id="employee-lastName"
                   value={form.lastName}
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -638,6 +642,7 @@ export default function EmployeesPage() {
 
             <Autocomplete
               label="Pozisyon"
+              name="position"
               placeholder="Pozisyon seç veya yeni yaz"
               data={positionFormOptions.map((o) => o.value)}
               value={form.position}

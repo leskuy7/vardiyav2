@@ -108,7 +108,8 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
-  if (isAuthLoading || user) {
+  // Only show full-screen placeholder while redirecting after successful auth. Show form during auth check to avoid blank screen when token is expired (401).
+  if (user) {
     return (
       <Box
         style={{

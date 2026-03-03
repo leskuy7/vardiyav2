@@ -25,8 +25,8 @@ export function useWeeklyOvertime(weekStart: string, strategy: "PLANNED" | "ACTU
         queryKey: ["overtime", "weekly", weekStart, strategy],
         queryFn: async () => {
             const params = new URLSearchParams({ weekStart, strategy });
-            const { data } = await api.get<OvertimeRecord[]>(`/overtime/weekly?${params.toString()}`);
-            return data;
+            const { data } = await api.get<{ rows: OvertimeRecord[] }>(`/overtime/weekly?${params.toString()}`);
+            return data.rows;
         },
         enabled: !!weekStart && !!strategy,
     });
@@ -39,8 +39,8 @@ export function useOvertime() {
         queryKey: ["overtime", "weekly", weekStart, strategy],
         queryFn: async () => {
             const params = new URLSearchParams({ weekStart, strategy });
-            const { data } = await api.get<OvertimeRecord[]>(`/overtime/weekly?${params.toString()}`);
-            return data;
+            const { data } = await api.get<{ rows: OvertimeRecord[] }>(`/overtime/weekly?${params.toString()}`);
+            return data.rows;
         },
         enabled: !!weekStart && !!strategy,
     });
@@ -49,8 +49,8 @@ export function useOvertime() {
         queryKey: ["overtime", "my", weekStart, strategy],
         queryFn: async () => {
             const params = new URLSearchParams({ weekStart, strategy });
-            const { data } = await api.get<OvertimeRecord[]>(`/overtime/my?${params.toString()}`);
-            return data;
+            const { data } = await api.get<{ rows: OvertimeRecord[] }>(`/overtime/my?${params.toString()}`);
+            return data.rows;
         },
         enabled: !!weekStart && !!strategy,
     });
