@@ -28,6 +28,26 @@ export class EmployeesService {
   }
 
   async list(active?: boolean, actor?: { role: string; sub?: string; employeeId?: string }) {
+    const where = await this.buildListWhere(active, actor);
+    return this.prisma.employee.findMany({
+      where,
+      include: { user: { select: USER_SAFE_SELECT } },
+      orderBy: [{ createdAt: 'desc' }]
+    });
+  }
+
+  /** Minimal list for swap-target dropdown; allowed for EMPLOYEE (same dept). */
+  async listSwapTargets(actor?: { role: string; sub?: string; employeeId?: string }): Promise<{ id: string; name: string; department: string | null }[]> {
+    const where = await this.buildListWhere(true, actor);
+    const rows = await this.prisma.employee.findMany({
+      where,
+      select: { id: true, department: true, user: { select: { name: true } } },
+      orderBy: [{ user: { name: 'asc' } }]
+    });
+    return rows.map((r) => ({ id: r.id, name: r.user.name, department: r.department }));
+  }
+
+  private async buildListWhere(active?: boolean, actor?: { role: string; sub?: string; employeeId?: string }): Promise<Prisma.EmployeeWhereInput> {
     const where: Prisma.EmployeeWhereInput = {
       isActive: active,
       deletedAt: null
@@ -50,11 +70,17 @@ export class EmployeesService {
       }
     }
 
-    return this.prisma.employee.findMany({
-      where,
-      include: { user: { select: USER_SAFE_SELECT } },
-      orderBy: [{ createdAt: 'desc' }]
-    });
+    if (actor?.role === 'EMPLOYEE' && actor.employeeId) {
+      const emp = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+      if (emp) {
+        where.department = emp.department;
+        if (emp.organizationId) {
+          where.organizationId = emp.organizationId;
+        }
+      }
+    }
+
+    return where;
   }
 
   async getById(id: string, actor?: { role: string; sub?: string; employeeId?: string }) {
@@ -226,18 +252,17 @@ export class EmployeesService {
     throw new Error('Could not generate unique login');
   }
 
+  /** 6-character temporary password for auto-generated credentials only. */
   private generateTempPassword(): string {
     const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     const lower = 'abcdefghjkmnpqrstuvwxyz';
     const digits = '23456789';
-    const special = '!@#$%&*';
     let p = '';
     p += upper.charAt(Math.floor(Math.random() * upper.length));
     p += lower.charAt(Math.floor(Math.random() * lower.length));
     p += digits.charAt(Math.floor(Math.random() * digits.length));
-    p += special.charAt(Math.floor(Math.random() * special.length));
-    for (let i = 0; i < 8; i++) {
-      const pool = upper + lower + digits + special;
+    const pool = upper + lower + digits;
+    for (let i = 0; i < 3; i++) {
       p += pool.charAt(Math.floor(Math.random() * pool.length));
     }
     return p

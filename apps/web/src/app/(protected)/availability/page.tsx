@@ -23,6 +23,17 @@ import { PageError, PageLoading } from '../../../components/page-states';
 import { useAuth } from '../../../hooks/use-auth';
 import { useEmployees } from '../../../hooks/use-employees';
 import { useAvailability, useAvailabilityActions, type AvailabilityType } from '../../../hooks/use-availability';
+import { formatDateDisplay } from '../../../lib/time';
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function typeBadgeColor(type: AvailabilityType): string {
+  if (type === 'UNAVAILABLE') return 'red';
+  if (type === 'PREFER_NOT') return 'orange';
+  return 'green';
+}
 
 const dayOptions = [
   { value: '1', label: 'Pazartesi' },
@@ -60,8 +71,8 @@ export default function AvailabilityPage() {
   const [dayOfWeek, setDayOfWeek] = useState<string>('1');
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('17:00');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(todayIso);
+  const [endDate, setEndDate] = useState(todayIso);
   const [note, setNote] = useState('');
 
   const effectiveEmployeeId = employeeId || defaultEmployeeId;
@@ -203,11 +214,20 @@ export default function AvailabilityPage() {
                 return (
                   <Table.Tr key={item.id}>
                     <Table.Td>{owner?.user.name ?? item.employeeId.slice(0, 8)}</Table.Td>
-                    <Table.Td><Badge variant="light">{typeLabel(item.type)}</Badge></Table.Td>
+                    <Table.Td>
+                      <Badge variant="light" color={typeBadgeColor(item.type)}>{typeLabel(item.type)}</Badge>
+                    </Table.Td>
                     <Table.Td>{dayLabel(item.dayOfWeek)}</Table.Td>
-                    <Table.Td>{item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : '-'}</Table.Td>
-                    <Table.Td>{item.startDate || item.endDate ? `${item.startDate ?? '-'} / ${item.endDate ?? '-'}` : '-'}</Table.Td>
-                    <Table.Td>{item.note ?? '-'}</Table.Td>
+                    <Table.Td>{item.startTime && item.endTime ? `${item.startTime} – ${item.endTime}` : '–'}</Table.Td>
+                    <Table.Td>
+                      {item.startDate || item.endDate
+                        ? [item.startDate, item.endDate]
+                            .filter(Boolean)
+                            .map((d) => formatDateDisplay(d!))
+                            .join(' – ')
+                        : '–'}
+                    </Table.Td>
+                    <Table.Td>{item.note ?? '–'}</Table.Td>
                     <Table.Td>
                       <Button
                         variant="light"
@@ -215,19 +235,30 @@ export default function AvailabilityPage() {
                         size="xs"
                         loading={deleteAvailability.isPending}
                         onClick={() => {
+                          const ownerName = owner?.user.name ?? item.employeeId.slice(0, 8);
+                          const timeRange = item.startTime && item.endTime ? `${item.startTime} – ${item.endTime}` : 'Tüm gün';
+                          const dateRange = item.startDate || item.endDate
+                            ? [item.startDate, item.endDate].filter(Boolean).map((d) => formatDateDisplay(d!)).join(' – ')
+                            : 'Süresiz';
                           modals.openConfirmModal({
                             title: 'Müsaitlik kaydını sil',
                             centered: true,
                             children: (
-                              <Text size="sm" c="dimmed">
-                                Bu müsaitlik kaydını silmek istediğinize emin misiniz?
-                              </Text>
+                              <Stack gap="xs">
+                                <Text size="sm" c="dimmed">
+                                  Aşağıdaki kaydı silmek istediğinize emin misiniz?
+                                </Text>
+                                <Text size="sm" fw={600}>Çalışan: {ownerName}</Text>
+                                <Text size="sm">Gün: {dayLabel(item.dayOfWeek)} · Saat: {timeRange}</Text>
+                                <Text size="sm">Tarih aralığı: {dateRange}</Text>
+                                {item.note ? <Text size="sm" c="dimmed">Not: {item.note}</Text> : null}
+                              </Stack>
                             ),
                             labels: { confirm: 'Sil', cancel: 'İptal' },
                             confirmProps: { color: 'red' },
                             onConfirm: () =>
                               deleteAvailability.mutate(item.id, {
-                                onSuccess: () => notifications.show({ title: 'Silindi', message: 'Müsaitlik kaydı silindi.', color: 'green' }),
+                                onSuccess: () => notifications.show({ title: 'Silindi', message: `${ownerName} – ${dayLabel(item.dayOfWeek)} müsaitlik kaydı silindi.`, color: 'green' }),
                                 onError: () => notifications.show({ title: 'Hata', message: 'Silme başarısız.', color: 'red' }),
                               }),
                           });

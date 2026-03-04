@@ -5,6 +5,7 @@ import { DateTimePicker } from '@mantine/dates';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { AvailabilityItem } from '../../hooks/use-availability';
 import { getAvailabilityConflicts } from '../../lib/availability-conflicts';
+import { formatDateShort, formatTimeOnly } from '../../lib/time';
 
 type EmployeeOption = { value: string; label: string };
 
@@ -29,6 +30,15 @@ const SHIFT_TEMPLATES = [
   { label: 'Öğle (14:00-22:00)', startHour: 14, endHour: 22 },
   { label: 'Gece (22:00-06:00)', startHour: 22, endHour: 30 }
 ];
+
+function conflictCodeToMessage(code: string): string {
+  const map: Record<string, string> = {
+    UNAVAILABLE_CONFLICT: 'Çalışan bu saatte müsait değil (UNAVAILABLE).',
+    PREFER_NOT_CONFLICT: 'Çalışan bu saatte tercihen çalışmak istemiyor (PREFER_NOT).',
+    COMPLIANCE_VIOLATION: 'Vardiya uyumluluk kuralını ihlal ediyor.',
+  };
+  return map[code] ?? `Hata: ${code}`;
+}
 
 function applyTemplate(baseDate: Date, startHour: number, endHour: number) {
   const dayStart = new Date(baseDate);
@@ -59,6 +69,10 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
     () => getAvailabilityConflicts(availabilityList, selectedEmployeeId, startAt, endAt),
     [availabilityList, selectedEmployeeId, startAt, endAt]
   );
+
+  useEffect(() => {
+    if (!opened) return;
+  }, [opened, availabilityConflicts.length, forceOverride, selectedEmployeeId]);
 
   useEffect(() => {
     setStartAt(initial?.start ? new Date(initial.start) : null);
@@ -107,8 +121,9 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
       });
       onClose();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? 'Vardiya kaydedilemedi. Alanları kontrol edip tekrar dene.');
+      const res = (err as { response?: { data?: { message?: string; code?: string } } })?.response?.data;
+      const msg = res?.message ?? (res?.code ? conflictCodeToMessage(res.code) : null) ?? 'Vardiya kaydedilemedi. Alanları kontrol edip tekrar dene.';
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -244,16 +259,26 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
           <Group justify="space-between">
             {isEdit && onDelete ? (
               <Button color="red" variant="light" type="button" onClick={() => {
+                const employeeName = employees?.find((e) => e.value === selectedEmployeeId)?.label ?? selectedEmployeeId;
+                const dateRange = initial?.start && initial?.end
+                  ? `${formatDateShort(initial.start)} ${formatTimeOnly(initial.start)} – ${formatTimeOnly(initial.end)}`
+                  : '—';
+                const noteLine = initial?.note ? `Not: ${initial.note}` : null;
                 import('@mantine/modals').then(({ modals }) => {
                   modals.openConfirmModal({
-                    title: 'Emin misiniz?',
+                    title: 'Vardiyayı iptal et',
                     centered: true,
                     children: (
-                      <Text size="sm">
-                        Bu vardiyayı gerçekten silmek istiyor musunuz? Bu işlem geri alınamaz.
-                      </Text>
+                      <Stack gap="xs">
+                        <Text size="sm" c="dimmed">
+                          Aşağıdaki vardiyayı iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                        </Text>
+                        <Text size="sm" fw={600}>Çalışan: {employeeName}</Text>
+                        <Text size="sm">Tarih ve saat: {dateRange}</Text>
+                        {noteLine ? <Text size="sm" c="dimmed">{noteLine}</Text> : null}
+                      </Stack>
                     ),
-                    labels: { confirm: 'Evet, Sil', cancel: 'Vazgeç' },
+                    labels: { confirm: 'Evet, İptal Et', cancel: 'Vazgeç' },
                     confirmProps: { color: 'red' },
                     onConfirm: handleDelete,
                   });
@@ -266,7 +291,12 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
               <Button variant="default" onClick={onClose} type="button">
                 Vazgeç
               </Button>
-              <Button type="submit" loading={submitting} data-testid="shift-submit">
+              <Button
+                type="submit"
+                loading={submitting}
+                data-testid="shift-submit"
+                disabled={availabilityConflicts.length > 0 && !forceOverride}
+              >
                 Kaydet
               </Button>
             </Group>

@@ -3,11 +3,13 @@ import { expect, test } from '@playwright/test';
 test('login -> schedule -> shift ekle -> logout', async ({ page }) => {
   await page.goto('/login');
 
-  await page.getByLabel('E-posta').fill('manager@test.local');
-  await page.getByLabel('Şifre').fill('Test12345!');
+  await page.getByPlaceholder('örn. a1b2c3 veya admin@shiftplanner.com').fill('manager@test.local');
+  await page.getByPlaceholder('Şifreniz').fill('Test12345!');
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
 
-  await expect(page.getByText('Haftalık Vardiya Programı')).toBeVisible();
+  await expect(page).toHaveURL(/\/(dashboard|schedule)$/);
+  await page.goto('/schedule');
+  await expect(page.locator('[data-testid^="drop-cell-"]').first()).toBeVisible();
 
   const loginResponse = await page.request.post('http://localhost:4000/api/auth/login', {
     data: { email: 'manager@test.local', password: 'Test12345!' }
@@ -47,7 +49,7 @@ test('login -> schedule -> shift ekle -> logout', async ({ page }) => {
 
   await page.reload();
 
-  await expect(page.getByText('Haftalık Vardiya Programı')).toBeVisible();
+  await expect(page.locator('[data-testid^="drop-cell-"]').first()).toBeVisible();
 
   const shiftCards = page.locator('[data-testid^="shift-card-"]');
   const dropCells = page.locator('[data-testid^="drop-cell-"]');

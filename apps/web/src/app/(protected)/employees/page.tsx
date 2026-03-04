@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ActionIcon,
   Autocomplete,
   Badge,
   Button,
@@ -21,7 +22,7 @@ import {
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import { IconBuilding, IconTag } from "@tabler/icons-react";
+import { IconBuilding, IconCopy, IconTag } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useMemo, useState } from "react";
 import { PageError, PageLoading } from "../../../components/page-states";
@@ -726,12 +727,40 @@ export default function EmployeesPage() {
             readOnly
             value={newCredentials?.email ?? ''}
             styles={{ input: { fontFamily: 'monospace', fontWeight: 600 } }}
+            rightSectionPointerEvents="auto"
+            rightSection={
+              <ActionIcon
+                variant="subtle"
+                onClick={() => {
+                  const v = newCredentials?.email ?? '';
+                  void navigator.clipboard.writeText(v).then(() => {
+                    notifications.show({ title: "Kopyalandı", message: "Kullanıcı adı panoya kopyalandı.", color: "green" });
+                  });
+                }}
+              >
+                <IconCopy size={16} />
+              </ActionIcon>
+            }
           />
           <TextInput
             label="Geçici Şifre"
             readOnly
             value={newCredentials?.password ?? ''}
             styles={{ input: { fontFamily: 'monospace', fontWeight: 600 } }}
+            rightSectionPointerEvents="auto"
+            rightSection={
+              <ActionIcon
+                variant="subtle"
+                onClick={() => {
+                  const v = newCredentials?.password ?? '';
+                  void navigator.clipboard.writeText(v).then(() => {
+                    notifications.show({ title: "Kopyalandı", message: "Geçici şifre panoya kopyalandı.", color: "green" });
+                  });
+                }}
+              >
+                <IconCopy size={16} />
+              </ActionIcon>
+            }
           />
           <Button fullWidth mt="md" onClick={() => setNewCredentials(null)}>Anladım, Kapat</Button>
         </Stack>

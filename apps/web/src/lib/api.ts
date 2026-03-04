@@ -55,13 +55,6 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Only try refresh if we had sent a token (expired). No token → avoid extra 401 from refresh.
-    const hadToken = !!originalRequest.headers?.Authorization;
-    if (!hadToken) {
-      forceLogout();
-      return Promise.reject(error);
-    }
-
     originalRequest._retry = true;
 
     if (!refreshPromise) {

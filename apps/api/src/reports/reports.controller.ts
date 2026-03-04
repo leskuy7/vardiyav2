@@ -43,4 +43,29 @@ export class ReportsController {
       to
     });
   }
+
+  @Get('audit-trail')
+  auditTrail(
+    @Req() request: Request,
+    @Query('limit') limit?: string,
+    @Query('action') action?: string,
+    @Query('entityType') entityType?: string,
+    @Query('userId') userId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string
+  ) {
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
+    const parsedLimit = Number(limit ?? 100);
+    return this.reportsService.auditTrail(
+      {
+        limit: Number.isFinite(parsedLimit) ? parsedLimit : 100,
+        action,
+        entityType,
+        userId,
+        from,
+        to
+      },
+      actor
+    );
+  }
 }

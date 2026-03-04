@@ -194,10 +194,12 @@ export default function SchedulePage() {
         color: "green",
       });
       setModalOpen(false);
-    } catch {
+    } catch (err: unknown) {
+      const res = (err as { response?: { data?: { message?: string; code?: string } } })?.response?.data;
+      const msg = res?.message ?? res?.code ?? "Vardiya kaydedilemedi.";
       notifications.show({
         title: "Hata",
-        message: "Vardiya kaydedilemedi.",
+        message: msg,
         color: "red",
       });
     }

@@ -11,14 +11,22 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
 @Controller('employees')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'MANAGER')
 export class EmployeesController {
   constructor(
     private readonly employeesService: EmployeesService,
     private readonly auditService: AuditService
   ) { }
 
+  /** EMPLOYEE can call this for swap-target dropdown; returns id, name, department only. */
+  @Get('swap-targets')
+  @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+  listSwapTargets(@Req() request: Request) {
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
+    return this.employeesService.listSwapTargets(actor);
+  }
+
   @Get()
+  @Roles('ADMIN', 'MANAGER')
   list(@Req() request: Request, @Query('active') active?: string) {
     const actor = request.user as { role: string; sub?: string; employeeId?: string };
     if (active === undefined) return this.employeesService.list(undefined, actor);
@@ -26,18 +34,21 @@ export class EmployeesController {
   }
 
   @Get(':id/credentials')
+  @Roles('ADMIN', 'MANAGER')
   getCredentials(@Param('id') id: string, @Req() request: Request) {
     const actor = request.user as { role: string; sub?: string; employeeId?: string };
     return this.employeesService.getCredentials(id, actor);
   }
 
   @Get(':id')
+  @Roles('ADMIN', 'MANAGER')
   getById(@Param('id') id: string, @Req() request: Request) {
     const actor = request.user as { role: string; sub?: string; employeeId?: string };
     return this.employeesService.getById(id, actor);
   }
 
   @Post()
+  @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async create(@Body() dto: CreateEmployeeDto, @Req() request: Request) {
     const actor = request.user as { sub: string; role: string; employeeId?: string };
@@ -55,6 +66,7 @@ export class EmployeesController {
   }
 
   @Patch(':id')
+  @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async update(@Param('id') id: string, @Body() dto: UpdateEmployeeDto, @Req() request: Request) {
     const actor = request.user as { sub: string; role: string; employeeId?: string };
@@ -70,6 +82,7 @@ export class EmployeesController {
   }
 
   @Delete(':id')
+  @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)
   async remove(@Param('id') id: string, @Req() request: Request) {
     const actor = request.user as { sub: string; role: string; employeeId?: string };

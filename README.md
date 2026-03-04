@@ -105,6 +105,7 @@ Rol bazlı aksiyonlar (onayla, reddet, iptal, takas) ve geçiş kuralları için
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `POST /api/auth/change-password`
 
 ### Employees (ADMIN/MANAGER)
 
@@ -140,6 +141,9 @@ Rol bazlı aksiyonlar (onayla, reddet, iptal, takas) ve geçiş kuralları için
 ### Reports
 
 - `GET /api/reports/weekly-hours?weekStart=YYYY-MM-DD`
+- `GET /api/reports/compliance-violations?weekStart=YYYY-MM-DD`
+- `GET /api/reports/security-events?limit&directive&from&to` (ADMIN)
+- `GET /api/reports/audit-trail?limit&action&entityType&userId&from&to` (ADMIN/MANAGER)
 
 ### Health
 

@@ -18,8 +18,8 @@
     "start:api": "npm run -w @vardiya/api start",
     "start:web": "npm run -w @vardiya/web start",
     "start:local": "concurrently -k -n API,WEB \"npm run start:api\" \"npm run start:web\"",
-    "build": "npm run -ws build",
-    "lint": "npm run -ws --if-present lint",
-    "test": "npm run -ws --if-present test"
+    "build": "npm run --ws build",
+    "lint": "npm run --ws --if-present lint",
+    "test": "npm run --ws --if-present test"
   }
 }

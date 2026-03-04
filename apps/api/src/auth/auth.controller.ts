@@ -7,6 +7,7 @@ import { CsrfGuard } from '../common/auth/csrf.guard';
 import { AuthService } from './auth.service';
 import { BootstrapGuard } from './bootstrap.guard';
 import { BootstrapAdminDto } from './dto/bootstrap-admin.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -83,6 +84,20 @@ export class AuthController {
   me(@Req() request: Request) {
     const user = request.user as { sub: string };
     return this.authService.me(user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @UseGuards(CsrfGuard)
+  @Post('change-password')
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const user = request.user as { sub: string };
+    const result = await this.authService.changePassword(user.sub, dto.currentPassword, dto.newPassword);
+    response.clearCookie('refresh_token');
+    return result;
   }
 
   private setRefreshCookie(response: Response, token: string) {

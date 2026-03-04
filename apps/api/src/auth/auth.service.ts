@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import type { JwtSignOptions } from "@nestjs/jwt";
@@ -139,6 +139,51 @@ export class AuthService {
       role: user.role,
       employee: user.employee,
     };
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new UnauthorizedException({
+        code: "USER_NOT_FOUND",
+        message: "Kullanıcı bulunamadı",
+      });
+    }
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException({
+        code: "INVALID_CURRENT_PASSWORD",
+        message: "Mevcut şifre hatalı",
+      });
+    }
+    const samePassword = await bcrypt.compare(newPassword, user.passwordHash);
+    if (samePassword) {
+      throw new BadRequestException({
+        code: "PASSWORD_REUSE",
+        message: "Yeni şifre mevcut şifre ile aynı olamaz",
+      });
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash,
+          // Force all sessions to re-login after password update.
+          refreshTokenHash: null,
+        },
+      });
+      await tx.userCredentialVault.deleteMany({
+        where: { userId },
+      });
+    });
+    return { message: "Şifre başarıyla güncellendi. Güvenlik için tekrar giriş yapın." };
   }
 
   async validateAccessToken(token: string) {

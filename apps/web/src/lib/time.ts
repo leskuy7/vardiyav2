@@ -35,6 +35,17 @@ export function formatDateShort(value: string) {
   });
 }
 
+/** ISO date (YYYY-MM-DD or full ISO string) to readable tr-TR date e.g. "16 Şub 2026". */
+export function formatDateDisplay(value: string) {
+  const d = value.includes('T') ? new Date(value) : new Date(value + 'T12:00:00.000Z');
+  return d.toLocaleDateString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
 export function currentWeekStartIsoDate() {
   const now = new Date();
   const day = now.getUTCDay();

@@ -250,4 +250,105 @@ export class ReportsService {
       return directiveValue.includes(directiveFilter);
     });
   }
+
+  private async getAuditUserScope(actor?: { role: string; sub?: string; employeeId?: string }) {
+    if (!actor) {
+      return null;
+    }
+
+    if (actor.role === 'ADMIN' && actor.sub) {
+      const organization = await this.prisma.organization.findUnique({
+        where: { adminUserId: actor.sub }
+      });
+      if (!organization) {
+        return { includeUserIds: [actor.sub] };
+      }
+      const orgEmployees = await this.prisma.employee.findMany({
+        where: { organizationId: organization.id, deletedAt: null },
+        select: { userId: true }
+      });
+      return {
+        includeUserIds: Array.from(new Set([actor.sub, ...orgEmployees.map((row) => row.userId)]))
+      };
+    }
+
+    if (actor.role === 'MANAGER' && actor.employeeId) {
+      const manager = await this.prisma.employee.findUnique({
+        where: { id: actor.employeeId },
+        select: { department: true, organizationId: true, userId: true }
+      });
+      if (!manager) {
+        return null;
+      }
+      const scopedEmployees = await this.prisma.employee.findMany({
+        where: {
+          deletedAt: null,
+          department: manager.department,
+          ...(manager.organizationId ? { organizationId: manager.organizationId } : {})
+        },
+        select: { userId: true }
+      });
+      return {
+        includeUserIds: Array.from(new Set([manager.userId, ...scopedEmployees.map((row) => row.userId)]))
+      };
+    }
+
+    return null;
+  }
+
+  async auditTrail(
+    params?: {
+      limit?: number;
+      action?: string;
+      entityType?: string;
+      userId?: string;
+      from?: string;
+      to?: string;
+    },
+    actor?: { role: string; sub?: string; employeeId?: string }
+  ) {
+    const take = Math.max(1, Math.min(500, Math.trunc(params?.limit ?? 100)));
+    const actionFilter = params?.action?.trim();
+    const entityTypeFilter = params?.entityType?.trim();
+    const userIdFilter = params?.userId?.trim();
+    const fromDate = params?.from ? new Date(params.from) : null;
+    const toDate = params?.to ? new Date(params.to) : null;
+    const scope = await this.getAuditUserScope(actor);
+
+    const rows = await this.prisma.auditLog.findMany({
+      where: {
+        ...(actionFilter ? { action: actionFilter } : {}),
+        ...(entityTypeFilter ? { entityType: entityTypeFilter } : {}),
+        ...(userIdFilter ? { userId: userIdFilter } : {}),
+        ...(scope?.includeUserIds ? { userId: { in: scope.includeUserIds } } : {}),
+        createdAt: {
+          gte: fromDate && !Number.isNaN(fromDate.getTime()) ? fromDate : undefined,
+          lte: toDate && !Number.isNaN(toDate.getTime()) ? toDate : undefined
+        }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      createdAt: row.createdAt.toISOString(),
+      action: row.action,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      userId: row.userId,
+      user: row.user,
+      details: row.details ?? {}
+    }));
+  }
 }

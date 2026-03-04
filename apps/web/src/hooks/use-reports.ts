@@ -45,6 +45,22 @@ export type ComplianceViolationsReport = {
   violations: ComplianceViolation[];
 };
 
+export type AuditTrailEvent = {
+  id: string;
+  createdAt: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  userId: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: "ROOT" | "ADMIN" | "MANAGER" | "EMPLOYEE";
+  };
+  details: Record<string, unknown>;
+};
+
 export function useComplianceViolations(weekStart: string) {
   return useQuery({
     queryKey: ['reports', 'compliance-violations', weekStart],
@@ -77,6 +93,35 @@ export function useSecurityEvents(
       if (to) params.set('to', to);
 
       const response = await api.get<SecurityEvent[]>(`/reports/security-events?${params.toString()}`);
+      return response.data;
+    }
+  });
+}
+
+export function useAuditTrail(
+  enabled: boolean,
+  filters?: { limit?: number; action?: string; entityType?: string; userId?: string; from?: string; to?: string }
+) {
+  const limit = filters?.limit ?? 100;
+  const action = filters?.action ?? "";
+  const entityType = filters?.entityType ?? "";
+  const userId = filters?.userId ?? "";
+  const from = filters?.from ?? "";
+  const to = filters?.to ?? "";
+
+  return useQuery({
+    queryKey: ["reports", "audit-trail", limit, action, entityType, userId, from, to],
+    enabled,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("limit", String(limit));
+      if (action.trim()) params.set("action", action.trim());
+      if (entityType.trim()) params.set("entityType", entityType.trim());
+      if (userId.trim()) params.set("userId", userId.trim());
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+
+      const response = await api.get<AuditTrailEvent[]>(`/reports/audit-trail?${params.toString()}`);
       return response.data;
     }
   });

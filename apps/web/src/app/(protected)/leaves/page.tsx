@@ -127,17 +127,25 @@ export default function LeavesPage() {
         );
     });
 
-    const handleStatusUpdate = (id: string, status: string) => {
+    const leaveSummary = (l: LeaveRequest) => {
+        const name = l.employee?.user?.name ?? "—";
+        const typeLabel = l.type && l.type in LEAVE_TYPES ? LEAVE_TYPES[l.type as keyof typeof LEAVE_TYPES] : l.leaveCode ?? "—";
+        const range = `${formatDateShort(l.startDate)} – ${formatDateShort(l.endDate)}`;
+        return { name, typeLabel, range };
+    };
+
+    const handleStatusUpdate = (leave: LeaveRequest, status: string) => {
         let note;
         if (status === "APPROVED") {
-            if (!window.confirm("Dikkat: Bu izin onaylandığında, personelin izin tarihleriyle çakışan onaylanmış vardiyaları otomatik iptal edilecektir. Onaylıyor musunuz?")) return;
+            const { name, typeLabel, range } = leaveSummary(leave);
+            if (!window.confirm(`Dikkat: Aşağıdaki izin onaylandığında, personelin izin tarihleriyle çakışan onaylanmış vardiyaları otomatik iptal edilecektir. Onaylıyor musunuz?\n\nÇalışan: ${name}\nTür: ${typeLabel}\nTarih: ${range}`)) return;
         } else if (status === "REJECTED") {
             note = window.prompt("Reddetme nedeninizi yazın (opsiyonel):");
             if (note === null) return;
         }
 
         updateStatus.mutate(
-            { id, status, managerNote: note },
+            { id: leave.id, status, managerNote: note },
             {
                 onSuccess: () =>
                     notifications.show({ title: "Başarılı", message: "Durum güncellendi", color: "green" }),
@@ -151,10 +159,11 @@ export default function LeavesPage() {
         );
     };
 
-    const handleCancel = (id: string) => {
-        if (!window.confirm("Bu izin talebini iptal etmek istediğinize emin misiniz?")) return;
+    const handleCancel = (leave: LeaveRequest) => {
+        const { name, typeLabel, range } = leaveSummary(leave);
+        if (!window.confirm(`Aşağıdaki izin talebini iptal etmek istediğinize emin misiniz?\n\nÇalışan: ${name}\nTür: ${typeLabel}\nTarih: ${range}`)) return;
         updateStatus.mutate(
-            { id, status: "CANCELLED" },
+            { id: leave.id, status: "CANCELLED" },
             {
                 onSuccess: () =>
                     notifications.show({ title: "Başarılı", message: "İzin iptal edildi", color: "green" }),
@@ -162,11 +171,12 @@ export default function LeavesPage() {
         );
     };
 
-    const handleDelete = (id: string) => {
-        if (!window.confirm("Bu kaydı tamamen silmek istediğinize emin misiniz?")) return;
-        deleteLeave.mutate(id, {
+    const handleDelete = (leave: LeaveRequest) => {
+        const { name, typeLabel, range } = leaveSummary(leave);
+        if (!window.confirm(`Aşağıdaki izin kaydını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.\n\nÇalışan: ${name}\nTür: ${typeLabel}\nTarih: ${range}`)) return;
+        deleteLeave.mutate(leave.id, {
             onSuccess: () =>
-                notifications.show({ title: "Silindi", message: "Kayıt silindi", color: "gray" }),
+                notifications.show({ title: "Silindi", message: `${name} – ${range} kaydı silindi.`, color: "gray" }),
         });
     };
 
@@ -288,21 +298,21 @@ export default function LeavesPage() {
                                                 <Group gap="xs" justify="flex-end">
                                                     {l.status === "PENDING" && (role === "MANAGER" || role === "ADMIN") && (
                                                         <>
-                                                            <Button size="xs" color="green" onClick={() => handleStatusUpdate(l.id, "APPROVED")}>
+                                                            <Button size="xs" color="green" onClick={() => handleStatusUpdate(l, "APPROVED")}>
                                                                 Onayla
                                                             </Button>
-                                                            <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l.id, "REJECTED")}>
+                                                            <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l, "REJECTED")}>
                                                                 Reddet
                                                             </Button>
                                                         </>
                                                     )}
                                                     {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
-                                                        <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l.id)}>
+                                                        <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>
                                                             İptal Et
                                                         </Button>
                                                     )}
                                                     {role === "ADMIN" && (
-                                                        <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l.id)}>
+                                                        <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l)}>
                                                             Sil
                                                         </Button>
                                                     )}
@@ -345,15 +355,15 @@ export default function LeavesPage() {
                                     <Group gap="xs" mt="sm" grow>
                                         {l.status === "PENDING" && (role === "MANAGER" || role === "ADMIN") && (
                                             <>
-                                                <Button size="xs" color="green" onClick={() => handleStatusUpdate(l.id, "APPROVED")}>Onayla</Button>
-                                                <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l.id, "REJECTED")}>Reddet</Button>
+                                                <Button size="xs" color="green" onClick={() => handleStatusUpdate(l, "APPROVED")}>Onayla</Button>
+                                                <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l, "REJECTED")}>Reddet</Button>
                                             </>
                                         )}
                                         {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
-                                            <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l.id)}>İptal Et</Button>
+                                            <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>İptal Et</Button>
                                         )}
                                         {role === "ADMIN" && (
-                                            <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l.id)}>Sil</Button>
+                                            <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l)}>Sil</Button>
                                         )}
                                     </Group>
                                 </Card>

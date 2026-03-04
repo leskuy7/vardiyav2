@@ -15,14 +15,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const payload = typeof exceptionResponse === 'object' && exceptionResponse !== null ? exceptionResponse : {};
     const isServerError = status >= 500;
+    const code = (payload as { code?: string }).code ?? (status === 500 ? 'INTERNAL_SERVER_ERROR' : 'HTTP_ERROR');
+    const message = isServerError ? 'Unexpected error' : (payload as { message?: string }).message ?? 'Unexpected error';
 
     if (isServerError) {
       this.logger.error('Unhandled exception', exception instanceof Error ? exception.stack : String(exception));
     }
 
     response.status(status).json({
-      code: (payload as { code?: string }).code ?? (status === 500 ? 'INTERNAL_SERVER_ERROR' : 'HTTP_ERROR'),
-      message: isServerError ? 'Unexpected error' : (payload as { message?: string }).message ?? 'Unexpected error',
+      code,
+      message,
       details: isServerError ? {} : payload,
       timestamp: new Date().toISOString(),
       path: request.url

@@ -10,6 +10,7 @@ import {
   IconClockHour4,
   IconLayoutDashboard,
   IconLogout,
+  IconUser,
   IconUsers
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -34,7 +35,7 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
   }, [isError, router]);
 
   useEffect(() => {
-    const employeeAllowed = ['/my-shifts', '/availability', '/leaves'];
+    const employeeAllowed = ['/my-shifts', '/availability', '/leaves', '/profile'];
     if (!isLoading && data?.role === 'EMPLOYEE' && !employeeAllowed.includes(pathname)) {
       router.replace('/my-shifts');
     }
@@ -53,7 +54,8 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
       ? [
         { href: '/my-shifts', label: 'Vardiyalarım', icon: <IconCalendarWeek size={18} /> },
         { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> },
-        { href: '/leaves', label: 'İzinlerim', icon: <IconCalendarEvent size={18} /> }
+        { href: '/leaves', label: 'İzinlerim', icon: <IconCalendarEvent size={18} /> },
+        { href: '/profile', label: 'Profil', icon: <IconUser size={18} /> }
       ]
       : [
         { href: '/dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={18} /> },
@@ -61,7 +63,8 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
         { href: '/employees', label: 'Çalışanlar', icon: <IconUsers size={18} /> },
         { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> },
         { href: '/leaves', label: 'İzin Onayları', icon: <IconCalendarEvent size={18} /> },
-        { href: '/reports', label: 'Raporlar', icon: <IconChartBar size={18} /> }
+        { href: '/reports', label: 'Raporlar', icon: <IconChartBar size={18} /> },
+        { href: '/profile', label: 'Profil', icon: <IconUser size={18} /> }
       ];
 
   const currentPageLabel = links.find((link) => link.href === pathname)?.label ?? 'Panel';

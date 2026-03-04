@@ -46,10 +46,10 @@ function SwapRequestModalContent({ shift, employees, currentUserId, onSuccess }:
   const [loading, setLoading] = useState(false);
 
   const options = employees
-    .filter((e: any) => e.id !== currentUserId)
-    .map((e: any) => ({
+    .filter((e: { id: string }) => e.id !== currentUserId)
+    .map((e: { id: string; name?: string; user?: { name?: string }; department?: string | null }) => ({
       value: e.id,
-      label: `${e.user?.name || "Bilinmiyor"} (${e.department || "Departman Yok"})`,
+      label: `${e.user?.name ?? e.name ?? "Bilinmiyor"} (${e.department ?? "Departman Yok"})`,
     }));
 
   options.unshift({ value: "OPEN", label: "Herkese Açık / Herhangi Biri" });
@@ -110,10 +110,10 @@ export default function MyShiftsPage() {
   });
 
   const { data: employeesData } = useQuery({
-    queryKey: ["employees", "active"],
-    enabled: Boolean(employeeId), // fetch colleagues
+    queryKey: ["employees", "swap-targets"],
+    enabled: Boolean(employeeId),
     queryFn: async () => {
-      const response = await api.get("/employees?active=true");
+      const response = await api.get("/employees/swap-targets");
       return response.data;
     },
   });

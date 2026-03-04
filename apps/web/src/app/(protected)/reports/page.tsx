@@ -1,12 +1,12 @@
 "use client";
 
-import { Badge, Button, Card, Grid, Group, ScrollArea, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
+import { Badge, Button, Card, Grid, Group, ScrollArea, Select, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { currentWeekStartIsoDate, formatWeekRange, shiftIsoDate } from '../../../lib/time';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
 import { useAuth } from '../../../hooks/use-auth';
-import { useComplianceViolations, useSecurityEvents } from '../../../hooks/use-reports';
+import { useAuditTrail, useComplianceViolations, useSecurityEvents } from '../../../hooks/use-reports';
 import { useOvertime } from '../../../hooks/use-overtime';
 
 export default function ReportsPage() {
@@ -15,6 +15,10 @@ export default function ReportsPage() {
   const [securityDirective, setSecurityDirective] = useState('');
   const [securityFrom, setSecurityFrom] = useState('');
   const [securityTo, setSecurityTo] = useState('');
+  const [auditAction, setAuditAction] = useState('');
+  const [auditEntityType, setAuditEntityType] = useState('');
+  const [auditFrom, setAuditFrom] = useState('');
+  const [auditTo, setAuditTo] = useState('');
   const { data: me } = useAuth();
 
   const { weeklyOvertimeQuery, recalculateOvertime } = useOvertime();
@@ -31,6 +35,17 @@ export default function ReportsPage() {
     directive: securityDirective,
     from: securityFrom,
     to: securityTo
+  });
+  const {
+    data: auditTrail,
+    isLoading: auditLoading,
+    isError: auditError
+  } = useAuditTrail(Boolean(me?.role === 'ADMIN' || me?.role === 'MANAGER'), {
+    limit: 150,
+    action: auditAction,
+    entityType: auditEntityType,
+    from: auditFrom,
+    to: auditTo
   });
 
   const securitySummary = useMemo(() => {
@@ -55,6 +70,30 @@ export default function ReportsPage() {
       topDirective
     };
   }, [securityEvents]);
+
+  const auditSummary = useMemo(() => {
+    const events = auditTrail ?? [];
+    const actionMap = new Map<string, number>();
+    for (const event of events) {
+      actionMap.set(event.action, (actionMap.get(event.action) ?? 0) + 1);
+    }
+    const topAction = Array.from(actionMap.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
+    return { total: events.length, topAction };
+  }, [auditTrail]);
+
+  const auditActionOptions = useMemo(() => {
+    const events = auditTrail ?? [];
+    return Array.from(new Set(events.map((event) => event.action)))
+      .sort((a, b) => a.localeCompare(b))
+      .map((action) => ({ value: action, label: action }));
+  }, [auditTrail]);
+
+  const auditEntityOptions = useMemo(() => {
+    const events = auditTrail ?? [];
+    return Array.from(new Set(events.map((event) => event.entityType)))
+      .sort((a, b) => a.localeCompare(b))
+      .map((entityType) => ({ value: entityType, label: entityType }));
+  }, [auditTrail]);
 
   function severityColor(value: 'HIGH' | 'MEDIUM' | 'LOW') {
     if (value === 'HIGH') return 'red';
@@ -363,6 +402,141 @@ export default function ReportsPage() {
                       <Table.Td>{event.documentUri ?? '-'}</Table.Td>
                       <Table.Td>{event.sourceIp ?? '-'}</Table.Td>
                       <Table.Td>{event.recommendation}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          )}
+        </Stack>
+      ) : null}
+
+      {(me?.role === 'ADMIN' || me?.role === 'MANAGER') ? (
+        <Stack>
+          <Group justify="space-between" align="center">
+            <Title order={3}>Denetim Kaydı (Audit Trail)</Title>
+            <Group>
+              <Badge variant="light">Son 150 kayıt</Badge>
+              <Button
+                variant="light"
+                leftSection={<IconDownload size={16} />}
+                onClick={() => {
+                  const events = auditTrail ?? [];
+                  if (events.length === 0) return;
+                  const headers = ['Zaman', 'Aksiyon', 'Kullanıcı', 'Rol', 'Entity', 'Entity ID'];
+                  const rows = events.map((event) => [
+                    new Date(event.createdAt).toLocaleString('tr-TR'),
+                    event.action,
+                    event.user?.name ?? event.user?.email ?? event.userId,
+                    event.user?.role ?? '-',
+                    event.entityType,
+                    event.entityId
+                  ]);
+                  const csv = [headers.join(','), ...rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))].join('\n');
+                  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const anchor = document.createElement('a');
+                  anchor.href = url;
+                  anchor.download = `audit_trail_${new Date().toISOString().slice(0, 10)}.csv`;
+                  anchor.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                CSV İndir
+              </Button>
+            </Group>
+          </Group>
+
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 3 }}>
+              <Card withBorder radius="md" p="md">
+                <Text c="dimmed" size="sm">Toplam Olay</Text>
+                <Title order={3}>{auditSummary.total}</Title>
+              </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 3 }}>
+              <Card withBorder radius="md" p="md">
+                <Text c="dimmed" size="sm">En Sık Aksiyon</Text>
+                <Text fw={700}>{auditSummary.topAction}</Text>
+              </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 3 }}>
+              <Select
+                label="Aksiyon"
+                placeholder="Tümü"
+                data={auditActionOptions}
+                value={auditAction || null}
+                onChange={(value) => setAuditAction(value ?? '')}
+                clearable
+                searchable
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 3 }}>
+              <Select
+                label="Entity"
+                placeholder="Tümü"
+                data={auditEntityOptions}
+                value={auditEntityType || null}
+                onChange={(value) => setAuditEntityType(value ?? '')}
+                clearable
+                searchable
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <TextInput
+                label="Başlangıç Tarihi"
+                type="date"
+                value={auditFrom}
+                onChange={(event) => setAuditFrom(event.currentTarget.value)}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <TextInput
+                label="Bitiş Tarihi"
+                type="date"
+                value={auditTo}
+                onChange={(event) => setAuditTo(event.currentTarget.value)}
+              />
+            </Grid.Col>
+          </Grid>
+
+          {auditLoading ? (
+            <Text c="dimmed" size="sm">Denetim kayıtları yükleniyor...</Text>
+          ) : auditError ? (
+            <Text c="red" size="sm">Denetim kayıtları yüklenemedi.</Text>
+          ) : (auditTrail ?? []).length === 0 ? (
+            <PageEmpty title="Denetim kaydı yok" description="Seçili filtrelere uygun kayıt bulunamadı." />
+          ) : (
+            <ScrollArea>
+              <Table withTableBorder striped="odd" highlightOnHover verticalSpacing="sm" horizontalSpacing="sm">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Zaman</Table.Th>
+                    <Table.Th>Aksiyon</Table.Th>
+                    <Table.Th>Kullanıcı</Table.Th>
+                    <Table.Th>Entity</Table.Th>
+                    <Table.Th>Entity ID</Table.Th>
+                    <Table.Th>Detay</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {(auditTrail ?? []).map((event) => (
+                    <Table.Tr key={event.id}>
+                      <Table.Td>{new Date(event.createdAt).toLocaleString('tr-TR')}</Table.Td>
+                      <Table.Td><Badge variant="light">{event.action}</Badge></Table.Td>
+                      <Table.Td>
+                        <Stack gap={0}>
+                          <Text fw={600} size="sm">{event.user?.name ?? event.user?.email ?? event.userId}</Text>
+                          <Text c="dimmed" size="xs">{event.user?.role ?? '-'}</Text>
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>{event.entityType}</Table.Td>
+                      <Table.Td>{event.entityId}</Table.Td>
+                      <Table.Td>
+                        <Text size="xs" c="dimmed" lineClamp={2}>
+                          {JSON.stringify(event.details ?? {})}
+                        </Text>
+                      </Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
