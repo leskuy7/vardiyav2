@@ -1,0 +1,27 @@
+
+> dev:web
+> npm run -w @vardiya/web dev
+
+
+> dev
+> next dev
+
+   Ôû▓ Next.js 15.5.12
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.137.1:3000
+   - Environments: .env.local, .env
+
+ Ô£ô Starting...
+ Ô£ô Ready in 2.2s
+ Ôùï Compiling /leaves ...
+ Ô£ô Compiled /leaves in 3.9s (3107 modules)
+ GET /leaves 200 in 4509ms
+ Ôùï Compiling /reports ...
+ Ô£ô Compiled /reports in 1074ms (3124 modules)
+ GET /reports 200 in 1443ms
+ Ôùï Compiling /my-shifts ...
+ Ô£ô Compiled /my-shifts in 874ms (3157 modules)
+ GET /my-shifts 200 in 1326ms
+ Ôùï Compiling /availability ...
+ Ô£ô Compiled /availability in 515ms (3168 modules)
+ GET /availability 200 in 788ms

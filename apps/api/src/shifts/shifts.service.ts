@@ -8,6 +8,18 @@ import { UpdateShiftDto } from './dto/update-shift.dto';
 
 type ActorWithSub = { role: string; employeeId?: string; sub?: string };
 
+const SHIFT_STATUS_VALUES = new Set<ShiftStatus>([
+  'PROPOSED',
+  'DRAFT',
+  'PUBLISHED',
+  'ACKNOWLEDGED',
+  'DECLINED',
+  'SWAPPED',
+  'CANCELLED'
+]);
+
+const AVAILABILITY_TIMEZONE = 'Europe/Istanbul';
+
 @Injectable()
 export class ShiftsService {
   constructor(private readonly prisma: PrismaService) { }
@@ -93,13 +105,39 @@ export class ShiftsService {
   }
 
   private toMinutes(isoDate: Date) {
-    return isoDate.getUTCHours() * 60 + isoDate.getUTCMinutes();
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: AVAILABILITY_TIMEZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(isoDate);
+    const hours = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+    const minutes = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+    return hours * 60 + minutes;
+  }
+
+  private toLocalIsoDate(date: Date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: AVAILABILITY_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(date);
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value;
+    const day = parts.find((p) => p.type === 'day')?.value;
+    return `${year}-${month}-${day}`;
+  }
+
+  private toLocalDayOfWeek(date: Date) {
+    const isoDate = this.toLocalIsoDate(date);
+    return new Date(`${isoDate}T12:00:00.000Z`).getUTCDay();
   }
 
   private inDateRange(target: Date, startDate?: Date | null, endDate?: Date | null) {
-    const value = target.toISOString().slice(0, 10);
-    const start = startDate?.toISOString().slice(0, 10);
-    const end = endDate?.toISOString().slice(0, 10);
+    const value = this.toLocalIsoDate(target);
+    const start = startDate ? this.toLocalIsoDate(startDate) : undefined;
+    const end = endDate ? this.toLocalIsoDate(endDate) : undefined;
     if (start && value < start) return false;
     if (end && value > end) return false;
     return true;
@@ -120,6 +158,19 @@ export class ShiftsService {
     return hours * 60 + minutes;
   }
 
+  private parseStatusFilter(status?: string): Prisma.ShiftWhereInput['status'] {
+    if (!status) return undefined;
+
+    const values = status
+      .split(',')
+      .map((item) => item.trim().toUpperCase())
+      .filter((item): item is ShiftStatus => SHIFT_STATUS_VALUES.has(item as ShiftStatus));
+
+    if (values.length === 0) return undefined;
+    if (values.length === 1) return values[0];
+    return { in: values };
+  }
+
   private intervalsOverlap(startA: number, endA: number, startB: number, endB: number) {
     return startA < endB && endA > startB;
   }
@@ -128,9 +179,9 @@ export class ShiftsService {
     const warnings: string[] = [];
 
     // Day 1
-    const day1 = startTime.getUTCDay();
+    const day1 = this.toLocalDayOfWeek(startTime);
     const shiftStart1 = this.toMinutes(startTime);
-    const isCrossDay = startTime.getUTCDate() !== endTime.getUTCDate() || startTime.getUTCMonth() !== endTime.getUTCMonth() || startTime.getUTCFullYear() !== endTime.getUTCFullYear();
+    const isCrossDay = this.toLocalIsoDate(startTime) !== this.toLocalIsoDate(endTime);
     const shiftEnd1 = isCrossDay ? 24 * 60 : this.toMinutes(endTime);
 
     const blocksDay1 = await this.prisma.availabilityBlock.findMany({
@@ -151,31 +202,31 @@ export class ShiftsService {
       }
 
       if (block.type === 'UNAVAILABLE' && !forceOverride) {
-        throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Shift conflicts with UNAVAILABLE block on ${startTime.toISOString().slice(0, 10)}` });
+        throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Calisan ${this.toLocalIsoDate(startTime)} tarihinde musait degil (UNAVAILABLE).` });
       }
 
       if (block.type === 'UNAVAILABLE' && forceOverride) {
-        warnings.push('UNAVAILABLE block overridden on start day');
+        warnings.push('Başlangıç günündeki müsaitlik kısıtlaması (UNAVAILABLE) geçersiz kılındı.');
       }
 
       if (block.type === 'PREFER_NOT') {
-        warnings.push('Employee prefers not to work on start day');
+        warnings.push('Çalışan başlangıç gününde çalışmayı tercih etmiyor.');
       }
 
       if (block.type === 'AVAILABLE_ONLY') {
         const fullyInside = shiftStart1 >= blockStartMinutes && shiftEnd1 <= blockEndMinutes;
         if (!fullyInside && !forceOverride) {
-          throw new UnprocessableEntityException({ code: 'AVAILABLE_ONLY_CONFLICT', message: 'Shift must stay within AVAILABLE_ONLY interval on start day' });
+          throw new UnprocessableEntityException({ code: 'AVAILABLE_ONLY_CONFLICT', message: 'Vardiya, başlangıç gününde çalışanın müsait olduğu saatler dışına taşıyor.' });
         }
         if (!fullyInside && forceOverride) {
-          warnings.push('AVAILABLE_ONLY rule overridden on start day');
+          warnings.push('Başlangıç gününde müsait saat kuralı geçersiz kılındı.');
         }
       }
     }
 
     if (isCrossDay) {
       // Day 2 exists
-      const day2 = endTime.getUTCDay();
+      const day2 = this.toLocalDayOfWeek(endTime);
       const shiftStart2 = 0;
       const shiftEnd2 = this.toMinutes(endTime);
 
@@ -197,24 +248,24 @@ export class ShiftsService {
         }
 
         if (block.type === 'UNAVAILABLE' && !forceOverride) {
-          throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Shift conflicts with UNAVAILABLE block on ${endTime.toISOString().slice(0, 10)}` });
+          throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Calisan ${this.toLocalIsoDate(endTime)} tarihinde musait degil (UNAVAILABLE).` });
         }
 
         if (block.type === 'UNAVAILABLE' && forceOverride) {
-          warnings.push('UNAVAILABLE block overridden on end day');
+          warnings.push('Bitiş günündeki müsaitlik kısıtlaması (UNAVAILABLE) geçersiz kılındı.');
         }
 
         if (block.type === 'PREFER_NOT') {
-          warnings.push('Employee prefers not to work on end day');
+          warnings.push('Çalışan bitiş gününde çalışmayı tercih etmiyor.');
         }
 
         if (block.type === 'AVAILABLE_ONLY') {
           const fullyInside = shiftStart2 >= blockStartMinutes && shiftEnd2 <= blockEndMinutes;
           if (!fullyInside && !forceOverride) {
-            throw new UnprocessableEntityException({ code: 'AVAILABLE_ONLY_CONFLICT', message: 'Shift must stay within AVAILABLE_ONLY interval on end day' });
+            throw new UnprocessableEntityException({ code: 'AVAILABLE_ONLY_CONFLICT', message: 'Vardiya, bitiş gününde çalışanın müsait olduğu saatler dışına taşıyor.' });
           }
           if (!fullyInside && forceOverride) {
-            warnings.push('AVAILABLE_ONLY rule overridden on end day');
+            warnings.push('Bitiş gününde müsait saat kuralı geçersiz kılındı.');
           }
         }
       }
@@ -297,26 +348,27 @@ export class ShiftsService {
     return warningsByShiftId;
   }
 
-  async list(employeeId?: string, start?: string, end?: string, status?: string, actor?: { role: string; employeeId?: string }) {
+  async list(employeeId?: string, start?: string, end?: string, status?: string, actor?: ActorWithSub) {
     const scope = await getEmployeeScope(this.prisma, actor);
 
     if (scope.type === 'self' && employeeId && employeeId !== scope.employeeId) {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access your own shifts' });
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi vardiyalarınıza erişebilirsiniz.' });
     }
 
     if (scope.type === 'department' && employeeId) {
       const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
-      if (emp?.department !== scope.department) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access shifts in your department' });
+      if (emp?.department !== scope.department || (scope.organizationId && emp.organizationId !== scope.organizationId)) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki vardiyalara erişebilirsiniz.' });
       }
     }
 
     const where: Prisma.ShiftWhereInput = {
-      status: status as ShiftStatus | undefined,
+      status: this.parseStatusFilter(status),
       startTime: start || end ? { gte: start ? new Date(start) : undefined, lte: end ? new Date(end) : undefined } : undefined
     };
 
-    if (scope.type === 'all') {
+    if (scope.type === 'all_in_org') {
+      where.employee = { organizationId: scope.organizationId };
       where.employeeId = employeeId;
     } else if (scope.type === 'self') {
       where.employeeId = scope.employeeId;
@@ -324,7 +376,10 @@ export class ShiftsService {
       if (employeeId) {
         where.employeeId = employeeId;
       } else {
-        where.employee = { department: scope.department };
+        where.employee = {
+          department: scope.department,
+          ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+        };
       }
     }
 
@@ -334,40 +389,53 @@ export class ShiftsService {
     });
   }
 
-  async getById(id: string, actor?: { role: string; employeeId?: string }) {
+  async getById(id: string, actor?: ActorWithSub) {
     const shift = await this.prisma.shift.findUnique({
       where: { id },
       include: undefined
     });
 
     if (!shift) {
-      throw new NotFoundException({ code: 'SHIFT_NOT_FOUND', message: 'Shift not found' });
+      throw new NotFoundException({ code: 'SHIFT_NOT_FOUND', message: 'Vardiya bulunamadı.' });
     }
 
     const scope = await getEmployeeScope(this.prisma, actor);
     if (scope.type === 'self' && shift.employeeId !== scope.employeeId) {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access your own shifts' });
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi vardiyalarınıza erişebilirsiniz.' });
     }
 
     if (scope.type === 'department') {
       const emp = await this.prisma.employee.findUnique({ where: { id: shift.employeeId } });
-      if (emp?.department !== scope.department) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access shifts in your department' });
+      if (emp?.department !== scope.department || (scope.organizationId && emp.organizationId !== scope.organizationId)) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki vardiyalara erişebilirsiniz.' });
+      }
+    }
+
+    if (scope.type === 'all_in_org') {
+      const emp = await this.prisma.employee.findUnique({ where: { id: shift.employeeId }, select: { organizationId: true } });
+      if (!emp || emp.organizationId !== scope.organizationId) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi organizasyonunuzdaki vardiyalara erişebilirsiniz.' });
       }
     }
 
     return shift;
   }
 
-  async create(dto: CreateShiftDto, actor?: { role: string; employeeId?: string }) {
+  async create(dto: CreateShiftDto, actor?: ActorWithSub) {
     const scope = await getEmployeeScope(this.prisma, actor);
     if (scope.type === 'self' && dto.employeeId !== scope.employeeId) {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only assign shifts to yourself' });
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendinize vardiya atayabilirsiniz.' });
     }
     if (scope.type === 'department') {
       const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
-      if (emp?.department !== scope.department) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only assign shifts to employees in your department' });
+      if (emp?.department !== scope.department || (scope.organizationId && emp.organizationId !== scope.organizationId)) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki çalışanlara vardiya atayabilirsiniz.' });
+      }
+    }
+    if (scope.type === 'all_in_org') {
+      const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId }, select: { organizationId: true } });
+      if (!emp || emp.organizationId !== scope.organizationId) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi organizasyonunuzdaki çalışanlara vardiya atayabilirsiniz.' });
       }
     }
 
@@ -375,7 +443,7 @@ export class ShiftsService {
     const endTime = new Date(dto.endTime);
 
     if (startTime >= endTime) {
-      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'startTime must be before endTime' });
+      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'Başlangıç zamanı, bitiş zamanından önce olmalıdır.' });
     }
 
     const overlap = await this.prisma.shift.findFirst({
@@ -388,7 +456,7 @@ export class ShiftsService {
     });
 
     if (overlap) {
-      throw new ConflictException({ code: 'SHIFT_OVERLAP', message: 'Shift overlaps another shift' });
+      throw new ConflictException({ code: 'SHIFT_OVERLAP', message: 'Bu vardiya, aynı çalışanın mevcut bir vardiyasıyla çakışıyor.' });
     }
 
     const overlapLeave = await this.prisma.leaveRequest.findFirst({
@@ -427,7 +495,7 @@ export class ShiftsService {
     return { ...shift, warnings };
   }
 
-  async update(id: string, dto: UpdateShiftDto, actor?: { role: string; employeeId?: string }) {
+  async update(id: string, dto: UpdateShiftDto, actor?: ActorWithSub) {
     const existing = await this.getById(id, actor);
 
     const employeeId = dto.employeeId ?? existing.employeeId;
@@ -436,8 +504,14 @@ export class ShiftsService {
       const scope = await getEmployeeScope(this.prisma, actor);
       if (scope.type === 'department') {
         const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
-        if (emp?.department !== scope.department) {
-          throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only assign shifts to employees in your department' });
+        if (emp?.department !== scope.department || (scope.organizationId && emp.organizationId !== scope.organizationId)) {
+          throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki çalışanlara vardiya atayabilirsiniz.' });
+        }
+      }
+      if (scope.type === 'all_in_org') {
+        const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId }, select: { organizationId: true } });
+        if (!emp || emp.organizationId !== scope.organizationId) {
+          throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi organizasyonunuzdaki çalışanlara vardiya atayabilirsiniz.' });
         }
       }
     }
@@ -446,7 +520,7 @@ export class ShiftsService {
     const endTime = new Date(dto.endTime ?? existing.endTime.toISOString());
 
     if (startTime >= endTime) {
-      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'startTime must be before endTime' });
+      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'Başlangıç zamanı, bitiş zamanından önce olmalıdır.' });
     }
 
     const overlap = await this.prisma.shift.findFirst({
@@ -460,7 +534,7 @@ export class ShiftsService {
     });
 
     if (overlap) {
-      throw new ConflictException({ code: 'SHIFT_OVERLAP', message: 'Shift overlaps another shift' });
+      throw new ConflictException({ code: 'SHIFT_OVERLAP', message: 'Bu vardiya, aynı çalışanın mevcut bir vardiyasıyla çakışıyor.' });
     }
 
     const overlapLeave = await this.prisma.leaveRequest.findFirst({
@@ -500,23 +574,23 @@ export class ShiftsService {
     return { ...shift, warnings };
   }
 
-  async remove(id: string, actor?: { role: string; employeeId?: string }) {
+  async remove(id: string, actor?: ActorWithSub) {
     const existing = await this.getById(id, actor);
     await this.prisma.shift.update({ where: { id }, data: { status: 'CANCELLED' } });
     const userId = (actor as ActorWithSub)?.sub;
     if (userId) {
       await this.recordShiftEvent(id, userId, 'CANCELLED', existing.status, 'CANCELLED');
     }
-    return { message: 'Shift cancelled' };
+    return { message: 'Vardiya iptal edildi.' };
   }
 
   async acknowledge(id: string, actor: { role: string; employeeId?: string }) {
     const shift = await this.getById(id, actor);
     if (actor.role === 'EMPLOYEE' && actor.employeeId !== shift.employeeId) {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only acknowledge your own shifts' });
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi vardiyalarınızı onaylayabilirsiniz.' });
     }
     if (shift.status !== 'PUBLISHED' && shift.status !== 'PROPOSED') {
-      throw new UnprocessableEntityException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be acknowledged' });
+      throw new UnprocessableEntityException({ code: 'INVALID_STATUS', message: 'Yalnızca YAYINLANMIŞ veya ÖNERİLMİŞ vardiyalar onaylanabilir.' });
     }
     const updated = await this.prisma.shift.update({ where: { id }, data: { status: 'ACKNOWLEDGED' } });
     const userId = (actor as ActorWithSub)?.sub;
@@ -529,10 +603,10 @@ export class ShiftsService {
   async decline(id: string, reason: string, actor: { role: string; employeeId?: string }) {
     const shift = await this.getById(id, actor);
     if (actor.role === 'EMPLOYEE' && actor.employeeId !== shift.employeeId) {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only decline your own shifts' });
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi vardiyalarınızı reddedebilirsiniz.' });
     }
     if (shift.status !== 'PUBLISHED' && shift.status !== 'PROPOSED') {
-      throw new UnprocessableEntityException({ code: 'INVALID_STATUS', message: 'Only PUBLISHED or PROPOSED shifts can be declined' });
+      throw new UnprocessableEntityException({ code: 'INVALID_STATUS', message: 'Yalnızca YAYINLANMIŞ veya ÖNERİLMİŞ vardiyalar reddedilebilir.' });
     }
 
     const updated = await this.prisma.shift.update({
@@ -549,7 +623,7 @@ export class ShiftsService {
     return updated;
   }
 
-  async bulkCreate(payload: CreateShiftDto[], actor?: { role: string; employeeId?: string }) {
+  async bulkCreate(payload: CreateShiftDto[], actor?: ActorWithSub) {
     const created: Array<unknown> = [];
     const failed: Array<{ index: number; reason: string }> = [];
 
@@ -571,7 +645,7 @@ export class ShiftsService {
     };
   }
 
-  async copyWeek(sourceWeekStart: string, targetWeekStart: string, actor?: { role: string; employeeId?: string }) {
+  async copyWeek(sourceWeekStart: string, targetWeekStart: string, actor?: ActorWithSub) {
     const scope = await getEmployeeScope(this.prisma, actor);
     const sourceStart = parseWeekStart(sourceWeekStart);
     const sourceEnd = plusDays(sourceStart, 7);
@@ -582,8 +656,16 @@ export class ShiftsService {
       where: {
         startTime: { gte: sourceStart, lt: sourceEnd },
         status: { not: 'CANCELLED' },
+        ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
         ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
-        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
+        ...(scope.type === 'department'
+          ? {
+              employee: {
+                department: scope.department,
+                ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+              }
+            }
+          : {})
       }
     });
 
@@ -609,7 +691,7 @@ export class ShiftsService {
 
         if (overlap) {
           skipped += 1;
-          errors.push({ shiftId: shift.id, reason: 'Target overlap exists' });
+          errors.push({ shiftId: shift.id, reason: 'Hedef haftada çakışan vardiya mevcut.' });
           continue;
         }
 

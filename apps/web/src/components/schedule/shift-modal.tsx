@@ -1,11 +1,13 @@
 "use client";
 
-import { Alert, Button, Checkbox, Group, Modal, Select, Stack, TextInput, Text } from '@mantine/core';
+import { Alert, Button, Checkbox, Group, Modal, Select, Stack, Switch, TextInput, Text, ThemeIcon } from '@mantine/core';
 import { DateTimePicker } from '@mantine/dates';
+import { IconHistory } from '@tabler/icons-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { AvailabilityItem } from '../../hooks/use-availability';
 import { getAvailabilityConflicts } from '../../lib/availability-conflicts';
 import { formatDateShort, formatTimeOnly } from '../../lib/time';
+import { api } from '../../lib/api';
 
 type EmployeeOption = { value: string; label: string };
 
@@ -35,7 +37,14 @@ function conflictCodeToMessage(code: string): string {
   const map: Record<string, string> = {
     UNAVAILABLE_CONFLICT: 'Çalışan bu saatte müsait değil (UNAVAILABLE).',
     PREFER_NOT_CONFLICT: 'Çalışan bu saatte tercihen çalışmak istemiyor (PREFER_NOT).',
+    AVAILABLE_ONLY_CONFLICT: 'Vardiya, çalışanın müsait olduğu saatler dışına taşıyor.',
     COMPLIANCE_VIOLATION: 'Vardiya uyumluluk kuralını ihlal ediyor.',
+    COMPLIANCE_MAX_HOURS: 'Haftalık yasal çalışma süresi aşılıyor.',
+    COMPLIANCE_NO_REST: '24 saatlik kesintisiz hafta tatili sağlanamıyor.',
+    SHIFT_OVERLAP: 'Bu vardiya, aynı çalışanın mevcut bir vardiyasıyla çakışıyor.',
+    LEAVE_OVERLAP: 'Personel belirtilen tarihlerde onaylı izinde.',
+    INVALID_TIME_RANGE: 'Başlangıç zamanı, bitiş zamanından önce olmalıdır.',
+    FORBIDDEN: 'Bu işlem için yetkiniz bulunmuyor.',
   };
   return map[code] ?? `Hata: ${code}`;
 }
@@ -62,6 +71,11 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [retroactive, setRetroactive] = useState(false);
+
+  // Client-side overlap check state
+  const [overlapWarning, setOverlapWarning] = useState<string | null>(null);
+  const [checkingOverlap, setCheckingOverlap] = useState(false);
 
   const isEdit = Boolean(initial);
 
@@ -80,10 +94,66 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
     setNote(initial?.note ?? '');
     setForceOverride(false);
     setError(null);
+    setOverlapWarning(null);
     setSelectedEmployeeId(employeeId);
+    setRetroactive(false);
   }, [employeeId, initial, opened]);
 
+  // Client-side overlap check — fires when employee, start, or end changes
+  useEffect(() => {
+    if (!selectedEmployeeId || !startAt || !endAt || startAt >= endAt) {
+      setOverlapWarning(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setCheckingOverlap(true);
+      try {
+        const { data: shifts } = await api.get(`/shifts?employeeId=${selectedEmployeeId}&status=PUBLISHED,ACKNOWLEDGED,PROPOSED`, {
+          signal: controller.signal,
+        });
+        const existingShifts = Array.isArray(shifts) ? shifts : [];
+        const conflicting = existingShifts.find((s: { id: string; startTime: string; endTime: string; status: string }) => {
+          if (initial && s.startTime === initial.start && s.endTime === initial.end) return false; // skip self
+          const sStart = new Date(s.startTime).getTime();
+          const sEnd = new Date(s.endTime).getTime();
+          return startAt.getTime() < sEnd && endAt.getTime() > sStart;
+        });
+        if (conflicting) {
+          const cs = new Date(conflicting.startTime);
+          const ce = new Date(conflicting.endTime);
+          setOverlapWarning(
+            `⚠️ Çakışma tespit edildi! Bu çalışanın ${formatDateShort(cs.toISOString())} ${formatTimeOnly(cs.toISOString())} – ${formatTimeOnly(ce.toISOString())} arasında zaten bir vardiyası var.`
+          );
+        } else {
+          setOverlapWarning(null);
+        }
+      } catch {
+        // Network error — don't block the user
+      } finally {
+        setCheckingOverlap(false);
+      }
+    }, 400); // debounce
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [selectedEmployeeId, startAt, endAt, initial]);
+
+  // Past date warning
+  const isPastDate = useMemo(() => {
+    if (!startAt) return false;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return startAt < now;
+  }, [startAt]);
+
   const selectedDate = useMemo(() => startAt ?? endAt ?? new Date(), [startAt, endAt]);
+
+  // MinDate for DateTimePicker (null = no limit for retroactive mode)
+  const minDate = retroactive ? undefined : new Date();
 
   function handleTemplateClick(startHour: number, endHour: number) {
     const { startAt: nextStart, endAt: nextEnd } = applyTemplate(selectedDate, startHour, endHour);
@@ -110,13 +180,25 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
       return;
     }
 
+    // Block past dates if not retroactive
+    if (isPastDate && !retroactive && !isEdit) {
+      setError('Geçmiş tarihe vardiya eklenemez. Geçmişe dönük eklemek için ilgili seçeneği açın.');
+      return;
+    }
+
+    // Block if overlap detected (client-side)
+    if (overlapWarning) {
+      setError('Vardiya çakışması mevcut. Lütfen saatleri düzenleyin veya farklı bir çalışan seçin.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await onSubmit({
         employeeId: selectedEmployeeId,
         startTime: startAt.toISOString(),
         endTime: endAt.toISOString(),
-        note: note || undefined,
+        note: (retroactive && !isEdit ? `[GEÇMİŞE DÖNÜK] ${note || ''}`.trim() : note) || undefined,
         forceOverride
       });
       onClose();
@@ -147,7 +229,7 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title={isEdit ? 'Vardiya Düzenle' : 'Vardiya Ekle'}>
+    <Modal opened={opened} onClose={onClose} title={isEdit ? 'Vardiya Düzenle' : 'Vardiya Ekle'} size="lg">
       <form onSubmit={handleSubmit}>
         <Stack>
           <Select
@@ -173,9 +255,60 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
             ))}
           </Group>
 
-          <DateTimePicker label="Başlangıç" value={startAt} onChange={setStartAt} required data-testid="shift-start" />
-          <DateTimePicker label="Bitiş" value={endAt} onChange={setEndAt} required data-testid="shift-end" />
+          <DateTimePicker
+            label="Başlangıç"
+            value={startAt}
+            onChange={setStartAt}
+            required
+            data-testid="shift-start"
+            minDate={minDate}
+          />
+          <DateTimePicker
+            label="Bitiş"
+            value={endAt}
+            onChange={setEndAt}
+            required
+            data-testid="shift-end"
+            minDate={minDate}
+          />
           <TextInput label="Not" value={note} onChange={(event) => setNote(event.currentTarget.value)} />
+
+          {/* Geriye dönük vardiya modu */}
+          {!isEdit && (
+            <Switch
+              label="Geçmişe dönük vardiya ekle"
+              description="Unutulmuş veya düzeltme amaçlı geriye dönük vardiya eklemek için açın."
+              checked={retroactive}
+              onChange={(event) => setRetroactive(event.currentTarget.checked)}
+              color="orange"
+              thumbIcon={retroactive ? <IconHistory size={12} /> : undefined}
+            />
+          )}
+
+          {/* Geçmiş tarih uyarısı */}
+          {isPastDate && retroactive && !isEdit && (
+            <Alert color="orange" title="Geçmişe Dönük Vardiya" variant="light">
+              <Text size="sm">
+                Bu vardiya geçmiş bir tarihe ekleniyor. Vardiya notu otomatik olarak [GEÇMİŞE DÖNÜK] etiketiyle işaretlenecektir.
+              </Text>
+            </Alert>
+          )}
+
+          {/* Geçmiş tarih uyarısı - retroactive kapalıyken */}
+          {isPastDate && !retroactive && !isEdit && (
+            <Alert color="red" title="Geçmiş Tarih" variant="light">
+              <Text size="sm">
+                Seçilen tarih geçmişte. Geçmişe dönük vardiya eklemek istiyorsanız yukarıdaki &quot;Geçmişe dönük vardiya ekle&quot; seçeneğini açın.
+              </Text>
+            </Alert>
+          )}
+
+          {/* Client-side overlap warning */}
+          {overlapWarning && (
+            <Alert color="red" title="Vardiya Çakışması" variant="light">
+              <Text size="sm">{overlapWarning}</Text>
+            </Alert>
+          )}
 
           {availabilityConflicts.length > 0 && (
             <Alert color="orange" title="Müsaitlik çakışması" variant="light">
@@ -213,16 +346,14 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
                   size="xs"
                   color="green"
                   onClick={() => {
-                    import('../../lib/api').then(({ api }) => {
-                      api.post(`/swap-requests/${initial.swapRequests![0]?.id}/approve`).then(() => {
-                        import('@mantine/notifications').then(({ notifications }) => {
-                          notifications.show({ title: 'Onaylandı', message: 'Takas isteği başarıyla onaylandı.', color: 'green' });
-                          onClose();
-                        });
-                      }).catch((err) => {
-                        import('@mantine/notifications').then(({ notifications }) => {
-                          notifications.show({ title: 'Hata', message: err?.response?.data?.message || 'Onay başarısız!', color: 'red' });
-                        });
+                    api.post(`/swap-requests/${initial.swapRequests![0]?.id}/approve`).then(() => {
+                      import('@mantine/notifications').then(({ notifications }) => {
+                        notifications.show({ title: 'Onaylandı', message: 'Takas isteği başarıyla onaylandı.', color: 'green' });
+                        onClose();
+                      });
+                    }).catch((err) => {
+                      import('@mantine/notifications').then(({ notifications }) => {
+                        notifications.show({ title: 'Hata', message: err?.response?.data?.message || 'Onay başarısız!', color: 'red' });
                       });
                     });
                   }}
@@ -234,16 +365,14 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
                   color="red"
                   variant="outline"
                   onClick={() => {
-                    import('../../lib/api').then(({ api }) => {
-                      api.post(`/swap-requests/${initial.swapRequests![0]?.id}/reject`).then(() => {
-                        import('@mantine/notifications').then(({ notifications }) => {
-                          notifications.show({ title: 'Reddedildi', message: 'Takas isteği reddedildi.', color: 'orange' });
-                          onClose();
-                        });
-                      }).catch((err) => {
-                        import('@mantine/notifications').then(({ notifications }) => {
-                          notifications.show({ title: 'Hata', message: err?.response?.data?.message || 'Reddetme başarısız!', color: 'red' });
-                        });
+                    api.post(`/swap-requests/${initial.swapRequests![0]?.id}/reject`).then(() => {
+                      import('@mantine/notifications').then(({ notifications }) => {
+                        notifications.show({ title: 'Reddedildi', message: 'Takas isteği reddedildi.', color: 'orange' });
+                        onClose();
+                      });
+                    }).catch((err) => {
+                      import('@mantine/notifications').then(({ notifications }) => {
+                        notifications.show({ title: 'Hata', message: err?.response?.data?.message || 'Reddetme başarısız!', color: 'red' });
                       });
                     });
                   }}
@@ -295,7 +424,11 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
                 type="submit"
                 loading={submitting}
                 data-testid="shift-submit"
-                disabled={availabilityConflicts.length > 0 && !forceOverride}
+                disabled={
+                  (availabilityConflicts.length > 0 && !forceOverride) ||
+                  !!overlapWarning ||
+                  (isPastDate && !retroactive && !isEdit)
+                }
               >
                 Kaydet
               </Button>

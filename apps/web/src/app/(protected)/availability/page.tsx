@@ -16,7 +16,7 @@ import {
   Title
 } from '@mantine/core';
 import { modals } from '@mantine/modals';
-import { TimeInput } from '@mantine/dates';
+import { DateInput, TimeInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
@@ -166,11 +166,11 @@ export default function AvailabilityPage() {
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, md: 3 }}>
-              <TextInput label="Başlangıç Tarih" type="date" value={startDate} onChange={(event) => setStartDate(event.currentTarget.value)} />
+              <DateInput label="Başlangıç Tarih" placeholder="Tarih seçin" value={startDate ? new Date(startDate) : null} onChange={(val) => setStartDate(val ? val.toISOString().slice(0, 10) : todayIso())} clearable />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, md: 3 }}>
-              <TextInput label="Bitiş Tarih" type="date" value={endDate} onChange={(event) => setEndDate(event.currentTarget.value)} />
+              <DateInput label="Bitiş Tarih" placeholder="Tarih seçin" value={endDate ? new Date(endDate) : null} onChange={(val) => setEndDate(val ? val.toISOString().slice(0, 10) : todayIso())} clearable />
             </Grid.Col>
           </Grid>
 
@@ -222,9 +222,9 @@ export default function AvailabilityPage() {
                     <Table.Td>
                       {item.startDate || item.endDate
                         ? [item.startDate, item.endDate]
-                            .filter(Boolean)
-                            .map((d) => formatDateDisplay(d!))
-                            .join(' – ')
+                          .filter(Boolean)
+                          .map((d) => formatDateDisplay(d!))
+                          .join(' – ')
                         : '–'}
                     </Table.Td>
                     <Table.Td>{item.note ?? '–'}</Table.Td>

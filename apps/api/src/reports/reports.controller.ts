@@ -15,14 +15,14 @@ export class ReportsController {
 
   @Get('weekly-hours')
   weeklyHours(@Query() query: WeekStartQueryDto, @Req() request: Request) {
-    const actor = request.user as { role: string; employeeId?: string };
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
     const weekStart = query.weekStart ?? currentWeekStartIso();
     return this.reportsService.weeklyHours(weekStart, actor);
   }
 
   @Get('compliance-violations')
   complianceViolations(@Query() query: WeekStartQueryDto, @Req() request: Request) {
-    const actor = request.user as { role: string; employeeId?: string };
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
     const weekStart = query.weekStart ?? currentWeekStartIso();
     return this.reportsService.complianceViolations(weekStart, actor);
   }

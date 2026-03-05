@@ -42,6 +42,7 @@ export default function SchedulePage() {
       start: string;
       end: string;
       note?: string;
+      swapRequests?: Array<{ id: string; requesterId: string; targetEmployeeId: string | null; status: string }>;
     }
     | undefined
   >(undefined);
@@ -77,6 +78,7 @@ export default function SchedulePage() {
         start: string;
         end: string;
         note?: string;
+        swapRequests?: Array<{ id: string; requesterId: string; targetEmployeeId: string | null; status: string }>;
       }
     >();
     for (const day of data?.days ?? []) {
@@ -87,6 +89,7 @@ export default function SchedulePage() {
           start: shift.start,
           end: shift.end,
           note: shift.note,
+          swapRequests: shift.swapRequests,
         });
       }
     }
@@ -150,6 +153,7 @@ export default function SchedulePage() {
     start: string;
     end: string;
     note?: string;
+    swapRequests?: Array<{ id: string; requesterId: string; targetEmployeeId: string | null; status: string }>;
   }) => {
     setSelectedEmployeeId(shift.employeeId);
     setSelectedShift({
@@ -158,6 +162,7 @@ export default function SchedulePage() {
       start: shift.start,
       end: shift.end,
       note: shift.note,
+      swapRequests: shift.swapRequests,
     });
     setModalOpen(true);
   }, []);
@@ -391,6 +396,7 @@ export default function SchedulePage() {
               start: selectedShift.start,
               end: selectedShift.end,
               note: selectedShift.note,
+              swapRequests: selectedShift.swapRequests,
             }
             : undefined
         }

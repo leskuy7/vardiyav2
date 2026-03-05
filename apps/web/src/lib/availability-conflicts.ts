@@ -1,5 +1,7 @@
 import type { AvailabilityItem } from "../hooks/use-availability";
 
+const TZ = "Europe/Istanbul";
+
 export type AvailabilityConflict = {
   type: "UNAVAILABLE" | "PREFER_NOT" | "AVAILABLE_ONLY";
   label: string;
@@ -8,8 +10,34 @@ export type AvailabilityConflict = {
   note?: string | null;
 };
 
+function localIsoDate(d: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+  return `${year}-${month}-${day}`;
+}
+
+function localDayOfWeek(d: Date): number {
+  const iso = localIsoDate(d);
+  return new Date(`${iso}T12:00:00.000Z`).getUTCDay();
+}
+
 function toMinutes(d: Date): number {
-  return d.getUTCHours() * 60 + d.getUTCMinutes();
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
 }
 
 function parseTimeToMinutes(time: string): number {
@@ -18,7 +46,7 @@ function parseTimeToMinutes(time: string): number {
 }
 
 function inDateRange(d: Date, startDate?: string | null, endDate?: string | null): boolean {
-  const dateStr = d.toISOString().slice(0, 10);
+  const dateStr = localIsoDate(d);
   if (startDate && dateStr < startDate) return false;
   if (endDate && dateStr > endDate) return false;
   return true;
@@ -44,12 +72,9 @@ export function getAvailabilityConflicts(
   const blocks = availabilityList.filter((b) => b.employeeId === employeeId);
   if (blocks.length === 0) return [];
 
-  const day1 = startAt.getUTCDay();
+  const day1 = localDayOfWeek(startAt);
   const shiftStart1 = toMinutes(startAt);
-  const isCrossDay =
-    startAt.getUTCDate() !== endAt.getUTCDate() ||
-    startAt.getUTCMonth() !== endAt.getUTCMonth() ||
-    startAt.getUTCFullYear() !== endAt.getUTCFullYear();
+  const isCrossDay = localIsoDate(startAt) !== localIsoDate(endAt);
   const shiftEnd1 = isCrossDay ? 24 * 60 : toMinutes(endAt);
 
   for (const block of blocks.filter((b) => b.dayOfWeek === day1)) {
@@ -72,7 +97,7 @@ export function getAvailabilityConflicts(
   }
 
   if (isCrossDay) {
-    const day2 = endAt.getUTCDay();
+    const day2 = localDayOfWeek(endAt);
     const shiftStart2 = 0;
     const shiftEnd2 = toMinutes(endAt);
 

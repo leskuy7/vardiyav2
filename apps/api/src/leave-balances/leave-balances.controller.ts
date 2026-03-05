@@ -19,6 +19,7 @@ export class LeaveBalancesController {
     ) {
         const actor = {
             role: req.user.role,
+            sub: req.user.sub,
             employeeId: req.user.employeeId,
             department: req.user.department
         };
@@ -28,6 +29,11 @@ export class LeaveBalancesController {
     @Post('adjust')
     @Roles('ADMIN', 'MANAGER')
     adjust(@Body() adjustDto: AdjustLeaveBalanceDto, @Request() req: any) {
-        return this.leaveBalancesService.adjustBalance(adjustDto, req.user.userId);
+        const actor = {
+            sub: req.user.sub,
+            role: req.user.role,
+            employeeId: req.user.employeeId
+        };
+        return this.leaveBalancesService.adjustBalance(adjustDto, actor);
     }
 }

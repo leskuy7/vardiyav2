@@ -45,7 +45,7 @@ Production-ready hedefli vardiya planlama sistemi (monorepo).
 - `JWT_ACCESS_EXPIRES_IN`
 - `JWT_REFRESH_EXPIRES_IN`
 - `WEB_ORIGIN`
-- `CSRF_ORIGINS` (virgülle ayrılmış origin listesi)
+- `CSRF_ORIGINS` (virgülle ayrılmış origin listesi, `CSRF_ORIGIN` geriye dönük destek olarak okunur)
 
 ### Web (`apps/web/.env`)
 
@@ -204,3 +204,5 @@ npm run -w @vardiya/web test
 - App Router + memory token + single-flight refresh: ✅
 - Schedule grid + drag/drop + modal + warning gösterimi: ✅
 - Role routing (`/schedule,/employees,/reports` ve `/my-shifts`): ✅
+
+

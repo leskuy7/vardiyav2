@@ -15,39 +15,67 @@ import {
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
-import { PropsWithChildren, useEffect } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 import { ThemeToggle } from '../../components/theme-toggle';
 import { useAuth } from '../../hooks/use-auth';
 import { api } from '../../lib/api';
-import { getAccessToken, setAccessToken } from '../../lib/token-store';
+import { setAccessToken } from '../../lib/token-store';
 
 export default function ProtectedLayout({ children }: PropsWithChildren) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const [opened, { toggle, close }] = useDisclosure(false);
+  const [mounted, setMounted] = useState(false);
 
   const { data, isLoading, isError } = useAuth();
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!getAccessToken() || isError) router.replace('/login');
-  }, [isError, router]);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const check = () => {
+      if (!isLoading && (isError || !data)) router.replace('/login');
+    };
+    check();
+    window.addEventListener('storage', check);
+    return () => window.removeEventListener('storage', check);
+  }, [data, isError, isLoading, router]);
 
   useEffect(() => {
     const employeeAllowed = ['/my-shifts', '/availability', '/leaves', '/profile'];
+    const adminOnly = ['/reports'];
     if (!isLoading && data?.role === 'EMPLOYEE' && !employeeAllowed.includes(pathname)) {
       router.replace('/my-shifts');
     }
+    if (!isLoading && data?.role === 'MANAGER' && adminOnly.includes(pathname)) {
+      router.replace('/dashboard');
+    }
   }, [data?.role, isLoading, pathname, router]);
+
+  // Keep initial server/client markup identical to avoid hydration mismatch.
+  if (!mounted) {
+    return null;
+  }
 
   if (isLoading) {
     return <p>Oturum doğrulanıyor...</p>;
   }
 
-  if (isError) {
+  if (isError || !data) {
     return null;
   }
+
+  const adminManagerLinks = [
+    { href: '/dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={18} /> },
+    { href: '/schedule', label: 'Haftalık Program', icon: <IconCalendarWeek size={18} /> },
+    { href: '/employees', label: 'Çalışanlar', icon: <IconUsers size={18} /> },
+    { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> },
+    { href: '/leaves', label: 'İzin Onayları', icon: <IconCalendarEvent size={18} /> },
+    ...(data?.role === 'ADMIN' ? [{ href: '/reports', label: 'Raporlar', icon: <IconChartBar size={18} /> }] : []),
+    { href: '/profile', label: 'Profil', icon: <IconUser size={18} /> }
+  ];
 
   const links: Array<{ href: string; label: string; icon: React.ReactNode }> =
     data?.role === 'EMPLOYEE'
@@ -57,15 +85,7 @@ export default function ProtectedLayout({ children }: PropsWithChildren) {
         { href: '/leaves', label: 'İzinlerim', icon: <IconCalendarEvent size={18} /> },
         { href: '/profile', label: 'Profil', icon: <IconUser size={18} /> }
       ]
-      : [
-        { href: '/dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={18} /> },
-        { href: '/schedule', label: 'Haftalık Program', icon: <IconCalendarWeek size={18} /> },
-        { href: '/employees', label: 'Çalışanlar', icon: <IconUsers size={18} /> },
-        { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> },
-        { href: '/leaves', label: 'İzin Onayları', icon: <IconCalendarEvent size={18} /> },
-        { href: '/reports', label: 'Raporlar', icon: <IconChartBar size={18} /> },
-        { href: '/profile', label: 'Profil', icon: <IconUser size={18} /> }
-      ];
+      : adminManagerLinks;
 
   const currentPageLabel = links.find((link) => link.href === pathname)?.label ?? 'Panel';
 

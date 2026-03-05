@@ -27,6 +27,12 @@ function minutesBetween(a: Date, b: Date) { return Math.round((b.getTime() - a.g
 export class LeaveRequestsService {
     constructor(private readonly prisma: PrismaService) { }
 
+    private async getAdminOrganizationId(sub?: string): Promise<string | null> {
+        if (!sub) return null;
+        const org = await this.prisma.organization.findUnique({ where: { adminUserId: sub }, select: { id: true } });
+        return org?.id ?? null;
+    }
+
     async create(dto: CreateLeaveRequestDto, actor: { role: string; employeeId?: string }) {
         if (!actor.employeeId) {
             throw new BadRequestException({ code: 'BAD_REQUEST', message: 'User is not linked to an employee profile' });
@@ -119,13 +125,25 @@ export class LeaveRequestsService {
 
     async findAll(actor: { role: string; employeeId?: string; sub?: string; department?: string }) {
         if (actor.role === 'ADMIN') {
-            return this.prisma.leaveRequest.findMany({ include: { employee: { include: { user: true } } }, orderBy: { createdAt: 'desc' } });
+            const organizationId = await this.getAdminOrganizationId(actor.sub);
+            if (!organizationId) return [];
+            return this.prisma.leaveRequest.findMany({
+                where: { employee: { organizationId } },
+                include: { employee: { include: { user: true } } },
+                orderBy: { createdAt: 'desc' }
+            });
         }
 
         if (actor.role === 'MANAGER' && actor.employeeId) {
             const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+            if (!manager) return [];
             return this.prisma.leaveRequest.findMany({
-                where: { employee: { department: manager?.department } },
+                where: {
+                    employee: {
+                        department: manager.department,
+                        ...(manager.organizationId ? { organizationId: manager.organizationId } : {})
+                    }
+                },
                 include: { employee: { include: { user: true } } },
                 orderBy: { createdAt: 'desc' }
             });
@@ -174,14 +192,22 @@ export class LeaveRequestsService {
     async approve(id: string, managerNote: string | undefined, actor: { sub?: string; role: string; employeeId?: string }) {
         if (actor.role === 'EMPLOYEE') throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yetkisiz onyalama islemi' });
 
+        const adminOrganizationId = actor.role === 'ADMIN' ? await this.getAdminOrganizationId(actor.sub) : null;
+
         return this.prisma.$transaction(async (tx) => {
             const leave = await tx.leaveRequest.findUnique({ where: { id }, include: { employee: true, leaveType: true } });
             if (!leave) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Leave request not found' });
             if (leave.status !== 'PENDING') throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Sadece PENDING onaylanabilir' });
 
+            if (actor.role === 'ADMIN') {
+                if (!adminOrganizationId || leave.employee.organizationId !== adminOrganizationId) {
+                    throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Organizasyon dışı izin yönetemezsiniz' });
+                }
+            }
+
             if (actor.role === 'MANAGER' && actor.employeeId) {
                 const manager = await tx.employee.findUnique({ where: { id: actor.employeeId } });
-                if (manager?.department !== leave.employee.department) {
+                if (!manager || manager.department !== leave.employee.department || manager.organizationId !== leave.employee.organizationId) {
                     throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Departman dışı izin yönetemezsiniz' });
                 }
             }
@@ -260,13 +286,18 @@ export class LeaveRequestsService {
         });
     }
 
-    async remove(id: string, actor: { role: string; employeeId?: string }) {
+    async remove(id: string, actor: { role: string; employeeId?: string; sub?: string }) {
         const leave = await this.prisma.leaveRequest.findUnique({ where: { id }, include: { employee: true } });
         if (!leave) {
             throw new NotFoundException({ code: 'NOT_FOUND', message: 'Leave request not found' });
         }
 
-        if (actor.role !== 'ADMIN') {
+        if (actor.role === 'ADMIN') {
+            const orgId = await this.getAdminOrganizationId(actor.sub);
+            if (!orgId || leave.employee.organizationId !== orgId) {
+                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Only admins can delete leave requests in their own organization' });
+            }
+        } else {
             if (leave.employeeId !== actor.employeeId || leave.status !== 'PENDING') {
                 throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Only admins can delete non-pending or others leave requests' });
             }

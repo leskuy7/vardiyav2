@@ -17,7 +17,7 @@ export class AvailabilityController {
     @Query('dayOfWeek') dayOfWeek?: string,
     @Req() request?: Request
   ) {
-    const actor = request?.user as { role: string; employeeId?: string } | undefined;
+    const actor = request?.user as { role: string; sub?: string; employeeId?: string } | undefined;
     return this.availabilityService.list(employeeId, dayOfWeek ? Number(dayOfWeek) : undefined, actor);
   }
 

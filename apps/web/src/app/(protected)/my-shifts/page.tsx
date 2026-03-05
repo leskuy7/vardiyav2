@@ -1,20 +1,25 @@
 "use client";
 
 import {
+  Alert,
   Badge,
   Button,
   Card,
   Grid,
   Group,
+  Paper,
   Stack,
   Text,
+  TextInput,
+  ThemeIcon,
   Title,
   Select,
 } from "@mantine/core";
+import { IconClock, IconLogin, IconLogout as IconLogoutClock } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   PageEmpty,
   PageError,
@@ -22,6 +27,7 @@ import {
 } from "../../../components/page-states";
 import { useAuth } from "../../../hooks/use-auth";
 import { useShiftsActions } from "../../../hooks/use-shifts";
+import { useActiveTimeEntry, useTimeEntryActions } from "../../../hooks/use-time-entries";
 import {
   getShiftStatusColor,
   getShiftStatusIcon,
@@ -91,12 +97,31 @@ function SwapRequestModalContent({ shift, employees, currentUserId, onSuccess }:
   );
 }
 
+function formatDuration(startIso: string) {
+  const ms = Date.now() - new Date(startIso).getTime();
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h} saat ${m} dk`;
+}
+
 export default function MyShiftsPage() {
   const weekStart = currentWeekStartIsoDate();
   const { acknowledgeShift, declineShift } = useShiftsActions(weekStart);
   const { data: me } = useAuth();
 
   const employeeId = me?.employee?.id;
+
+  const { data: activeEntry } = useActiveTimeEntry(!!employeeId);
+  const { checkIn, checkOut } = useTimeEntryActions();
+
+  // Live duration ticker
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!activeEntry) return;
+    const interval = setInterval(() => setTick((t) => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, [activeEntry]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["my-shifts", employeeId],
@@ -144,6 +169,80 @@ export default function MyShiftsPage() {
         </Text>
       </Stack>
 
+      {/* ─── Puantaj Durumu ─── */}
+      {activeEntry ? (
+        <Paper
+          withBorder
+          radius="md"
+          p="md"
+          className="surface-card"
+          style={{ borderLeft: '3px solid var(--mantine-color-green-filled)' }}
+        >
+          <Group justify="space-between" align="center">
+            <Group gap="sm">
+              <ThemeIcon variant="gradient" gradient={{ from: 'green', to: 'teal' }} radius="xl">
+                <IconClock size={18} />
+              </ThemeIcon>
+              <Stack gap={0}>
+                <Text fw={700} size="sm">Puantaj Açık — Çalışıyorsunuz</Text>
+                <Text c="dimmed" size="xs">
+                  Giriş: {formatTimeOnly(activeEntry.checkInAt)} · Süre: {formatDuration(activeEntry.checkInAt)}
+                </Text>
+              </Stack>
+            </Group>
+            <Button
+              color="red"
+              variant="light"
+              leftSection={<IconLogoutClock size={16} />}
+              loading={checkOut.isPending}
+              onClick={() =>
+                checkOut.mutate(
+                  { entryId: activeEntry.id },
+                  {
+                    onSuccess: () =>
+                      notifications.show({ title: 'Çıkış Yapıldı', message: 'Puantaj başarıyla kapatıldı.', color: 'green' }),
+                    onError: (err: any) =>
+                      notifications.show({ title: 'Hata', message: err?.response?.data?.message ?? 'Çıkış başarısız.', color: 'red' }),
+                  }
+                )
+              }
+            >
+              Çıkış Yap
+            </Button>
+          </Group>
+        </Paper>
+      ) : (
+        <Paper withBorder radius="md" p="md" className="surface-card">
+          <Group justify="space-between" align="center">
+            <Group gap="sm">
+              <ThemeIcon variant="light" color="gray" radius="xl">
+                <IconClock size={18} />
+              </ThemeIcon>
+              <Text size="sm" c="dimmed">Henüz giriş yapılmadı. Aşağıdaki vardiyadan giriş yapabilirsiniz.</Text>
+            </Group>
+            <Button
+              variant="gradient"
+              gradient={{ from: 'indigo', to: 'violet' }}
+              leftSection={<IconLogin size={16} />}
+              loading={checkIn.isPending}
+              onClick={() =>
+                checkIn.mutate(
+                  {},
+                  {
+                    onSuccess: () =>
+                      notifications.show({ title: 'Giriş Yapıldı', message: 'Puantaj başarıyla başlatıldı.', color: 'green' }),
+                    onError: (err: any) =>
+                      notifications.show({ title: 'Hata', message: err?.response?.data?.message ?? 'Giriş başarısız.', color: 'red' }),
+                  }
+                )
+              }
+            >
+              Giriş Yap
+            </Button>
+          </Group>
+        </Paper>
+      )}
+
       <Grid>
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Card withBorder radius="md" p="md">
@@ -171,120 +270,142 @@ export default function MyShiftsPage() {
         </Grid.Col>
       </Grid>
 
-      {(data ?? []).length === 0 ? (
-        <PageEmpty
-          title="Henüz atanmış vardiya yok"
-          description="Yeni vardiya atandığında bu listede görünecek."
-        />
-      ) : (
-        <Stack>
-          {(data ?? []).map((shift: ShiftItem) => (
-            <Card
-              key={shift.id}
-              withBorder
-              radius="md"
-              p="md"
-              className="surface-card interactive-card"
-            >
-              <Group justify="space-between" align="center">
-                <Stack gap={2}>
-                  <Text fw={700}>
-                    {formatDateShort(shift.startTime)} —{" "}
-                    {formatTimeOnly(shift.startTime)} -{" "}
-                    {formatTimeOnly(shift.endTime)}
-                  </Text>
-                  <Text size="sm" c="dimmed">
-                    Vardiya ID: #{shift.id.slice(0, 8)}
-                  </Text>
-                </Stack>
-                <Group>
-                  <Badge
-                    variant="light"
-                    color={getShiftStatusColor(shift.status)}
-                    leftSection={(() => {
-                      const StatusIcon = getShiftStatusIcon(shift.status);
-                      return <StatusIcon size={12} />;
-                    })()}
-                  >
-                    {getShiftStatusLabel(shift.status)}
-                  </Badge>
-                  {shift.status === "PUBLISHED" || shift.status === "PROPOSED" ? (
-                    <Group gap="xs">
-                      <Button
-                        size="xs"
-                        loading={acknowledgeShift.isPending}
-                        onClick={() =>
-                          acknowledgeShift.mutate(shift.id, {
-                            onSuccess: () =>
-                              notifications.show({
-                                title: "Onaylandı",
-                                message: "Vardiya başarıyla onaylandı.",
-                                color: "green",
-                              }),
-                            onError: (err: any) => {
-                              const msg =
-                                err?.response?.data?.message ??
-                                "Onay başarısız oldu.";
-                              notifications.show({
-                                title: "Hata",
-                                message: msg,
-                                color: "red",
-                              });
-                            },
-                          })
-                        }
-                      >
-                        Onayla
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="red"
-                        variant="light"
-                        loading={declineShift.isPending}
-                        onClick={() => {
-                          const reason = window.prompt("Lütfen vardiyayı reddetme nedeninizi yazın:");
-                          if (reason === null) return; // Cancelled
-                          if (reason.trim() === '') {
-                            notifications.show({ title: "Hata", message: "Reddetme nedeni boş bırakılamaz.", color: "red" });
-                            return;
+      {
+        (data ?? []).length === 0 ? (
+          <PageEmpty
+            title="Henüz atanmış vardiya yok"
+            description="Yeni vardiya atandığında bu listede görünecek."
+          />
+        ) : (
+          <Stack>
+            {(data ?? []).map((shift: ShiftItem) => (
+              <Card
+                key={shift.id}
+                withBorder
+                radius="md"
+                p="md"
+                className="surface-card interactive-card"
+              >
+                <Group justify="space-between" align="center">
+                  <Stack gap={2}>
+                    <Text fw={700}>
+                      {formatDateShort(shift.startTime)} —{" "}
+                      {formatTimeOnly(shift.startTime)} -{" "}
+                      {formatTimeOnly(shift.endTime)}
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Vardiya ID: #{shift.id.slice(0, 8)}
+                    </Text>
+                  </Stack>
+                  <Group>
+                    <Badge
+                      variant="light"
+                      color={getShiftStatusColor(shift.status)}
+                      leftSection={(() => {
+                        const StatusIcon = getShiftStatusIcon(shift.status);
+                        return <StatusIcon size={12} />;
+                      })()}
+                    >
+                      {getShiftStatusLabel(shift.status)}
+                    </Badge>
+                    {shift.status === "PUBLISHED" || shift.status === "PROPOSED" ? (
+                      <Group gap="xs">
+                        <Button
+                          size="xs"
+                          loading={acknowledgeShift.isPending}
+                          onClick={() =>
+                            acknowledgeShift.mutate(shift.id, {
+                              onSuccess: () =>
+                                notifications.show({
+                                  title: "Onaylandı",
+                                  message: "Vardiya başarıyla onaylandı.",
+                                  color: "green",
+                                }),
+                              onError: (err: any) => {
+                                const msg =
+                                  err?.response?.data?.message ??
+                                  "Onay başarısız oldu.";
+                                notifications.show({
+                                  title: "Hata",
+                                  message: msg,
+                                  color: "red",
+                                });
+                              },
+                            })
                           }
-                          declineShift.mutate({ shiftId: shift.id, reason }, {
-                            onSuccess: () => notifications.show({ title: "Reddedildi", message: "Vardiya reddedildi.", color: "orange" }),
-                            onError: (err: any) => notifications.show({ title: "Hata", message: err?.response?.data?.message ?? "Reddetme başarısız.", color: "red" })
+                        >
+                          Onayla
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="red"
+                          variant="light"
+                          loading={declineShift.isPending}
+                          onClick={() => {
+                            let declineReason = '';
+                            modals.openConfirmModal({
+                              title: 'Vardiyayı Reddet',
+                              centered: true,
+                              children: (
+                                <Stack gap="xs">
+                                  <Text size="sm" c="dimmed">
+                                    Bu vardiyayı reddetmek istediğinize emin misiniz?
+                                  </Text>
+                                  <TextInput
+                                    label="Reddetme nedeni"
+                                    placeholder="Nedeninizi yazın..."
+                                    required
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => { declineReason = e.currentTarget.value; }}
+                                  />
+                                </Stack>
+                              ),
+                              labels: { confirm: 'Reddet', cancel: 'Vazgeç' },
+                              confirmProps: { color: 'red' },
+                              onConfirm: () => {
+                                if (declineReason.trim() === '') {
+                                  notifications.show({ title: "Hata", message: "Reddetme nedeni boş bırakılamaz.", color: "red" });
+                                  return;
+                                }
+                                declineShift.mutate({ shiftId: shift.id, reason: declineReason }, {
+                                  onSuccess: () => notifications.show({ title: "Reddedildi", message: "Vardiya reddedildi.", color: "orange" }),
+                                  onError: (err: any) => notifications.show({ title: "Hata", message: err?.response?.data?.message ?? "Reddetme başarısız.", color: "red" })
+                                });
+                              },
+                            });
+                          }}
+                        >
+                          Reddet
+                        </Button>
+                      </Group>
+                    ) : shift.status === "ACKNOWLEDGED" ? (
+                      <Button
+                        size="xs"
+                        color="orange"
+                        variant="light"
+                        onClick={() => {
+                          modals.open({
+                            title: "Vardiya Takası İste",
+                            children: (
+                              <SwapRequestModalContent
+                                shift={shift}
+                                employees={employeesData ?? []}
+                                currentUserId={employeeId}
+                                onSuccess={() => modals.closeAll()}
+                              />
+                            ),
                           });
                         }}
                       >
-                        Reddet
+                        Takas İste
                       </Button>
-                    </Group>
-                  ) : shift.status === "ACKNOWLEDGED" ? (
-                    <Button
-                      size="xs"
-                      color="orange"
-                      variant="light"
-                      onClick={() => {
-                        modals.open({
-                          title: "Vardiya Takası İste",
-                          children: (
-                            <SwapRequestModalContent
-                              shift={shift}
-                              employees={employeesData ?? []}
-                              currentUserId={employeeId}
-                              onSuccess={() => modals.closeAll()}
-                            />
-                          ),
-                        });
-                      }}
-                    >
-                      Takas İste
-                    </Button>
-                  ) : null}
+                    ) : null}
+                  </Group>
                 </Group>
-              </Group>
-            </Card>
-          ))}
-        </Stack>
-      )}
-    </Stack>
+              </Card>
+            ))}
+          </Stack>
+        )
+      }
+    </Stack >
   );
 }

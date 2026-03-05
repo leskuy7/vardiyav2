@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { TimeEntriesService } from './time-entries.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/auth/roles.guard';
@@ -10,12 +10,18 @@ import { CheckInDto, CheckOutDto } from './dto/time-entries.dto';
 export class TimeEntriesController {
     constructor(private readonly timeEntriesService: TimeEntriesService) { }
 
+    @Get('active')
+    @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+    getActive(@Request() req: any) {
+        return this.timeEntriesService.getActiveEntry(req.user.employeeId);
+    }
+
     @Post('check-in')
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
     checkIn(@Body() checkInDto: CheckInDto, @Request() req: any) {
         return this.timeEntriesService.checkIn(
             checkInDto,
-            req.user.id,
+            req.user.role,
             req.user.employeeId
         );
     }
@@ -35,3 +41,4 @@ export class TimeEntriesController {
         );
     }
 }
+

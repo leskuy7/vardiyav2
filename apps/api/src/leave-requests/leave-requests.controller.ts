@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
+import { CsrfGuard } from '../common/auth/csrf.guard';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 import { UpdateLeaveRequestStatusDto } from './dto/update-leave-request.dto';
 import { LeaveRequestsService } from './leave-requests.service';
@@ -13,6 +14,7 @@ export class LeaveRequestsController {
     constructor(private readonly leaveRequestsService: LeaveRequestsService) { }
 
     @Post()
+    @UseGuards(CsrfGuard)
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
     async create(@Body() dto: CreateLeaveRequestDto, @Req() req: Request) {
         const actor = req.user as { role: string; employeeId?: string };
@@ -22,11 +24,12 @@ export class LeaveRequestsController {
     @Get()
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
     async findAll(@Req() req: Request) {
-        const actor = req.user as { role: string; employeeId?: string };
+        const actor = req.user as { role: string; employeeId?: string; sub?: string };
         return this.leaveRequestsService.findAll(actor);
     }
 
     @Patch(':id/status')
+    @UseGuards(CsrfGuard)
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
     async updateStatus(
         @Param('id') id: string,
@@ -36,15 +39,16 @@ export class LeaveRequestsController {
         const actor = {
             role: req.user?.role,
             employeeId: req.user?.employeeId,
-            sub: req.user?.userId
+            sub: req.user?.sub
         };
         return this.leaveRequestsService.updateStatus(id, dto, actor);
     }
 
     @Delete(':id')
+    @UseGuards(CsrfGuard)
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
     async remove(@Param('id') id: string, @Req() req: Request) {
-        const actor = req.user as { role: string; employeeId?: string };
+        const actor = req.user as { role: string; employeeId?: string; sub?: string };
         return this.leaveRequestsService.remove(id, actor);
     }
 }

@@ -19,6 +19,7 @@ import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import { LeaveRequest, useLeaves } from "../../../hooks/use-leaves";
 import { useAuth } from "../../../hooks/use-auth";
 import { PageError, PageLoading } from "../../../components/page-states";
@@ -135,48 +136,126 @@ export default function LeavesPage() {
     };
 
     const handleStatusUpdate = (leave: LeaveRequest, status: string) => {
-        let note;
-        if (status === "APPROVED") {
-            const { name, typeLabel, range } = leaveSummary(leave);
-            if (!window.confirm(`Dikkat: Aşağıdaki izin onaylandığında, personelin izin tarihleriyle çakışan onaylanmış vardiyaları otomatik iptal edilecektir. Onaylıyor musunuz?\n\nÇalışan: ${name}\nTür: ${typeLabel}\nTarih: ${range}`)) return;
-        } else if (status === "REJECTED") {
-            note = window.prompt("Reddetme nedeninizi yazın (opsiyonel):");
-            if (note === null) return;
-        }
+        const { name, typeLabel, range } = leaveSummary(leave);
 
-        updateStatus.mutate(
-            { id: leave.id, status, managerNote: note },
-            {
-                onSuccess: () =>
-                    notifications.show({ title: "Başarılı", message: "Durum güncellendi", color: "green" }),
-                onError: (err: any) =>
-                    notifications.show({
-                        title: "Hata",
-                        message: err.response?.data?.message || "Güncelleme başarısız",
-                        color: "red",
-                    }),
-            }
-        );
+        if (status === "APPROVED") {
+            modals.openConfirmModal({
+                title: 'İzin Onayı',
+                centered: true,
+                children: (
+                    <Stack gap="xs">
+                        <Text size="sm" c="dimmed">
+                            Dikkat: Bu izin onaylandığında, personelin izin tarihleriyle çakışan onaylanmış vardiyaları otomatik iptal edilecektir.
+                        </Text>
+                        <Text size="sm" fw={600}>Çalışan: {name}</Text>
+                        <Text size="sm">Tür: {typeLabel}</Text>
+                        <Text size="sm">Tarih: {range}</Text>
+                    </Stack>
+                ),
+                labels: { confirm: 'Onayla', cancel: 'Vazgeç' },
+                confirmProps: { color: 'green' },
+                onConfirm: () => {
+                    updateStatus.mutate(
+                        { id: leave.id, status: "APPROVED" },
+                        {
+                            onSuccess: () =>
+                                notifications.show({ title: "Başarılı", message: "İzin onaylandı", color: "green" }),
+                            onError: (err: any) =>
+                                notifications.show({
+                                    title: "Hata",
+                                    message: err.response?.data?.message || "Güncelleme başarısız",
+                                    color: "red",
+                                }),
+                        }
+                    );
+                },
+            });
+        } else if (status === "REJECTED") {
+            let rejectNote = '';
+            modals.openConfirmModal({
+                title: 'İzin Reddi',
+                centered: true,
+                children: (
+                    <Stack gap="xs">
+                        <Text size="sm" c="dimmed">
+                            Bu izin talebini reddetmek istediğinize emin misiniz?
+                        </Text>
+                        <Text size="sm" fw={600}>Çalışan: {name}</Text>
+                        <Text size="sm">Tür: {typeLabel} · Tarih: {range}</Text>
+                        <TextInput
+                            label="Reddetme nedeni (opsiyonel)"
+                            placeholder="Neden belirtin..."
+                            onChange={(e) => { rejectNote = e.currentTarget.value; }}
+                        />
+                    </Stack>
+                ),
+                labels: { confirm: 'Reddet', cancel: 'Vazgeç' },
+                confirmProps: { color: 'red' },
+                onConfirm: () => {
+                    updateStatus.mutate(
+                        { id: leave.id, status: "REJECTED", managerNote: rejectNote || undefined },
+                        {
+                            onSuccess: () =>
+                                notifications.show({ title: "Başarılı", message: "İzin reddedildi", color: "orange" }),
+                            onError: (err: any) =>
+                                notifications.show({
+                                    title: "Hata",
+                                    message: err.response?.data?.message || "Güncelleme başarısız",
+                                    color: "red",
+                                }),
+                        }
+                    );
+                },
+            });
+        }
     };
 
     const handleCancel = (leave: LeaveRequest) => {
         const { name, typeLabel, range } = leaveSummary(leave);
-        if (!window.confirm(`Aşağıdaki izin talebini iptal etmek istediğinize emin misiniz?\n\nÇalışan: ${name}\nTür: ${typeLabel}\nTarih: ${range}`)) return;
-        updateStatus.mutate(
-            { id: leave.id, status: "CANCELLED" },
-            {
-                onSuccess: () =>
-                    notifications.show({ title: "Başarılı", message: "İzin iptal edildi", color: "green" }),
-            }
-        );
+        modals.openConfirmModal({
+            title: 'İzin İptali',
+            centered: true,
+            children: (
+                <Stack gap="xs">
+                    <Text size="sm" c="dimmed">Bu izin talebini iptal etmek istediğinize emin misiniz?</Text>
+                    <Text size="sm" fw={600}>Çalışan: {name}</Text>
+                    <Text size="sm">Tür: {typeLabel} · Tarih: {range}</Text>
+                </Stack>
+            ),
+            labels: { confirm: 'İptal Et', cancel: 'Vazgeç' },
+            confirmProps: { color: 'orange' },
+            onConfirm: () => {
+                updateStatus.mutate(
+                    { id: leave.id, status: "CANCELLED" },
+                    {
+                        onSuccess: () =>
+                            notifications.show({ title: "Başarılı", message: "İzin iptal edildi", color: "green" }),
+                    }
+                );
+            },
+        });
     };
 
     const handleDelete = (leave: LeaveRequest) => {
         const { name, typeLabel, range } = leaveSummary(leave);
-        if (!window.confirm(`Aşağıdaki izin kaydını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.\n\nÇalışan: ${name}\nTür: ${typeLabel}\nTarih: ${range}`)) return;
-        deleteLeave.mutate(leave.id, {
-            onSuccess: () =>
-                notifications.show({ title: "Silindi", message: `${name} – ${range} kaydı silindi.`, color: "gray" }),
+        modals.openConfirmModal({
+            title: 'İzin Kaydını Sil',
+            centered: true,
+            children: (
+                <Stack gap="xs">
+                    <Text size="sm" c="dimmed">Bu izin kaydını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</Text>
+                    <Text size="sm" fw={600}>Çalışan: {name}</Text>
+                    <Text size="sm">Tür: {typeLabel} · Tarih: {range}</Text>
+                </Stack>
+            ),
+            labels: { confirm: 'Evet, Sil', cancel: 'Vazgeç' },
+            confirmProps: { color: 'red' },
+            onConfirm: () => {
+                deleteLeave.mutate(leave.id, {
+                    onSuccess: () =>
+                        notifications.show({ title: "Silindi", message: `${name} – ${range} kaydı silindi.`, color: "gray" }),
+                });
+            },
         });
     };
 
@@ -189,7 +268,7 @@ export default function LeavesPage() {
                         Tüm izin talepleriniz ve geçmişini buradan takip edebilirsiniz.
                     </Text>
                 </Stack>
-                {(role === "EMPLOYEE" || role === "MANAGER") && (
+                {(role === "EMPLOYEE" || role === "MANAGER") && currentEmployeeId && (
                     <Button onClick={open}>Yeni İzin Talep Et</Button>
                 )}
             </Group>
@@ -311,7 +390,7 @@ export default function LeavesPage() {
                                                             İptal Et
                                                         </Button>
                                                     )}
-                                                    {role === "ADMIN" && (
+                                                    {l.status !== "PENDING" && role === "ADMIN" && (
                                                         <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l)}>
                                                             Sil
                                                         </Button>
@@ -362,7 +441,7 @@ export default function LeavesPage() {
                                         {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
                                             <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>İptal Et</Button>
                                         )}
-                                        {role === "ADMIN" && (
+                                        {l.status !== "PENDING" && role === "ADMIN" && (
                                             <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l)}>Sil</Button>
                                         )}
                                     </Group>

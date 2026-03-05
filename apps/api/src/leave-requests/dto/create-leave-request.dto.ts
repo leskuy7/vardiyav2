@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
 import { LeaveTypeCode, LeaveUnit } from '@prisma/client';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
@@ -26,11 +26,13 @@ export class CreateLeaveRequestDto {
 
     @ApiPropertyOptional({ example: '09:00' })
     @IsString()
+    @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'startTime HH:mm formatında olmalı' })
     @IsOptional()
     startTime?: string;
 
     @ApiPropertyOptional({ example: '13:00' })
     @IsString()
+    @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'endTime HH:mm formatında olmalı' })
     @IsOptional()
     endTime?: string;
 

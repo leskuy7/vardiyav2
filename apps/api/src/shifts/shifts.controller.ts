@@ -28,13 +28,13 @@ export class ShiftsController {
     @Query('end') end?: string,
     @Query('status') status?: string
   ) {
-    const actor = request.user as { role: string; employeeId?: string };
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
     return this.shiftsService.list(employeeId, start, end, status, actor);
   }
 
   @Get(':id')
   getById(@Param('id') id: string, @Req() request: Request) {
-    const actor = request.user as { role: string; employeeId?: string };
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
     return this.shiftsService.getById(id, actor);
   }
 

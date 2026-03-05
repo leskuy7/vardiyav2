@@ -123,9 +123,8 @@ export function useEmployeeActions() {
       value: string;
       employeeIds: string[];
     }) => {
-      await Promise.all(
-        employeeIds.map((id) => api.patch(`/employees/${id}`, { [field]: "" })),
-      );
+      const patch = { [field]: value };
+      await api.post("/employees/bulk-update", { employeeIds, patch });
       return { field, value, count: employeeIds.length };
     },
     onSuccess: invalidate,

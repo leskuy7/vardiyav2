@@ -25,13 +25,16 @@ export class SwapRequestsService {
         }
 
         const requester = await this.prisma.employee.findUnique({ where: { id: shift.employeeId } });
+        if (!requester) {
+            throw new NotFoundException({ code: 'NOT_FOUND', message: 'Requester employee not found' });
+        }
 
         if (dto.targetEmployeeId) {
             const target = await this.prisma.employee.findUnique({ where: { id: dto.targetEmployeeId } });
             if (!target) {
                 throw new NotFoundException({ code: 'NOT_FOUND', message: 'Target employee not found' });
             }
-            if (target.department !== requester?.department) {
+            if (target.department !== requester.department || target.organizationId !== requester.organizationId) {
                 throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Target employee must be in the same department' });
             }
         }
@@ -55,7 +58,7 @@ export class SwapRequestsService {
         if (actor.role === 'MANAGER') {
             const requester = await this.prisma.employee.findUnique({ where: { id: swap.requesterId } });
             const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
-            if (requester?.department !== manager?.department) {
+            if (requester?.department !== manager?.department || requester?.organizationId !== manager?.organizationId) {
                 throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only approve swaps in your department' });
             }
         }
@@ -63,6 +66,15 @@ export class SwapRequestsService {
         const definitiveTargetId = swap.targetEmployeeId || providedTargetId;
         if (!definitiveTargetId) {
             throw new BadRequestException({ code: 'BAD_REQUEST', message: 'Target employee must be explicitly defined before manager approval' });
+        }
+
+        const [requester, target] = await Promise.all([
+            this.prisma.employee.findUnique({ where: { id: swap.requesterId } }),
+            this.prisma.employee.findUnique({ where: { id: definitiveTargetId } })
+        ]);
+
+        if (!requester || !target || requester.department !== target.department || requester.organizationId !== target.organizationId) {
+            throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Swap target must be in the same department and organization' });
         }
 
         // Avoid self-swap

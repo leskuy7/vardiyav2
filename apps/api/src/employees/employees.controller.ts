@@ -65,6 +65,22 @@ export class EmployeesController {
     return result;
   }
 
+  @Post('bulk-update')
+  @Roles('ADMIN', 'MANAGER')
+  @UseGuards(CsrfGuard)
+  async bulkUpdate(@Body() dto: { employeeIds: string[]; patch: Partial<UpdateEmployeeDto> }, @Req() request: Request) {
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    const result = await this.employeesService.bulkUpdate(dto.employeeIds, dto.patch, actor);
+    await this.auditService.log({
+      userId: actor.sub,
+      action: 'EMPLOYEE_BULK_UPDATE',
+      entityType: 'EMPLOYEE',
+      entityId: 'BULK',
+      details: dto
+    });
+    return result;
+  }
+
   @Patch(':id')
   @Roles('ADMIN', 'MANAGER')
   @UseGuards(CsrfGuard)

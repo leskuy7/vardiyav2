@@ -12,7 +12,7 @@ export class AvailabilityService {
     return hours * 60 + minutes;
   }
 
-  async list(employeeId?: string, dayOfWeek?: number, actor?: { role: string; employeeId?: string }) {
+  async list(employeeId?: string, dayOfWeek?: number, actor?: { role: string; sub?: string; employeeId?: string }) {
     const scope = await getEmployeeScope(this.prisma, actor);
 
     if (scope.type === 'self') {
@@ -28,7 +28,20 @@ export class AvailabilityService {
     if (scope.type === 'department') {
       return this.prisma.availabilityBlock.findMany({
         where: {
-          employee: { department: scope.department },
+          employee: {
+            department: scope.department,
+            ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+          },
+          ...(employeeId ? { employeeId } : {}),
+          ...(dayOfWeek !== undefined ? { dayOfWeek } : {})
+        },
+        orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }]
+      });
+    }
+
+    if (scope.type === 'all') {
+      return this.prisma.availabilityBlock.findMany({
+        where: {
           ...(employeeId ? { employeeId } : {}),
           ...(dayOfWeek !== undefined ? { dayOfWeek } : {})
         },
@@ -38,6 +51,7 @@ export class AvailabilityService {
 
     return this.prisma.availabilityBlock.findMany({
       where: {
+        employee: { organizationId: scope.organizationId },
         ...(employeeId ? { employeeId } : {}),
         ...(dayOfWeek !== undefined ? { dayOfWeek } : {})
       },
@@ -53,7 +67,7 @@ export class AvailabilityService {
     } else if (actor.role === 'MANAGER' && actor.employeeId) {
       const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
       const target = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
-      if (!target || target.department !== manager?.department) {
+      if (!target || target.department !== manager?.department || target.organizationId !== manager?.organizationId) {
         throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only manage availability for employees in your department' });
       }
     }
@@ -96,7 +110,7 @@ export class AvailabilityService {
       }
     } else if (actor.role === 'MANAGER' && actor.employeeId) {
       const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
-      if (record.employee.department !== manager?.department) {
+      if (record.employee.department !== manager?.department || record.employee.organizationId !== manager?.organizationId) {
         throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only delete availability for employees in your department' });
       }
     }

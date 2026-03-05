@@ -12,14 +12,14 @@ export class ScheduleController {
 
   @Get('week')
   getWeek(@Query() query: ScheduleWeekQueryDto, @Req() request: Request) {
-    const actor = request.user as { role: string; employeeId?: string };
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
     const start = query.start ?? currentWeekStartIso();
     return this.scheduleService.getWeek(start, actor);
   }
 
   @Get('print')
   getPrint(@Query() query: ScheduleWeekQueryDto, @Req() request: Request) {
-    const actor = request.user as { role: string; employeeId?: string };
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
     const start = query.start ?? currentWeekStartIso();
     return this.scheduleService.getPrint(start, actor);
   }

@@ -35,7 +35,7 @@ export class ReportsService {
     };
   }
 
-  async weeklyHours(weekStart: string, actor?: { role: string; employeeId?: string }) {
+  async weeklyHours(weekStart: string, actor?: { role: string; sub?: string; employeeId?: string }) {
     const start = parseWeekStart(weekStart);
     const end = plusDays(start, 7);
     const scope = await getEmployeeScope(this.prisma, actor);
@@ -45,8 +45,16 @@ export class ReportsService {
         startTime: { gte: start },
         endTime: { lt: end },
         status: { in: ['PROPOSED', 'PUBLISHED', 'ACKNOWLEDGED'] },
+        ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
         ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
-        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
+        ...(scope.type === 'department'
+          ? {
+              employee: {
+                department: scope.department,
+                ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+              }
+            }
+          : {})
       },
       include: {
         employee: {
@@ -107,7 +115,7 @@ export class ReportsService {
     };
   }
 
-  async complianceViolations(weekStart: string, actor?: { role: string; employeeId?: string }) {
+  async complianceViolations(weekStart: string, actor?: { role: string; sub?: string; employeeId?: string }) {
     const start = parseWeekStart(weekStart);
     const end = plusDays(start, 7);
     const scope = await getEmployeeScope(this.prisma, actor);
@@ -117,8 +125,16 @@ export class ReportsService {
         startTime: { gte: start },
         endTime: { lt: end },
         status: { not: 'CANCELLED' },
+        ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
         ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
-        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
+        ...(scope.type === 'department'
+          ? {
+              employee: {
+                department: scope.department,
+                ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+              }
+            }
+          : {})
       },
       include: {
         employee: {

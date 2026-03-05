@@ -12,54 +12,51 @@ export type TimeEntry = {
     source: "MANUAL" | "KIOSK" | "MOBILE" | "IMPORT";
     note?: string | null;
     createdAt: string;
-    employee?: {
-        id: string;
-        user: { name: string };
-    };
-    shift?: any; // To be refined if needed
 };
 
-export function useTimeEntries() {
+export function useActiveTimeEntry(enabled = true) {
+    return useQuery<TimeEntry | null>({
+        queryKey: ["time-entries", "active"],
+        queryFn: async () => {
+            const { data } = await api.get<TimeEntry | null>("/time-entries/active");
+            return data ?? null;
+        },
+        enabled,
+        refetchInterval: 30000,
+    });
+}
+
+export function useTimeEntryActions() {
     const queryClient = useQueryClient();
 
-    const timeEntriesQuery = (employeeId?: string, startDate?: string, endDate?: string) => useQuery({
-        queryKey: ["time-entries", employeeId, startDate, endDate],
-        queryFn: async () => {
-            const params = new URLSearchParams();
-            if (employeeId) params.append('employeeId', employeeId);
-            if (startDate) params.append('startDate', startDate);
-            if (endDate) params.append('endDate', endDate);
-
-            // Assuming a GET endpoint exists or will exist. The user only specified POST in API so far, but we'll add this for future-proofing or if it gets added.
-            const { data } = await api.get<TimeEntry[]>(`/time-entries?${params.toString()}`);
-            return data;
-        },
-        enabled: false, // Wait until we actually have the endpoint
-    });
-
     const checkIn = useMutation({
-        mutationFn: async (payload: { shiftId?: string; checkInAt?: string; source?: string; employeeId?: string; note?: string }) => {
-            const { data } = await api.post<TimeEntry>("/time-entries/check-in", payload);
+        mutationFn: async (payload: { shiftId?: string; checkInAt?: string }) => {
+            const { data } = await api.post<TimeEntry>("/time-entries/check-in", {
+                shiftId: payload.shiftId,
+                checkInAt: payload.checkInAt ?? new Date().toISOString(),
+                source: "MANUAL",
+            });
             return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-        }
+        },
     });
 
     const checkOut = useMutation({
-        mutationFn: async ({ id, payload }: { id: string; payload: { checkOutAt?: string; note?: string } }) => {
-            const { data } = await api.post<TimeEntry>(`/time-entries/${id}/check-out`, payload);
+        mutationFn: async (payload: { entryId: string; checkOutAt?: string }) => {
+            const { data } = await api.post<TimeEntry>(
+                `/time-entries/${payload.entryId}/check-out`,
+                {
+                    checkOutAt: payload.checkOutAt ?? new Date().toISOString(),
+                }
+            );
             return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["time-entries"] });
-        }
+        },
     });
 
-    return {
-        timeEntriesQuery,
-        checkIn,
-        checkOut,
-    };
+    return { checkIn, checkOut };
 }

@@ -23,7 +23,6 @@ import { AxiosError } from "axios";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/theme-toggle";
-import { useAuth } from "../../hooks/use-auth";
 import { api } from "../../lib/api";
 import { setAccessToken } from "../../lib/token-store";
 
@@ -40,7 +39,6 @@ const darkInputStyles = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { data: user, isLoading: isAuthLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -101,57 +99,6 @@ export default function LoginPage() {
       setSubmitting(false);
     }
   });
-
-  useEffect(() => {
-    if (user) {
-      router.replace(user.role === "EMPLOYEE" ? "/my-shifts" : "/dashboard");
-    }
-  }, [user, router]);
-
-  // Only show full-screen placeholder while redirecting after successful auth. Show form during auth check to avoid blank screen when token is expired (401).
-  if (user) {
-    return (
-      <Box
-        style={{
-          minHeight: "100vh",
-          background: "var(--gradient-hero)",
-          display: "flex",
-          alignItems: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          style={{
-            position: "absolute",
-            top: "-20%",
-            right: "-10%",
-            width: 500,
-            height: 500,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(102, 126, 234, 0.15) 0%, transparent 70%)",
-            animation: "float 8s ease-in-out infinite",
-            pointerEvents: "none",
-          }}
-        />
-        <Box
-          style={{
-            position: "absolute",
-            bottom: "-20%",
-            left: "-15%",
-            width: 400,
-            height: 400,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(118, 75, 162, 0.12) 0%, transparent 70%)",
-            animation: "float 10s ease-in-out infinite reverse",
-            pointerEvents: "none",
-          }}
-        />
-      </Box>
-    );
-  }
 
   return (
     <Box

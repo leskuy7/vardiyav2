@@ -12,6 +12,11 @@ import { currentWeekStartIsoDate, formatWeekRange } from "../../../../lib/time";
 
 const DAY_NAMES = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 
+function csvCell(value: unknown) {
+  const s = String(value ?? "");
+  return `"${s.replaceAll('"', '""')}"`;
+}
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("tr-TR", {
     timeZone: "Europe/Istanbul",
@@ -69,14 +74,14 @@ function PrintPageContent() {
       (r.overtimeMinutes / 60).toFixed(2),
       (r.estimatedPay ?? 0).toFixed(2),
     ]);
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const csv = [headers.map(csvCell).join(","), ...rows.map((r) => r.map(csvCell).join(","))].join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `bordro_${weekStart}.csv`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const totals = { hours: 0, overtime: 0, cost: 0 };
@@ -226,13 +231,13 @@ function PrintPageContent() {
               <td>
                 {employees.length > 0
                   ? data.days
-                      .flatMap((d) => d.shifts)
-                      .reduce(
-                        (sum, s) =>
-                          sum + (new Date(s.end).getTime() - new Date(s.start).getTime()) / 3600000,
-                        0,
-                      )
-                      .toFixed(1) + "s"
+                    .flatMap((d) => d.shifts)
+                    .reduce(
+                      (sum, s) =>
+                        sum + (new Date(s.end).getTime() - new Date(s.start).getTime()) / 3600000,
+                      0,
+                    )
+                    .toFixed(1) + "s"
                   : "—"}
               </td>
             </tr>

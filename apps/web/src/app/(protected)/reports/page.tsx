@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge, Button, Card, Grid, Group, ScrollArea, Select, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
+import { DateInput } from '@mantine/dates';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { currentWeekStartIsoDate, formatWeekRange, shiftIsoDate } from '../../../lib/time';
@@ -8,6 +9,11 @@ import { PageEmpty, PageError, PageLoading } from '../../../components/page-stat
 import { useAuth } from '../../../hooks/use-auth';
 import { useAuditTrail, useComplianceViolations, useSecurityEvents } from '../../../hooks/use-reports';
 import { useOvertime } from '../../../hooks/use-overtime';
+
+function csvCell(value: unknown) {
+  const s = String(value ?? "");
+  return `"${s.replaceAll('"', '""')}"`;
+}
 
 export default function ReportsPage() {
   const [weekStart, setWeekStart] = useState(currentWeekStartIsoDate());
@@ -159,14 +165,14 @@ export default function ReportsPage() {
                   (r.overtimeMinutes / 60).toFixed(2),
                   (r.estimatedPay || 0).toFixed(2)
                 ]);
-                const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+                const csv = [headers.map(csvCell).join(','), ...rows.map((r) => r.map(csvCell).join(','))].join('\n');
                 const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `rapor_${weekStart}_${strategy}.csv`;
                 a.click();
-                URL.revokeObjectURL(url);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
               }}
             >
               CSV İndir
@@ -302,14 +308,14 @@ export default function ReportsPage() {
                     event.sourceIp ?? ''
                   ]);
 
-                  const csv = [headers.join(','), ...rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))].join('\n');
+                  const csv = [headers.map(csvCell).join(','), ...rows.map((row) => row.map(csvCell).join(','))].join('\n');
                   const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
                   const url = URL.createObjectURL(blob);
                   const anchor = document.createElement('a');
                   anchor.href = url;
                   anchor.download = `security_events_${new Date().toISOString().slice(0, 10)}.csv`;
                   anchor.click();
-                  URL.revokeObjectURL(url);
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
                 }}
               >
                 CSV İndir
@@ -351,19 +357,21 @@ export default function ReportsPage() {
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 4 }}>
-              <TextInput
+              <DateInput
                 label="Başlangıç Tarihi"
-                type="date"
-                value={securityFrom}
-                onChange={(event) => setSecurityFrom(event.currentTarget.value)}
+                placeholder="Başlangıç tarihi seçin"
+                value={securityFrom ? new Date(securityFrom) : null}
+                onChange={(val) => setSecurityFrom(val ? val.toISOString().slice(0, 10) : '')}
+                clearable
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 4 }}>
-              <TextInput
+              <DateInput
                 label="Bitiş Tarihi"
-                type="date"
-                value={securityTo}
-                onChange={(event) => setSecurityTo(event.currentTarget.value)}
+                placeholder="Bitiş tarihi seçin"
+                value={securityTo ? new Date(securityTo) : null}
+                onChange={(val) => setSecurityTo(val ? val.toISOString().slice(0, 10) : '')}
+                clearable
               />
             </Grid.Col>
           </Grid>
@@ -432,14 +440,14 @@ export default function ReportsPage() {
                     event.entityType,
                     event.entityId
                   ]);
-                  const csv = [headers.join(','), ...rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))].join('\n');
+                  const csv = [headers.map(csvCell).join(','), ...rows.map((row) => row.map(csvCell).join(','))].join('\n');
                   const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
                   const url = URL.createObjectURL(blob);
                   const anchor = document.createElement('a');
                   anchor.href = url;
                   anchor.download = `audit_trail_${new Date().toISOString().slice(0, 10)}.csv`;
                   anchor.click();
-                  URL.revokeObjectURL(url);
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
                 }}
               >
                 CSV İndir
@@ -483,19 +491,21 @@ export default function ReportsPage() {
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}>
-              <TextInput
+              <DateInput
                 label="Başlangıç Tarihi"
-                type="date"
-                value={auditFrom}
-                onChange={(event) => setAuditFrom(event.currentTarget.value)}
+                placeholder="Başlangıç tarihi seçin"
+                value={auditFrom ? new Date(auditFrom) : null}
+                onChange={(val) => setAuditFrom(val ? val.toISOString().slice(0, 10) : '')}
+                clearable
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}>
-              <TextInput
+              <DateInput
                 label="Bitiş Tarihi"
-                type="date"
-                value={auditTo}
-                onChange={(event) => setAuditTo(event.currentTarget.value)}
+                placeholder="Bitiş tarihi seçin"
+                value={auditTo ? new Date(auditTo) : null}
+                onChange={(val) => setAuditTo(val ? val.toISOString().slice(0, 10) : '')}
+                clearable
               />
             </Grid.Col>
           </Grid>

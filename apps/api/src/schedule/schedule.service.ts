@@ -19,7 +19,7 @@ export class ScheduleService {
     @Inject(forwardRef(() => ShiftsService)) private readonly shiftsService: ShiftsService
   ) { }
 
-  async getWeek(start: string, actor?: { role: string; employeeId?: string }) {
+  async getWeek(start: string, actor?: { role: string; sub?: string; employeeId?: string }) {
     const startDate = parseWeekStart(start);
     const endDate = plusDays(startDate, 7);
     const scope = await getEmployeeScope(this.prisma, actor);
@@ -29,8 +29,16 @@ export class ScheduleService {
         startTime: { gte: startDate },
         endTime: { lt: endDate },
         status: { not: 'CANCELLED' },
+        ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
         ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
-        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
+        ...(scope.type === 'department'
+          ? {
+              employee: {
+                department: scope.department,
+                ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+              }
+            }
+          : {})
       },
       include: {
         employee: {
@@ -58,8 +66,16 @@ export class ScheduleService {
         status: 'APPROVED',
         startDate: { lt: endDate },
         endDate: { gte: startDate },
+        ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
         ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
-        ...(scope.type === 'department' ? { employee: { department: scope.department } } : {})
+        ...(scope.type === 'department'
+          ? {
+              employee: {
+                department: scope.department,
+                ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+              }
+            }
+          : {})
       },
       include: {
         employee: {
@@ -112,7 +128,7 @@ export class ScheduleService {
     };
   }
 
-  async getPrint(start: string, actor?: { role: string; employeeId?: string }) {
+  async getPrint(start: string, actor?: { role: string; sub?: string; employeeId?: string }) {
     const week = await this.getWeek(start, actor);
     return {
       ...week,

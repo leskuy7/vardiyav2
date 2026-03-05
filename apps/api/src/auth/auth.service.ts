@@ -50,11 +50,13 @@ export class AuthService {
       });
     }
 
+    const organizationId = await this.getOrganizationIdForUser(user.id, user.employee?.id);
     const tokens = await this.issueTokens(
       user.id,
       user.email,
       user.role,
       user.employee?.id,
+      organizationId,
     );
     await this.storeRefreshTokenHash(user.id, tokens.refreshToken);
 
@@ -91,11 +93,13 @@ export class AuthService {
       });
     }
 
+    const organizationId = await this.getOrganizationIdForUser(user.id, user.employee?.id);
     const tokens = await this.issueTokens(
       user.id,
       user.email,
       user.role,
       user.employee?.id,
+      organizationId,
     );
     await this.storeRefreshTokenHash(user.id, tokens.refreshToken);
 
@@ -125,10 +129,10 @@ export class AuthService {
       where: { id: userId },
       include: { employee: true },
     });
-    if (!user || !user.refreshTokenHash) {
+    if (!user) {
       throw new UnauthorizedException({
         code: "UNAUTHORIZED",
-        message: "User not logged in or token invalid",
+        message: "User not found",
       });
     }
 
@@ -267,6 +271,7 @@ export class AuthService {
       result.user.email,
       result.user.role,
       undefined,
+      result.organization.id,
     );
     await this.storeRefreshTokenHash(result.user.id, tokens.refreshToken);
 
@@ -325,8 +330,9 @@ export class AuthService {
     email: string,
     role: string,
     employeeId?: string,
+    organizationId?: string,
   ) {
-    const payload = { sub: userId, email, role, employeeId };
+    const payload = { sub: userId, email, role, employeeId, organizationId };
     const accessExpiresIn = (this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ??
       "15m") as JwtSignOptions["expiresIn"];
     const refreshExpiresIn = (this.config.get<string>(
@@ -353,5 +359,21 @@ export class AuthService {
       where: { id: userId },
       data: { refreshTokenHash: hash },
     });
+  }
+
+  private async getOrganizationIdForUser(userId: string, employeeId?: string): Promise<string | undefined> {
+    if (employeeId) {
+      const employee = await this.prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { organizationId: true }
+      });
+      return employee?.organizationId ?? undefined;
+    }
+
+    const organization = await this.prisma.organization.findUnique({
+      where: { adminUserId: userId },
+      select: { id: true }
+    });
+    return organization?.id;
   }
 }

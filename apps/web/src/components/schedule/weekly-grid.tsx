@@ -9,7 +9,16 @@ import { getShiftStatusColor, getShiftStatusIcon, getShiftStatusLabel } from '..
 import { formatTimeOnly } from '../../lib/time';
 
 type Employee = { id: string; user: { name: string } };
-type Shift = { id: string; employeeId: string; employeeName?: string; start: string; end: string; status: string };
+type Shift = {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  start: string;
+  end: string;
+  status: string;
+  note?: string;
+  swapRequests?: Array<{ id: string; requesterId: string; targetEmployeeId: string | null; status: string }>;
+};
 type Leave = { id: string; employeeId: string; type: string; reason?: string | null };
 type Day = { date: string; shifts: Shift[]; leaves?: Leave[] };
 
@@ -77,7 +86,12 @@ function shiftHours(start: string, end: string) {
 }
 
 function isToday(isoDate: string) {
-  return new Date().toISOString().slice(0, 10) === isoDate;
+  return new Date().toLocaleDateString('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }) === isoDate;
 }
 
 /* ─── Compact Shift Card ─── */
@@ -99,8 +113,6 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void
         borderLeft: `4px solid var(--mantine-color-${getShiftStatusColor(shift.status)}-6)`,
         fontSize: '0.75rem',
       }}
-      {...listeners}
-      {...attributes}
     >
       <Text size="xs" fw={700} lh={1.2}>{formatTimeOnly(shift.start)} – {formatTimeOnly(shift.end)}</Text>
       <Text size="xs" c="dimmed" lh={1.2}>{shiftHours(shift.start, shift.end)} saat</Text>
@@ -108,9 +120,29 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void
         <Badge size="xs" color={getShiftStatusColor(shift.status)} variant="light" leftSection={<StatusIcon size={10} />}>
           {getShiftStatusLabel(shift.status)}
         </Badge>
-        <Button size="compact-xs" variant="subtle" onClick={() => onEdit(shift)} fz={10}>
+        <Group gap={4}>
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            fz={10}
+            {...listeners}
+            {...attributes}
+            onClick={(event) => event.stopPropagation()}
+          >
+            Tut
+          </Button>
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(shift);
+            }}
+            fz={10}
+          >
           Düzenle
-        </Button>
+          </Button>
+        </Group>
       </Group>
     </Card>
   );

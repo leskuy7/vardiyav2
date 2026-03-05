@@ -3,8 +3,9 @@ import { getAccessToken, setAccessToken } from './token-store';
 
 // Production (Vercel): set NEXT_PUBLIC_API_BASE to Railway API root (e.g. https://xxx.up.railway.app)
 // or NEXT_PUBLIC_API_URL to full API path (e.g. https://xxx.up.railway.app/api)
+const apiUrlRaw = (process.env.NEXT_PUBLIC_API_URL ?? '').trim();
 const envApiUrl =
-  process.env.NEXT_PUBLIC_API_URL ??
+  apiUrlRaw ||
   (process.env.NEXT_PUBLIC_API_BASE
     ? `${process.env.NEXT_PUBLIC_API_BASE.replace(/\/$/, '')}/api`
     : '/api');
@@ -40,11 +41,16 @@ function forceLogout() {
   }
 }
 
+function normalizePath(url?: string) {
+  return (url ?? '').replace(/^\//, '');
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
-    const isRefreshCall = originalRequest?.url?.includes('/auth/refresh');
+    const requestPath = normalizePath(originalRequest?.url);
+    const isRefreshCall = requestPath.startsWith('auth/refresh');
 
     if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
@@ -59,7 +65,7 @@ api.interceptors.response.use(
 
     if (!refreshPromise) {
       refreshPromise = api
-        .post('/auth/refresh')
+        .post('auth/refresh')
         .then((res: { data: { accessToken: string } }) => {
           const token = res.data.accessToken as string;
           setAccessToken(token);
@@ -72,9 +78,13 @@ api.interceptors.response.use(
 
     try {
       const token = await refreshPromise;
+      originalRequest.headers = originalRequest.headers ?? {};
       originalRequest.headers.Authorization = `Bearer ${token}`;
       return api(originalRequest);
-    } catch (refreshError) {
+    } catch (refreshError: any) {
+      if (refreshError?.response?.data?.code === 'CSRF_BLOCKED') {
+        console.error('CSRF ayari eksik veya gecersiz: CSRF_ORIGINS degerini kontrol edin.');
+      }
       forceLogout();
       return Promise.reject(refreshError);
     }

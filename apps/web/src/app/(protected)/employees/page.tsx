@@ -24,6 +24,7 @@ import {
 } from "@mantine/core";
 import { IconBuilding, IconCopy, IconTag } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import { useMemo, useState } from "react";
 import { PageError, PageLoading } from "../../../components/page-states";
 import {
@@ -253,24 +254,37 @@ export default function EmployeesPage() {
   }
 
   async function handleArchive(employee: EmployeeItem) {
-    const confirmed = window.confirm(
-      `"${employee.user.name}" adlı çalışanı arşivlemek istediğine emin misin?\n\nBu işlem geri alınamaz.`,
-    );
-    if (!confirmed) return;
-    try {
-      await archiveEmployee.mutateAsync(employee.id);
-      notifications.show({
-        title: "Arşivlendi",
-        message: `${employee.user.name} arşivlendi.`,
-        color: "green",
-      });
-    } catch {
-      notifications.show({
-        title: "Hata",
-        message: "Arşivleme başarısız.",
-        color: "red",
-      });
-    }
+    modals.openConfirmModal({
+      title: 'Çalışanı Arşivle',
+      centered: true,
+      children: (
+        <Stack gap="xs">
+          <Text size="sm" c="dimmed">
+            Bu çalışanı arşivlemek istediğinize emin misiniz? Bu işlem geri alınamaz.
+          </Text>
+          <Text size="sm" fw={600}>{employee.user.name}</Text>
+          <Text size="sm" c="dimmed">{employee.department ?? ''} · {employee.position ?? ''}</Text>
+        </Stack>
+      ),
+      labels: { confirm: 'Arşivle', cancel: 'Vazgeç' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await archiveEmployee.mutateAsync(employee.id);
+          notifications.show({
+            title: "Arşivlendi",
+            message: `${employee.user.name} arşivlendi.`,
+            color: "green",
+          });
+        } catch {
+          notifications.show({
+            title: "Hata",
+            message: "Arşivleme başarısız.",
+            color: "red",
+          });
+        }
+      },
+    });
   }
 
   return (
@@ -523,16 +537,23 @@ export default function EmployeesPage() {
                           size="xs"
                           variant="transparent"
                           onClick={() => {
-                            if (
-                              !window.confirm(
-                                `"${opt.value}" departmanını ${affectedIds.length} çalışandan kaldırmak istediğine emin misin?`,
-                              )
-                            )
-                              return;
-                            bulkClearField.mutate({
-                              field: "department",
-                              value: opt.value,
-                              employeeIds: affectedIds,
+                            modals.openConfirmModal({
+                              title: 'Departmanı Kaldır',
+                              centered: true,
+                              children: (
+                                <Text size="sm" c="dimmed">
+                                  &quot;{opt.value}&quot; departmanını {affectedIds.length} çalışandan kaldırmak istediğinize emin misiniz?
+                                </Text>
+                              ),
+                              labels: { confirm: 'Kaldır', cancel: 'Vazgeç' },
+                              confirmProps: { color: 'red' },
+                              onConfirm: () => {
+                                bulkClearField.mutate({
+                                  field: "department",
+                                  value: opt.value,
+                                  employeeIds: affectedIds,
+                                });
+                              },
                             });
                           }}
                         />
@@ -568,16 +589,23 @@ export default function EmployeesPage() {
                           size="xs"
                           variant="transparent"
                           onClick={() => {
-                            if (
-                              !window.confirm(
-                                `"${opt.value}" pozisyonunu ${affectedIds.length} çalışandan kaldırmak istediğine emin misin?`,
-                              )
-                            )
-                              return;
-                            bulkClearField.mutate({
-                              field: "position",
-                              value: opt.value,
-                              employeeIds: affectedIds,
+                            modals.openConfirmModal({
+                              title: 'Pozisyonu Kaldır',
+                              centered: true,
+                              children: (
+                                <Text size="sm" c="dimmed">
+                                  &quot;{opt.value}&quot; pozisyonunu {affectedIds.length} çalışandan kaldırmak istediğinize emin misiniz?
+                                </Text>
+                              ),
+                              labels: { confirm: 'Kaldır', cancel: 'Vazgeç' },
+                              confirmProps: { color: 'red' },
+                              onConfirm: () => {
+                                bulkClearField.mutate({
+                                  field: "position",
+                                  value: opt.value,
+                                  employeeIds: affectedIds,
+                                });
+                              },
                             });
                           }}
                         />
@@ -607,12 +635,13 @@ export default function EmployeesPage() {
                   name="firstName"
                   id="employee-firstName"
                   value={form.firstName}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const val = event.currentTarget.value;
                     setForm((prev) => ({
                       ...prev,
-                      firstName: event.currentTarget.value,
-                    }))
-                  }
+                      firstName: val,
+                    }));
+                  }}
                   required
                 />
                 <TextInput
@@ -620,12 +649,13 @@ export default function EmployeesPage() {
                   name="lastName"
                   id="employee-lastName"
                   value={form.lastName}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const val = event.currentTarget.value;
                     setForm((prev) => ({
                       ...prev,
-                      lastName: event.currentTarget.value,
-                    }))
-                  }
+                      lastName: val,
+                    }));
+                  }}
                 />
               </Group>
             ) : (
@@ -663,12 +693,13 @@ export default function EmployeesPage() {
             <TextInput
               label="Telefon"
               value={form.phone}
-              onChange={(event) =>
+              onChange={(event) => {
+                const val = event.currentTarget.value;
                 setForm((prev) => ({
                   ...prev,
-                  phone: event.currentTarget.value,
-                }))
-              }
+                  phone: val,
+                }));
+              }}
             />
             <NumberInput
               label="Saatlik Ücret"

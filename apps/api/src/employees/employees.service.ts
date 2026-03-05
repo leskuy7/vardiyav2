@@ -21,7 +21,7 @@ export class EmployeesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService
-  ) {}
+  ) { }
 
   private getEncryptionSecret(): string {
     return this.config.get<string>('ENCRYPTION_KEY') ?? this.config.get<string>('JWT_ACCESS_SECRET') ?? '';
@@ -93,9 +93,16 @@ export class EmployeesService {
       throw new NotFoundException({ code: 'EMPLOYEE_NOT_FOUND', message: 'Çalışan bulunamadı' });
     }
 
+    if (actor?.role === 'ADMIN' && actor.sub) {
+      const org = await this.prisma.organization.findUnique({ where: { adminUserId: actor.sub }, select: { id: true } });
+      if (org && employee.organizationId !== org.id) {
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access employees in your organization' });
+      }
+    }
+
     if (actor?.role === 'MANAGER' && actor.employeeId) {
       const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
-      if (manager && employee.department !== manager.department) {
+      if (manager && (employee.department !== manager.department || employee.organizationId !== manager.organizationId)) {
         throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access employees in your department' });
       }
     }
@@ -294,6 +301,34 @@ export class EmployeesService {
       },
       include: { user: { select: USER_SAFE_SELECT } }
     });
+  }
+
+  async bulkUpdate(employeeIds: string[], dto: Partial<UpdateEmployeeDto>, actor?: { role: string; sub?: string; employeeId?: string }) {
+    let targetDepartment = dto.department;
+    if (actor?.role === 'MANAGER' && actor.employeeId) {
+      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+      if (manager) {
+        targetDepartment = manager.department ?? undefined;
+      }
+    }
+
+    for (const id of employeeIds) {
+      await this.getById(id, actor);
+    }
+
+    const { count } = await this.prisma.employee.updateMany({
+      where: { id: { in: employeeIds } },
+      data: {
+        ...(dto.position !== undefined && { position: dto.position }),
+        ...(targetDepartment !== undefined && { department: targetDepartment }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(dto.hourlyRate !== undefined && { hourlyRate: dto.hourlyRate }),
+        ...(dto.maxWeeklyHours !== undefined && { maxWeeklyHours: dto.maxWeeklyHours }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      }
+    });
+
+    return { count };
   }
 
   async remove(id: string, actor?: { role: string; sub?: string; employeeId?: string }) {

@@ -1,8 +1,9 @@
 "use client";
 
 import { ActionIcon, Badge, Card, Grid, Group, List, Paper, Stack, Text, ThemeIcon, Title, Tooltip } from '@mantine/core';
-import { IconAlertTriangle, IconBell, IconChevronRight, IconClockHour4, IconUsers } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBell, IconCalendarEvent, IconChevronRight, IconClockHour4, IconUsers } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { PageError, PageLoading } from '../../../components/page-states';
 import { useEmployees } from '../../../hooks/use-employees';
@@ -10,6 +11,7 @@ import { useWeeklyReport } from '../../../hooks/use-reports';
 import { useWeeklySchedule } from '../../../hooks/use-shifts';
 import { getShiftStatusLabel } from '../../../lib/shift-status';
 import { currentWeekStartIsoDate, formatDateShort, formatTimeOnly } from '../../../lib/time';
+import { api } from '../../../lib/api';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -22,6 +24,16 @@ export default function DashboardPage() {
 
   const isLoading = employeesLoading || scheduleLoading || reportLoading;
   const isError = employeesError || scheduleError || reportError;
+
+  // Bekleyen izin talepleri
+  const { data: pendingLeaves } = useQuery<{ id: string }[]>({
+    queryKey: ['leaves', 'pending-count'],
+    queryFn: async () => {
+      const { data } = await api.get('/leave-requests?status=PENDING');
+      return Array.isArray(data) ? data : [];
+    },
+  });
+  const pendingLeaveCount = pendingLeaves?.length ?? 0;
 
   const shifts = useMemo(() => (schedule?.days ?? []).flatMap((day) => day.shifts), [schedule]);
 
@@ -164,6 +176,35 @@ export default function DashboardPage() {
             <Title order={3}>{report.totals.overtimeHours.toFixed(1)} saat</Title>
           </Card>
         </Grid.Col>
+
+        {/* Bekleyen İzin Talepleri */}
+        {pendingLeaveCount > 0 && (
+          <Grid.Col span={{ base: 12, md: 3 }}>
+            <Card
+              withBorder
+              p="md"
+              className="stat-card gradient-card stagger-5 interactive-card"
+              style={{ cursor: 'pointer' }}
+              onClick={() => router.push('/leaves')}
+            >
+              <Group justify="space-between">
+                <Text c="dimmed" size="sm">Bekleyen İzin</Text>
+                <Group gap={4}>
+                  <Tooltip label="İzin Onaylarına git" withArrow>
+                    <ActionIcon variant="subtle" size="sm" color="indigo" component="span">
+                      <IconChevronRight size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                  <ThemeIcon variant="gradient" gradient={{ from: 'orange', to: 'pink' }} radius="xl">
+                    <IconCalendarEvent size={14} />
+                  </ThemeIcon>
+                </Group>
+              </Group>
+              <Title order={3} c="orange">{pendingLeaveCount}</Title>
+              <Text size="xs" c="dimmed" mt={4}>Tıkla → İzin Onayları</Text>
+            </Card>
+          </Grid.Col>
+        )}
       </Grid>
 
       {/* ─── Onay Kuyruğu: kimin onayı beklediğini listeler ─── */}

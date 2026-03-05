@@ -92,7 +92,7 @@ describe('ShiftsService', () => {
       endTime: '2026-01-01T12:00:00.000Z',
       forceOverride: true
     });
-    expect(result.warnings).toContain('UNAVAILABLE block overridden on start day');
+    expect(result.warnings).toContain('Başlangıç günündeki müsaitlik kısıtlaması (UNAVAILABLE) geçersiz kılındı.');
   });
 
   it('shift aralığı blok aralığını kapsadığında conflict üretir', async () => {
@@ -112,8 +112,8 @@ describe('ShiftsService', () => {
     await expect(
       service.create({
         employeeId: 'emp-1',
-        startTime: '2026-01-01T09:00:00.000Z',
-        endTime: '2026-01-01T13:00:00.000Z'
+        startTime: '2026-01-01T07:00:00.000Z',
+        endTime: '2026-01-01T11:00:00.000Z'
       })
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
