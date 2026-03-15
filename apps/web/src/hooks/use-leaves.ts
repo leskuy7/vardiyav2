@@ -87,6 +87,7 @@ export function useLeaves() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["leaves"] });
+            queryClient.invalidateQueries({ queryKey: ["schedule"] });
         },
     });
 

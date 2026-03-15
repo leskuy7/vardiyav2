@@ -47,34 +47,20 @@ export default function LoginPage() {
   const form = useForm({
     initialValues: { email: "", password: "" },
     validate: {
-      email: (v) => (!v ? "E-posta veya kullanıcı adı girin" : null),
-      password: (v) => (!v ? "Şifre girin" : v.length < 8 ? "Şifre en az 8 karakter olmalı" : null),
+      email: (v) => (!v || !String(v).trim() ? "E-posta veya kullanıcı adı girin" : null),
+      password: (v) => (!v ? "Şifre girin" : null),
     },
   });
 
+  const demoDisabled = process.env.NEXT_PUBLIC_DEMO_ENABLED === "false";
   const demoAccounts = [
-    {
-      label: "Admin",
-      email: "admin@test.local",
-      password: "Test12345!",
-      color: "indigo",
-    },
-    {
-      label: "Müdür",
-      email: "manager@test.local",
-      password: "Test12345!",
-      color: "violet",
-    },
-    {
-      label: "Çalışan",
-      email: "employee@test.local",
-      password: "Test12345!",
-      color: "grape",
-    },
+    { label: "Admin", email: "admin@test.local", password: "Test12345!", color: "indigo" },
+    { label: "Müdür", email: "manager@test.local", password: "Test12345!", color: "violet" },
+    { label: "Çalışan", email: "employee@test.local", password: "Test12345!", color: "grape" },
   ];
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (demoDisabled || typeof window === "undefined") return;
     const demo = new URLSearchParams(window.location.search).get("demo");
     const selected =
       demo === "admin" ? demoAccounts[0] : demo === "manager" ? demoAccounts[1] : demo === "employee" ? demoAccounts[2] : null;
@@ -82,22 +68,30 @@ export default function LoginPage() {
       form.setValues({ email: selected.email, password: selected.password });
       setTimeout(() => formRef.current?.requestSubmit(), 300);
     }
-  }, []);
+  }, [demoDisabled]);
 
-  const handleSubmit = form.onSubmit(async (values) => {
+  const doLogin = async (emailRaw: string, passwordRaw: string) => {
     setError(null);
     setSubmitting(true);
     try {
-      const response = await api.post("/auth/login", { email: values.email, password: values.password });
+      const email = String(emailRaw ?? "").trim();
+      const password = String(passwordRaw ?? "");
+      const response = await api.post("/auth/login", { email, password });
       setAccessToken(response.data.accessToken);
       const role = response.data.user?.role as "ADMIN" | "MANAGER" | "EMPLOYEE";
       router.push(role === "EMPLOYEE" ? "/my-shifts" : "/dashboard");
     } catch (caughtError) {
-      const axiosError = caughtError as AxiosError<{ message?: string }>;
-      setError(axiosError.response?.data?.message ?? "Giriş başarısız.");
+      const axiosError = caughtError as AxiosError<{ message?: string | string[] }>;
+      const raw = axiosError.response?.data?.message;
+      const msg = Array.isArray(raw) ? raw[0] ?? "Giriş başarısız." : (raw ?? "Giriş başarısız.");
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = form.onSubmit(async (values) => {
+    await doLogin(values.email, values.password);
   });
 
   return (
@@ -202,10 +196,10 @@ export default function LoginPage() {
                   border: "1px solid rgba(255, 255, 255, 0.08)",
                 }}
               >
-                <form ref={formRef} onSubmit={handleSubmit}>
+                <form ref={formRef} onSubmit={handleSubmit} aria-label="Giriş formu">
                   <Stack>
                     <Group justify="space-between" align="center">
-                      <Title order={3} style={{ color: "#fff" }}>
+                      <Title order={3} style={{ color: "#fff" }} id="login-title">
                         Giriş Yap
                       </Title>
                       <Badge variant="light" style={{ background: "rgba(102, 126, 234, 0.3)", color: "#a5b4fc" }}>
@@ -260,27 +254,36 @@ export default function LoginPage() {
                       Giriş Yap
                     </Button>
 
-                    <Stack gap="xs">
-                      <Text size="xs" ta="center" style={{ color: "rgba(199, 210, 254, 0.5)" }}>
-                        Demo Hesaplar
-                      </Text>
-                      <Group grow>
-                        {demoAccounts.map((account) => (
-                          <Button
-                            key={account.label}
-                            variant="light"
-                            color="gray"
-                            type="button"
-                            style={{ background: "rgba(255, 255, 255, 0.06)", borderColor: "rgba(255, 255, 255, 0.1)", color: "#c7d2fe" }}
-                            onClick={() => {
-                              form.setValues({ email: account.email, password: account.password });
-                            }}
-                          >
-                            {account.label}
-                          </Button>
-                        ))}
-                      </Group>
-                    </Stack>
+                    {!demoDisabled && (
+                      <Stack gap="xs" mt="sm">
+                        <Text size="xs" ta="center" style={{ color: "rgba(199, 210, 254, 0.7)", fontWeight: 500 }}>
+                          — Hızlı Giriş (Demo) —
+                        </Text>
+                        <Group grow>
+                          {demoAccounts.map((account) => (
+                            <Button
+                              key={account.label}
+                              variant="light"
+                              color={account.color}
+                              type="button"
+                              style={{
+                                background: `var(--mantine-color-${account.color}-light)`,
+                                color: `var(--mantine-color-${account.color}-light-color)`,
+                                transition: 'transform 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                              onClick={() => {
+                                form.setValues({ email: account.email, password: account.password });
+                                doLogin(account.email, account.password);
+                              }}
+                            >
+                              {account.label}
+                            </Button>
+                          ))}
+                        </Group>
+                      </Stack>
+                    )}
 
                     <Text
                       size="xs"

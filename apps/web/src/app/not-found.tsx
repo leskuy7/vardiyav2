@@ -9,7 +9,7 @@ export default function NotFound() {
         <Center style={{ minHeight: '100vh', padding: '2rem' }}>
             <Stack align="center" gap="md">
                 <IconAlertCircle size={64} style={{ color: 'var(--mantine-color-red-6)' }} />
-                <Title order={1}>Sayfa Bulunamadı</Title>
+                <Title order={1} id="not-found-title">Sayfa Bulunamadı</Title>
                 <Text size="lg" c="dimmed" ta="center" maw={400}>
                     Aradığınız sayfa mevcut değil veya taşınmış olabilir.
                 </Text>

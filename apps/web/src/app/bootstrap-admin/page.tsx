@@ -13,9 +13,11 @@ import {
   Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { api } from "../../lib/api";
+import { IconCopy } from "@tabler/icons-react";
+import { api, getErrorMessage } from "../../lib/api";
 import { setAccessToken } from "../../lib/token-store";
 
 const BUSINESS_TYPES = [
@@ -68,10 +70,7 @@ export default function BootstrapAdminPage() {
         setAccessToken(data.accessToken);
       }
     } catch (err: unknown) {
-      const msg = err && typeof err === "object" && "response" in err
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-        : "Bootstrap başarısız.";
-      setError(msg ?? "Bootstrap başarısız.");
+      setError(getErrorMessage(err, "Bootstrap başarısız."));
     } finally {
       setSubmitting(false);
     }
@@ -86,6 +85,18 @@ export default function BootstrapAdminPage() {
             <Alert color="green" title="Başarılı">
               İşletme ve admin hesabı oluşturuldu. Aşağıdaki giriş bilgilerini kaydedin; şifre tekrar gösterilmeyecektir.
             </Alert>
+            <Button
+              variant="light"
+              leftSection={<IconCopy size={18} />}
+              onClick={() => {
+                const text = `Kullanıcı adı: ${result.generatedEmail}, Şifre: ${result.generatedPassword}`;
+                void navigator.clipboard.writeText(text).then(() => {
+                  notifications.show({ title: "Kopyalandı", message: "Kullanıcı adı ve şifre panoya kopyalandı.", color: "green" });
+                });
+              }}
+            >
+              Tümünü kopyala
+            </Button>
             <TextInput
               label="Kullanıcı adı"
               value={result.generatedEmail}

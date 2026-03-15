@@ -298,11 +298,8 @@ export class ShiftsService {
     );
 
     if (!forceOverride && warnings.length > 0) {
-      const first = warnings[0];
-      if (first.includes('yasal çalışma süresi')) {
-        throw new UnprocessableEntityException({ code: 'COMPLIANCE_MAX_HOURS', message: first });
-      }
-      throw new UnprocessableEntityException({ code: 'COMPLIANCE_NO_REST', message: first });
+      // Compliance warnings are now soft warnings per user request. We do not throw an exception here.
+      // The warnings are returned in the payload and the frontend displays them.
     }
 
     return warnings;
@@ -423,18 +420,31 @@ export class ShiftsService {
 
   async create(dto: CreateShiftDto, actor?: ActorWithSub) {
     const scope = await getEmployeeScope(this.prisma, actor);
+    const targetEmployee = await this.prisma.employee.findUnique({
+      where: { id: dto.employeeId },
+      select: { id: true, department: true, organizationId: true, isActive: true, deletedAt: true }
+    });
+
+    if (!targetEmployee || !targetEmployee.isActive || targetEmployee.deletedAt) {
+      throw new UnprocessableEntityException({
+        code: 'EMPLOYEE_NOT_ACTIVE',
+        message: 'Pasif veya arşivlenmiş çalışana vardiya atanamaz.'
+      });
+    }
+
     if (scope.type === 'self' && dto.employeeId !== scope.employeeId) {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendinize vardiya atayabilirsiniz.' });
     }
     if (scope.type === 'department') {
-      const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
-      if (emp?.department !== scope.department || (scope.organizationId && emp.organizationId !== scope.organizationId)) {
+      if (
+        targetEmployee.department !== scope.department ||
+        (scope.organizationId && targetEmployee.organizationId !== scope.organizationId)
+      ) {
         throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki çalışanlara vardiya atayabilirsiniz.' });
       }
     }
     if (scope.type === 'all_in_org') {
-      const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId }, select: { organizationId: true } });
-      if (!emp || emp.organizationId !== scope.organizationId) {
+      if (targetEmployee.organizationId !== scope.organizationId) {
         throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi organizasyonunuzdaki çalışanlara vardiya atayabilirsiniz.' });
       }
     }
@@ -499,18 +509,30 @@ export class ShiftsService {
     const existing = await this.getById(id, actor);
 
     const employeeId = dto.employeeId ?? existing.employeeId;
+    const targetEmployee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, department: true, organizationId: true, isActive: true, deletedAt: true }
+    });
+
+    if (!targetEmployee || !targetEmployee.isActive || targetEmployee.deletedAt) {
+      throw new UnprocessableEntityException({
+        code: 'EMPLOYEE_NOT_ACTIVE',
+        message: 'Pasif veya arşivlenmiş çalışana vardiya atanamaz.'
+      });
+    }
 
     if (dto.employeeId && dto.employeeId !== existing.employeeId) {
       const scope = await getEmployeeScope(this.prisma, actor);
       if (scope.type === 'department') {
-        const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
-        if (emp?.department !== scope.department || (scope.organizationId && emp.organizationId !== scope.organizationId)) {
+        if (
+          targetEmployee.department !== scope.department ||
+          (scope.organizationId && targetEmployee.organizationId !== scope.organizationId)
+        ) {
           throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki çalışanlara vardiya atayabilirsiniz.' });
         }
       }
       if (scope.type === 'all_in_org') {
-        const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId }, select: { organizationId: true } });
-        if (!emp || emp.organizationId !== scope.organizationId) {
+        if (targetEmployee.organizationId !== scope.organizationId) {
           throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi organizasyonunuzdaki çalışanlara vardiya atayabilirsiniz.' });
         }
       }
@@ -660,11 +682,11 @@ export class ShiftsService {
         ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
         ...(scope.type === 'department'
           ? {
-              employee: {
-                department: scope.department,
-                ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
-              }
+            employee: {
+              department: scope.department,
+              ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
             }
+          }
           : {})
       }
     });

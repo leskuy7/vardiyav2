@@ -90,6 +90,7 @@ model User {
 
   employee         Employee?
   auditLogs        AuditLog[]
+  notifications    Notification[]
 }
 
 model Branch {
@@ -142,6 +143,7 @@ model Organization {
   businessType   BusinessType @relation(fields: [businessTypeId], references: [id], onDelete: Restrict)
   orgSuggestions OrgSuggestion[]
   employees      Employee[]
+  settings       OrgSettings?
 
   @@map("organizations")
 }
@@ -437,4 +439,48 @@ model OvertimeRecord {
   @@unique([employeeId, weekStart, strategy])
   @@index([weekStart])
   @@map("overtime_records")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  message     String
+  type        String   // SHIFT_ASSIGNED, LEAVE_APPROVED, LEAVE_REJECTED, SWAP_REQUEST, SHIFT_UPDATED, SHIFT_CANCELLED
+  isRead      Boolean  @default(false)
+  actionUrl   String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+model OrgSettings {
+  id                 String   @id @default(uuid())
+  organizationId     String   @unique
+  maxWeeklyHours     Int      @default(45)
+  overtimeMultiplier Decimal  @default(1.5)
+  currency           String   @default("TRY")
+  workDays           Json     @default("[1,2,3,4,5]")
+  shiftMinDuration   Int      @default(60)
+  shiftMaxDuration   Int      @default(720)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("org_settings")
+}
+
+model PublicHoliday {
+  id          String   @id @default(uuid())
+  name        String
+  date        DateTime @db.Date
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([date])
+  @@map("public_holidays")
 }

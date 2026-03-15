@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CsrfGuard } from '../common/auth/csrf.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
+import { AddSuggestionDto } from './dto/add-suggestion.dto';
 import { MetaService } from './meta.service';
 
 type Actor = { role: string; sub?: string; employeeId?: string };
@@ -42,10 +43,7 @@ export class MetaController {
 
   @Post('suggestions')
   @UseGuards(CsrfGuard)
-  addSuggestion(
-    @Body() body: { kind: 'DEPARTMENT' | 'POSITION'; value: string },
-    @Req() request: Request
-  ) {
+  addSuggestion(@Body() body: AddSuggestionDto, @Req() request: Request) {
     return this.metaService.addSuggestion(body.kind, body.value, this.actor(request));
   }
 

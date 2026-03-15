@@ -142,12 +142,10 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
     };
   }, [selectedEmployeeId, startAt, endAt, initial]);
 
-  // Past date warning
-  const isPastDate = useMemo(() => {
+  // Past date-time warning (exact timestamp, not just calendar day)
+  const isPastDateTime = useMemo(() => {
     if (!startAt) return false;
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return startAt < now;
+    return startAt.getTime() < Date.now();
   }, [startAt]);
 
   const selectedDate = useMemo(() => startAt ?? endAt ?? new Date(), [startAt, endAt]);
@@ -181,7 +179,7 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
     }
 
     // Block past dates if not retroactive
-    if (isPastDate && !retroactive && !isEdit) {
+    if (isPastDateTime && !retroactive && !isEdit) {
       setError('Geçmiş tarihe vardiya eklenemez. Geçmişe dönük eklemek için ilgili seçeneği açın.');
       return;
     }
@@ -286,19 +284,19 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
           )}
 
           {/* Geçmiş tarih uyarısı */}
-          {isPastDate && retroactive && !isEdit && (
+          {isPastDateTime && retroactive && !isEdit && (
             <Alert color="orange" title="Geçmişe Dönük Vardiya" variant="light">
               <Text size="sm">
-                Bu vardiya geçmiş bir tarihe ekleniyor. Vardiya notu otomatik olarak [GEÇMİŞE DÖNÜK] etiketiyle işaretlenecektir.
+                Bu vardiya geçmiş bir tarih/saat için ekleniyor. Vardiya notu otomatik olarak [GEÇMİŞE DÖNÜK] etiketiyle işaretlenecektir.
               </Text>
             </Alert>
           )}
 
           {/* Geçmiş tarih uyarısı - retroactive kapalıyken */}
-          {isPastDate && !retroactive && !isEdit && (
+          {isPastDateTime && !retroactive && !isEdit && (
             <Alert color="red" title="Geçmiş Tarih" variant="light">
               <Text size="sm">
-                Seçilen tarih geçmişte. Geçmişe dönük vardiya eklemek istiyorsanız yukarıdaki &quot;Geçmişe dönük vardiya ekle&quot; seçeneğini açın.
+                Seçilen tarih/saat geçmişte. Geçmişe dönük vardiya eklemek istiyorsanız yukarıdaki &quot;Geçmişe dönük vardiya ekle&quot; seçeneğini açın.
               </Text>
             </Alert>
           )}
@@ -427,7 +425,7 @@ export function ShiftModal({ opened, onClose, onSubmit, onDelete, employeeId, em
                 disabled={
                   (availabilityConflicts.length > 0 && !forceOverride) ||
                   !!overlapWarning ||
-                  (isPastDate && !retroactive && !isEdit)
+                  (isPastDateTime && !retroactive && !isEdit)
                 }
               >
                 Kaydet

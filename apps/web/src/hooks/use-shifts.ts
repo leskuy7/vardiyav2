@@ -89,5 +89,20 @@ export function useShiftsActions(weekStart: string) {
     onSuccess: invalidate
   });
 
-  return { createShift, updateShift, acknowledgeShift, deleteShift, deleteShiftLegacy, declineShift };
+  const autoGenerate = useMutation({
+    mutationFn: async (payload: { weekStart: string }) => {
+      const response = await api.post('/schedule/auto-generate', payload);
+      return response.data;
+    }
+  });
+
+  const autoConfirm = useMutation({
+    mutationFn: async (payload: { shifts: Array<{ employeeId: string; startTime: string; endTime: string }> }) => {
+      const response = await api.post('/schedule/auto-confirm', payload);
+      return response.data;
+    },
+    onSuccess: invalidate
+  });
+
+  return { createShift, updateShift, acknowledgeShift, deleteShift, deleteShiftLegacy, declineShift, autoGenerate, autoConfirm };
 }

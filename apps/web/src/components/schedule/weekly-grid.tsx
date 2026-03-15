@@ -1,10 +1,10 @@
 "use client";
 
-import { memo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMediaQuery } from '@mantine/hooks';
-import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragStartEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { Badge, Box, Button, Card, Group, Popover, ScrollArea, Stack, Table, Text, ThemeIcon } from '@mantine/core';
-import { IconInfoCircle } from '@tabler/icons-react';
+import { IconGripVertical, IconInfoCircle, IconPencil } from '@tabler/icons-react';
 import { getShiftStatusColor, getShiftStatusIcon, getShiftStatusLabel } from '../../lib/shift-status';
 import { formatTimeOnly } from '../../lib/time';
 
@@ -19,7 +19,7 @@ type Shift = {
   note?: string;
   swapRequests?: Array<{ id: string; requesterId: string; targetEmployeeId: string | null; status: string }>;
 };
-type Leave = { id: string; employeeId: string; type: string; reason?: string | null };
+type Leave = { id: string; employeeId: string; type?: string; leaveCode?: string; reason?: string | null };
 type Day = { date: string; shifts: Shift[]; leaves?: Leave[] };
 
 export type AvailabilityHintType = 'UNAVAILABLE' | 'PREFER_NOT' | 'AVAILABLE_ONLY';
@@ -94,10 +94,13 @@ function isToday(isoDate: string) {
   }) === isoDate;
 }
 
-/* ─── Compact Shift Card ─── */
-function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void }) {
+/* ─── Compact Shift Card (sade, odaklı) ─── */
+const ShiftCard = memo(function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: shift.id, data: shift });
+  const statusColor = getShiftStatusColor(shift.status);
   const StatusIcon = getShiftStatusIcon(shift.status);
+  const showStatus = shift.status !== 'ACKNOWLEDGED';
+  const hours = shiftHours(shift.start, shift.end);
 
   return (
     <Card
@@ -110,43 +113,52 @@ function ShiftCard({ shift, onEdit }: { shift: Shift; onEdit: (s: Shift) => void
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         opacity: isDragging ? 0.5 : 1,
-        borderLeft: `4px solid var(--mantine-color-${getShiftStatusColor(shift.status)}-6)`,
+        borderLeft: `3px solid var(--mantine-color-${statusColor}-5)`,
         fontSize: '0.75rem',
       }}
     >
-      <Text size="xs" fw={700} lh={1.2}>{formatTimeOnly(shift.start)} – {formatTimeOnly(shift.end)}</Text>
-      <Text size="xs" c="dimmed" lh={1.2}>{shiftHours(shift.start, shift.end)} saat</Text>
-      <Group justify="space-between" mt={2} gap={4}>
-        <Badge size="xs" color={getShiftStatusColor(shift.status)} variant="light" leftSection={<StatusIcon size={10} />}>
-          {getShiftStatusLabel(shift.status)}
-        </Badge>
-        <Group gap={4}>
+      <Group justify="space-between" gap={4} wrap="nowrap">
+        <Text size="xs" fw={600} lh={1.3} style={{ letterSpacing: '-0.01em' }}>
+          {formatTimeOnly(shift.start)}–{formatTimeOnly(shift.end)}
+          <Text span size="xs" c="dimmed" fw={400} ml={4}>{hours} sa</Text>
+        </Text>
+        <Group gap={2} wrap="nowrap">
           <Button
             size="compact-xs"
             variant="subtle"
-            fz={10}
+            color="gray"
+            p={4}
             {...listeners}
             {...attributes}
-            onClick={(event) => event.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Sürükle"
+            title="Sürükle"
+            style={{ cursor: 'grab', minWidth: 20 }}
           >
-            Tut
+            <IconGripVertical size={12} />
           </Button>
           <Button
             size="compact-xs"
             variant="subtle"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit(shift);
-            }}
-            fz={10}
+            color="gray"
+            p={4}
+            onClick={(e) => { e.stopPropagation(); onEdit(shift); }}
+            aria-label="Düzenle"
+            title="Düzenle"
+            style={{ minWidth: 20 }}
           >
-          Düzenle
+            <IconPencil size={12} />
           </Button>
         </Group>
       </Group>
+      {showStatus && (
+        <Badge size="xs" color={statusColor} variant="light" leftSection={<StatusIcon size={10} />} mt={4} style={{ fontWeight: 500 }}>
+          {getShiftStatusLabel(shift.status)}
+        </Badge>
+      )}
     </Card>
   );
-}
+});
 
 function availabilityHintStyle(hint: AvailabilityHintType | undefined): { backgroundColor?: string; borderLeft?: string } {
   if (!hint) return {};
@@ -157,7 +169,7 @@ function availabilityHintStyle(hint: AvailabilityHintType | undefined): { backgr
 }
 
 /* ─── Drop Cell ─── */
-function ShiftCell({
+const ShiftCell = memo(function ShiftCell({
   employeeId,
   day,
   shifts,
@@ -178,10 +190,11 @@ function ShiftCell({
 
   if (employeeLeaves.length > 0) {
     const leave = employeeLeaves[0];
+    const leaveType = leave.leaveCode ?? leave.type;
     let label = "İzinli";
-    if (leave.type === "ANNUAL") label = "Yıllık İzin";
-    else if (leave.type === "SICK") label = "Raporlu";
-    else if (leave.type === "UNPAID") label = "Ücretsiz İzin";
+    if (leaveType === "ANNUAL") label = "Yıllık İzin";
+    else if (leaveType === "SICK") label = "Raporlu";
+    else if (leaveType === "UNPAID") label = "Ücretsiz İzin";
 
     return (
       <Box
@@ -241,10 +254,10 @@ function ShiftCell({
       ))}
     </Box>
   );
-}
+});
 
 /* ─── Daily Mobile View ─── */
-function DailyScheduleView({ employees, days, onCreate, onEdit, availabilityHints }: WeeklyGridProps) {
+const DailyScheduleView = memo(function DailyScheduleView({ employees, days, onCreate, onEdit, availabilityHints }: WeeklyGridProps) {
   const [selectedDate, setSelectedDate] = useState<string>(days[0]?.date || "");
 
   if (!days || days.length === 0) return null;
@@ -311,12 +324,46 @@ function DailyScheduleView({ employees, days, onCreate, onEdit, availabilityHint
       </Stack>
     </Stack>
   );
-}
+});
+
+const AUTO_SCROLL_ZONE = 100;
+const AUTO_SCROLL_SPEED = 12;
 
 /* ─── Weekly Grid ─── */
 function WeeklyGridComponent(props: WeeklyGridProps) {
   const { employees, days, onCreate, onEdit, onMove, availabilityHints } = props;
   const isMobile = useMediaQuery('(max-width: 62em)');
+  const [isDragging, setIsDragging] = useState(false);
+  const scrollRAF = useRef<number | null>(null);
+
+  const shiftsByEmployeeDay = useMemo(() => {
+    const map = new Map<string, Shift[]>();
+    for (const day of days) {
+      for (const shift of day.shifts) {
+        const key = `${shift.employeeId}::${day.date}`;
+        const existing = map.get(key);
+        if (existing) {
+          existing.push(shift);
+        } else {
+          map.set(key, [shift]);
+        }
+      }
+    }
+    return map;
+  }, [days]);
+
+  const weeklyHoursByEmployee = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const day of days) {
+      for (const shift of day.shifts) {
+        totals.set(
+          shift.employeeId,
+          (totals.get(shift.employeeId) ?? 0) + shiftHours(shift.start, shift.end),
+        );
+      }
+    }
+    return totals;
+  }, [days]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -326,16 +373,63 @@ function WeeklyGridComponent(props: WeeklyGridProps) {
     })
   );
 
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragStart = useCallback((_event: DragStartEvent) => {
+    setIsDragging(true);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setIsDragging(false);
     const { active, over } = event;
     if (!over) return;
     const [employeeId, targetDate] = String(over.id).split('::');
     onMove({ shiftId: String(active.id), employeeId, targetDate });
-  }
+  }, [onMove]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const scrollable = document.scrollingElement ?? document.documentElement;
+    let animationId: number | null = null;
+    let scrollDirection = 0;
+
+    const onPointerMove = (e: PointerEvent) => {
+      const { clientY } = e;
+      const topZone = AUTO_SCROLL_ZONE;
+      const bottomZone = window.innerHeight - AUTO_SCROLL_ZONE;
+      if (clientY < topZone) {
+        scrollDirection = -(topZone - clientY) / topZone;
+      } else if (clientY > bottomZone) {
+        scrollDirection = (clientY - bottomZone) / AUTO_SCROLL_ZONE;
+      } else {
+        scrollDirection = 0;
+      }
+    };
+
+    const tick = () => {
+      if (scrollDirection !== 0 && scrollable) {
+        const delta = scrollDirection * AUTO_SCROLL_SPEED;
+        const maxScroll = scrollable.scrollHeight - scrollable.clientHeight;
+        if (delta < 0 && scrollable.scrollTop > 0) {
+          scrollable.scrollTop = Math.max(0, scrollable.scrollTop + delta);
+        } else if (delta > 0 && scrollable.scrollTop < maxScroll) {
+          scrollable.scrollTop = Math.min(maxScroll, scrollable.scrollTop + delta);
+        }
+      }
+      scrollRAF.current = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    scrollRAF.current = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      if (scrollRAF.current != null) cancelAnimationFrame(scrollRAF.current);
+      scrollRAF.current = null;
+    };
+  }, [isDragging]);
 
   if (isMobile) {
     return (
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <Stack gap="sm">
           <Group justify="flex-end">
             <ColorLegendPopover />
@@ -347,7 +441,7 @@ function WeeklyGridComponent(props: WeeklyGridProps) {
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <Stack gap="sm">
         <Group justify="flex-end">
           <ColorLegendPopover />
@@ -384,10 +478,7 @@ function WeeklyGridComponent(props: WeeklyGridProps) {
 
           <Table.Tbody>
             {employees.map((employee) => {
-              const weeklyHours = days
-                .flatMap((d) => d.shifts)
-                .filter((s) => s.employeeId === employee.id)
-                .reduce((sum, s) => sum + shiftHours(s.start, s.end), 0);
+              const weeklyHours = weeklyHoursByEmployee.get(employee.id) ?? 0;
 
               return (
                 <Table.Tr key={employee.id}>
@@ -410,7 +501,7 @@ function WeeklyGridComponent(props: WeeklyGridProps) {
                       <ShiftCell
                         employeeId={employee.id}
                         day={day.date}
-                        shifts={day.shifts.filter((s) => s.employeeId === employee.id)}
+                        shifts={shiftsByEmployeeDay.get(`${employee.id}::${day.date}`) ?? []}
                         leaves={day.leaves}
                         availabilityHint={availabilityHints?.[employee.id]?.[day.date]}
                         onCreate={onCreate}

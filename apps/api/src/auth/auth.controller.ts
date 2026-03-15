@@ -34,6 +34,8 @@ export class AuthController {
   })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.login(dto);
+    this.clearLegacyRefreshCookie(response);
+    this.setAccessCookie(response, result.accessToken);
     this.setRefreshCookie(response, result.refreshToken);
     await this.auditService.log({
       userId: result.user.id,
@@ -58,6 +60,8 @@ export class AuthController {
 
     const payload = await this.authService.validateRefreshToken(token);
     const result = await this.authService.refresh(payload.sub, token);
+    this.clearLegacyRefreshCookie(response);
+    this.setAccessCookie(response, result.accessToken);
     this.setRefreshCookie(response, result.refreshToken);
 
     return { accessToken: result.accessToken, user: result.user };
@@ -75,7 +79,9 @@ export class AuthController {
       entityType: 'USER',
       entityId: user.sub
     });
-    response.clearCookie('refresh_token');
+    response.clearCookie('access_token', { path: '/' });
+    response.clearCookie('refresh_token', { path: '/' });
+    this.clearLegacyRefreshCookie(response);
     return result;
   }
 
@@ -96,8 +102,25 @@ export class AuthController {
   ) {
     const user = request.user as { sub: string };
     const result = await this.authService.changePassword(user.sub, dto.currentPassword, dto.newPassword);
-    response.clearCookie('refresh_token');
+    response.clearCookie('access_token', { path: '/' });
+    response.clearCookie('refresh_token', { path: '/' });
+    this.clearLegacyRefreshCookie(response);
     return result;
+  }
+
+  private clearLegacyRefreshCookie(response: Response) {
+    response.clearCookie('refresh_token', { path: '/api/auth' });
+  }
+
+  private setAccessCookie(response: Response, token: string) {
+    const isProd = this.config.get<string>('NODE_ENV') === 'production';
+    response.cookie('access_token', token, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/',
+      maxAge: 15 * 60 * 1000,
+    });
   }
 
   private setRefreshCookie(response: Response, token: string) {
@@ -106,7 +129,7 @@ export class AuthController {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-      path: '/api/auth',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
   }

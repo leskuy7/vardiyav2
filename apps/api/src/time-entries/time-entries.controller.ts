@@ -19,11 +19,8 @@ export class TimeEntriesController {
     @Post('check-in')
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
     checkIn(@Body() checkInDto: CheckInDto, @Request() req: any) {
-        return this.timeEntriesService.checkIn(
-            checkInDto,
-            req.user.role,
-            req.user.employeeId
-        );
+        const actor = req.user as { role: string; sub?: string; employeeId?: string };
+        return this.timeEntriesService.checkIn(checkInDto, actor);
     }
 
     @Post(':id/check-out')
@@ -33,12 +30,8 @@ export class TimeEntriesController {
         @Body() checkOutDto: CheckOutDto,
         @Request() req: any
     ) {
-        return this.timeEntriesService.checkOut(
-            id,
-            checkOutDto,
-            req.user.employeeId,
-            req.user.role
-        );
+        const actor = req.user as { role: string; sub?: string; employeeId?: string };
+        return this.timeEntriesService.checkOut(id, checkOutDto, actor);
     }
 }
 

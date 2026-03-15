@@ -21,7 +21,8 @@ function shiftTime(base: Date, dayOffset: number, hour: number, minute = 0): Dat
 }
 
 /* ────── data definitions ────── */
-const PASSWORD = 'Test12345!';
+/** Üretimde SEED_DEFAULT_PASSWORD env ile güçlü bir şifre verin; yoksa sadece test ortamı için varsayılan kullanılır. */
+const PASSWORD = process.env.SEED_DEFAULT_PASSWORD ?? 'Test12345!';
 
 const accounts = [
     { email: 'admin@test.local', name: 'Ahmet Yılmaz', role: 'ADMIN' as const, position: 'Genel Müdür', department: 'Yönetim', hourlyRate: 180, phone: '+90 530 100 0001' },

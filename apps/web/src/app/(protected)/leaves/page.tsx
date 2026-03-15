@@ -24,6 +24,7 @@ import { LeaveRequest, useLeaves } from "../../../hooks/use-leaves";
 import { useAuth } from "../../../hooks/use-auth";
 import { PageError, PageLoading } from "../../../components/page-states";
 import { formatDateShort } from "../../../lib/time";
+import { getErrorMessage } from "../../../lib/api";
 
 const LEAVE_TYPES = {
     ANNUAL: "Yıllık İzin",
@@ -120,7 +121,7 @@ export default function LeavesPage() {
                 onError: (error: any) => {
                     notifications.show({
                         title: "Hata",
-                        message: error.response?.data?.message || "Bir hata oluştu",
+                        message: getErrorMessage(error, "İzin talebi oluşturulamadı."),
                         color: "red",
                     });
                 },
@@ -163,7 +164,7 @@ export default function LeavesPage() {
                             onError: (err: any) =>
                                 notifications.show({
                                     title: "Hata",
-                                    message: err.response?.data?.message || "Güncelleme başarısız",
+                                    message: getErrorMessage(err, "Güncelleme başarısız."),
                                     color: "red",
                                 }),
                         }
@@ -200,7 +201,7 @@ export default function LeavesPage() {
                             onError: (err: any) =>
                                 notifications.show({
                                     title: "Hata",
-                                    message: err.response?.data?.message || "Güncelleme başarısız",
+                                    message: getErrorMessage(err, "Güncelleme başarısız."),
                                     color: "red",
                                 }),
                         }
@@ -230,6 +231,12 @@ export default function LeavesPage() {
                     {
                         onSuccess: () =>
                             notifications.show({ title: "Başarılı", message: "İzin iptal edildi", color: "green" }),
+                        onError: (err: any) =>
+                            notifications.show({
+                                title: "Hata",
+                                message: getErrorMessage(err, "İzin iptal edilemedi."),
+                                color: "red",
+                            }),
                     }
                 );
             },
@@ -254,6 +261,12 @@ export default function LeavesPage() {
                 deleteLeave.mutate(leave.id, {
                     onSuccess: () =>
                         notifications.show({ title: "Silindi", message: `${name} – ${range} kaydı silindi.`, color: "gray" }),
+                    onError: (err: any) =>
+                        notifications.show({
+                            title: "Hata",
+                            message: getErrorMessage(err, "Kayıt silinemedi."),
+                            color: "red",
+                        }),
                 });
             },
         });
@@ -383,14 +396,22 @@ export default function LeavesPage() {
                                                             <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l, "REJECTED")}>
                                                                 Reddet
                                                             </Button>
+                                                            <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>
+                                                                İptal Et
+                                                            </Button>
                                                         </>
                                                     )}
-                                                    {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
+                                                    {(l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id) && (
                                                         <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>
                                                             İptal Et
                                                         </Button>
                                                     )}
-                                                    {l.status !== "PENDING" && role === "ADMIN" && (
+                                                    {l.status === "APPROVED" && (role === "MANAGER" || role === "ADMIN") && (
+                                                        <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>
+                                                            İptal Et
+                                                        </Button>
+                                                    )}
+                                                    {(role === "ADMIN" || role === "MANAGER") && (
                                                         <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l)}>
                                                             Sil
                                                         </Button>
@@ -436,12 +457,16 @@ export default function LeavesPage() {
                                             <>
                                                 <Button size="xs" color="green" onClick={() => handleStatusUpdate(l, "APPROVED")}>Onayla</Button>
                                                 <Button size="xs" color="red" variant="light" onClick={() => handleStatusUpdate(l, "REJECTED")}>Reddet</Button>
+                                                <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>İptal Et</Button>
                                             </>
                                         )}
                                         {l.status === "PENDING" && role === "EMPLOYEE" && l.employeeId === me?.employee?.id && (
                                             <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>İptal Et</Button>
                                         )}
-                                        {l.status !== "PENDING" && role === "ADMIN" && (
+                                        {l.status === "APPROVED" && (role === "MANAGER" || role === "ADMIN") && (
+                                            <Button size="xs" color="orange" variant="light" onClick={() => handleCancel(l)}>İptal Et</Button>
+                                        )}
+                                        {(role === "ADMIN" || role === "MANAGER") && (
                                             <Button size="xs" color="red" variant="subtle" onClick={() => handleDelete(l)}>Sil</Button>
                                         )}
                                     </Group>

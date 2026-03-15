@@ -1,10 +1,10 @@
 "use client";
 
-import { Badge, Button, Card, Grid, Group, ScrollArea, Select, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
+import { Badge, Button, Card, Grid, Group, Loader, ScrollArea, Select, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
-import { currentWeekStartIsoDate, formatWeekRange, shiftIsoDate } from '../../../lib/time';
+import { currentWeekStartIsoDate, formatWeekRange, shiftIsoDate, toIstanbulIsoDate } from '../../../lib/time';
 import { PageEmpty, PageError, PageLoading } from '../../../components/page-states';
 import { useAuth } from '../../../hooks/use-auth';
 import { useAuditTrail, useComplianceViolations, useSecurityEvents } from '../../../hooks/use-reports';
@@ -175,7 +175,39 @@ export default function ReportsPage() {
                 setTimeout(() => URL.revokeObjectURL(url), 1000);
               }}
             >
-              CSV İndir
+              CSV Indir
+            </Button>
+            <Button
+              variant="light"
+              color="red"
+              leftSection={<IconDownload size={16} />}
+              onClick={() => {
+                if (!overtimeData) return;
+                import('jspdf').then(({ default: jsPDF }) => {
+                  import('jspdf-autotable').then(({ default: autoTable }) => {
+                    const doc = new jsPDF();
+                    doc.setFontSize(16);
+                    doc.text('Haftalik Saat Raporu', 14, 20);
+                    doc.setFontSize(10);
+                    doc.text(`Hafta: ${weekStart} | Strateji: ${strategy}`, 14, 28);
+                    autoTable(doc, {
+                      startY: 35,
+                      head: [['Calisan', 'Normal Saat', 'Toplam Saat', 'Fazla Mesai', 'Maliyet']],
+                      body: overtimeData.map((r) => [
+                        r.employee?.user?.name || 'Bilinmeyen',
+                        (r.regularMinutes / 60).toFixed(2),
+                        ((r.regularMinutes + r.overtimeMinutes) / 60).toFixed(2),
+                        (r.overtimeMinutes / 60).toFixed(2),
+                        (r.estimatedPay || 0).toFixed(2) + ' TL',
+                      ]),
+                      foot: [['TOPLAM', totals.hours.toFixed(2), '', totals.overtime.toFixed(2), totals.cost.toFixed(2) + ' TL']],
+                    });
+                    doc.save(`rapor_${weekStart}_${strategy}.pdf`);
+                  });
+                });
+              }}
+            >
+              PDF Indir
             </Button>
           </Group>
 
@@ -216,12 +248,9 @@ export default function ReportsPage() {
                 </Table.Thead>
                 <Table.Tbody>
                   {overtimeData.map((row) => (
-                    <Table.Tr key={row.id}>
+                    <Table.Tr key={row.employeeId}>
                       <Table.Td>
-                        <Stack gap={0}>
-                          <Text fw={600}>{row.employee?.user.name}</Text>
-                          <Text c="dimmed" size="xs">#{row.employeeId.slice(0, 8)}</Text>
-                        </Stack>
+                        <Text fw={600}>{row.employee?.user?.name || 'İsimsiz Çalışan'}</Text>
                       </Table.Td>
                       <Table.Td>{(row.regularMinutes / 60).toFixed(2)}</Table.Td>
                       <Table.Td>{((row.regularMinutes + row.overtimeMinutes) / 60).toFixed(2)}</Table.Td>
@@ -242,7 +271,10 @@ export default function ReportsPage() {
           Seçilen haftada haftalık max saat aşımı veya 24 saat kesintisiz dinlenme ihlali olan çalışanlar.
         </Text>
         {complianceLoading ? (
-          <Text c="dimmed" size="sm">Yükleniyor...</Text>
+          <Group gap="xs">
+            <Loader size="sm" type="dots" />
+            <Text c="dimmed" size="sm">Yükleniyor</Text>
+          </Group>
         ) : (complianceData?.violations ?? []).length === 0 ? (
           <Text c="dimmed" size="sm">Bu hafta ihlal kaydı yok.</Text>
         ) : (
@@ -259,10 +291,7 @@ export default function ReportsPage() {
                 {(complianceData?.violations ?? []).map((v) => (
                   <Table.Tr key={v.employeeId}>
                     <Table.Td>
-                      <Stack gap={0}>
-                        <Text fw={600}>{v.employeeName}</Text>
-                        <Text c="dimmed" size="xs">#{v.employeeId.slice(0, 8)}</Text>
-                      </Stack>
+                      <Text fw={600}>{v.employeeName}</Text>
                     </Table.Td>
                     <Table.Td>
                       {v.maxHoursViolation != null ? (
@@ -361,7 +390,7 @@ export default function ReportsPage() {
                 label="Başlangıç Tarihi"
                 placeholder="Başlangıç tarihi seçin"
                 value={securityFrom ? new Date(securityFrom) : null}
-                onChange={(val) => setSecurityFrom(val ? val.toISOString().slice(0, 10) : '')}
+                onChange={(val) => setSecurityFrom(val ? toIstanbulIsoDate(val) : '')}
                 clearable
               />
             </Grid.Col>
@@ -370,7 +399,7 @@ export default function ReportsPage() {
                 label="Bitiş Tarihi"
                 placeholder="Bitiş tarihi seçin"
                 value={securityTo ? new Date(securityTo) : null}
-                onChange={(val) => setSecurityTo(val ? val.toISOString().slice(0, 10) : '')}
+                onChange={(val) => setSecurityTo(val ? toIstanbulIsoDate(val) : '')}
                 clearable
               />
             </Grid.Col>
@@ -495,7 +524,7 @@ export default function ReportsPage() {
                 label="Başlangıç Tarihi"
                 placeholder="Başlangıç tarihi seçin"
                 value={auditFrom ? new Date(auditFrom) : null}
-                onChange={(val) => setAuditFrom(val ? val.toISOString().slice(0, 10) : '')}
+                onChange={(val) => setAuditFrom(val ? toIstanbulIsoDate(val) : '')}
                 clearable
               />
             </Grid.Col>
@@ -504,7 +533,7 @@ export default function ReportsPage() {
                 label="Bitiş Tarihi"
                 placeholder="Bitiş tarihi seçin"
                 value={auditTo ? new Date(auditTo) : null}
-                onChange={(val) => setAuditTo(val ? val.toISOString().slice(0, 10) : '')}
+                onChange={(val) => setAuditTo(val ? toIstanbulIsoDate(val) : '')}
                 clearable
               />
             </Grid.Col>

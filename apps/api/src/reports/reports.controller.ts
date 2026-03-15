@@ -5,6 +5,8 @@ import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { WeekStartQueryDto } from '../common/dto/week-start-query.dto';
 import { currentWeekStartIso } from '../common/time.utils';
+import { AuditTrailQueryDto } from './dto/audit-trail-query.dto';
+import { SecurityEventsQueryDto } from './dto/security-events-query.dto';
 import { ReportsService } from './reports.service';
 
 @Controller('reports')
@@ -29,41 +31,26 @@ export class ReportsController {
 
   @Get('security-events')
   @Roles('ADMIN')
-  securityEvents(
-    @Query('limit') limit?: string,
-    @Query('directive') directive?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string
-  ) {
-    const parsedLimit = Number(limit ?? 50);
+  securityEvents(@Query() query: SecurityEventsQueryDto) {
     return this.reportsService.securityEvents({
-      limit: Number.isFinite(parsedLimit) ? parsedLimit : 50,
-      directive,
-      from,
-      to
+      limit: query.limit ?? 50,
+      directive: query.directive,
+      from: query.from,
+      to: query.to
     });
   }
 
   @Get('audit-trail')
-  auditTrail(
-    @Req() request: Request,
-    @Query('limit') limit?: string,
-    @Query('action') action?: string,
-    @Query('entityType') entityType?: string,
-    @Query('userId') userId?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string
-  ) {
+  auditTrail(@Query() query: AuditTrailQueryDto, @Req() request: Request) {
     const actor = request.user as { role: string; sub?: string; employeeId?: string };
-    const parsedLimit = Number(limit ?? 100);
     return this.reportsService.auditTrail(
       {
-        limit: Number.isFinite(parsedLimit) ? parsedLimit : 100,
-        action,
-        entityType,
-        userId,
-        from,
-        to
+        limit: query.limit ?? 100,
+        action: query.action,
+        entityType: query.entityType,
+        userId: query.userId,
+        from: query.from,
+        to: query.to
       },
       actor
     );

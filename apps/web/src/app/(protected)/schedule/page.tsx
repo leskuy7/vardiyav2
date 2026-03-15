@@ -13,12 +13,15 @@ import {
 import { notifications } from "@mantine/notifications";
 import dynamic from "next/dynamic";
 import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PageError, PageLoading } from "../../../components/page-states";
 import { useAvailability } from "../../../hooks/use-availability";
 import { useEmployees } from "../../../hooks/use-employees";
 import { useShiftsActions, useWeeklySchedule } from "../../../hooks/use-shifts";
+import { getErrorMessage } from "../../../lib/api";
 import type { AvailabilityHintType } from "../../../components/schedule/weekly-grid";
 import { currentWeekStartIsoDate, formatWeekRange, isoToLocalTimeString, localTimeToIso, shiftIsoDate } from "../../../lib/time";
+import { IconWand } from "@tabler/icons-react";
 
 const WeeklyGrid = dynamic(
   () => import("../../../components/schedule/weekly-grid").then((m) => m.WeeklyGrid),
@@ -30,6 +33,7 @@ const ShiftModal = dynamic(
 );
 
 export default function SchedulePage() {
+  const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(currentWeekStartIsoDate());
   const [warning, setWarning] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -50,7 +54,7 @@ export default function SchedulePage() {
   const { data, isLoading, isError } = useWeeklySchedule(weekStart);
   const { data: employees } = useEmployees(true);
   const { data: availabilityList } = useAvailability();
-  const { createShift, updateShift, deleteShift } = useShiftsActions(weekStart);
+  const { createShift, updateShift, deleteShift, autoGenerate, autoConfirm } = useShiftsActions(weekStart);
 
   const totalShifts = useMemo(
     () => (data?.days ?? []).reduce((sum, day) => sum + day.shifts.length, 0),
@@ -183,22 +187,20 @@ export default function SchedulePage() {
         const warnings = result.warnings ?? [];
         setWarning(warnings.length > 0 ? warnings.join(", ") : null);
         notifications.show({
-          title: "Başarılı",
-          message: "Vardiya güncellendi.",
-          color: "green",
+          title: warnings.length > 0 ? "Uyarılarla Kaydedildi" : "Başarılı",
+          message: warnings.length > 0 ? `Vardiya güncellendi. Uyarılar: ${warnings.join(' | ')}` : "Vardiya güncellendi.",
+          color: warnings.length > 0 ? "orange" : "green",
         });
-        setModalOpen(false);
         return;
       }
       const result = await createShift.mutateAsync(payload);
       const warnings = result.warnings ?? [];
       setWarning(warnings.length > 0 ? warnings.join(", ") : null);
       notifications.show({
-        title: "Başarılı",
-        message: "Vardiya oluşturuldu.",
-        color: "green",
+        title: warnings.length > 0 ? "Uyarılarla Kaydedildi" : "Başarılı",
+        message: warnings.length > 0 ? `Vardiya oluşturuldu. Uyarılar: ${warnings.join(' | ')}` : "Vardiya oluşturuldu.",
+        color: warnings.length > 0 ? "orange" : "green",
       });
-      setModalOpen(false);
     } catch (err: unknown) {
       const res = (err as { response?: { data?: { message?: string; code?: string } } })?.response?.data;
       const msg = res?.message ?? res?.code ?? "Vardiya kaydedilemedi.";
@@ -207,6 +209,7 @@ export default function SchedulePage() {
         message: msg,
         color: "red",
       });
+      throw err;
     }
   }, [selectedShift, updateShift, createShift]);
 
@@ -234,18 +237,19 @@ export default function SchedulePage() {
       const warnings = result.warnings ?? [];
       setWarning(warnings.length > 0 ? warnings.join(", ") : null);
       notifications.show({
-        title: "Başarılı",
-        message: "Vardiya taşındı.",
-        color: "green",
+        title: warnings.length > 0 ? "Uyarılarla Taşındı" : "Başarılı",
+        message: warnings.length > 0 ? `Vardiya taşındı. Uyarılar: ${warnings.join(' | ')}` : "Vardiya taşındı.",
+        color: warnings.length > 0 ? "orange" : "green",
       });
-    } catch {
+    } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ["schedule", weekStart] });
       notifications.show({
-        title: "Hata",
-        message: "Vardiya taşınamadı.",
+        title: "Vardiya taşınamadı",
+        message: getErrorMessage(error, "Vardiya taşınamadı."),
         color: "red",
       });
     }
-  }, [shiftIndex, updateShift]);
+  }, [shiftIndex, updateShift, weekStart, queryClient]);
 
   const closeWarning = useCallback(() => setWarning(null), []);
   const closeModal = useCallback(() => setModalOpen(false), []);
@@ -268,20 +272,92 @@ export default function SchedulePage() {
     if (!selectedShift?.id) return;
     try {
       await deleteShift.mutateAsync(selectedShift.id);
-      setModalOpen(false);
       notifications.show({
         title: "Başarılı",
         message: "Vardiya iptal edildi.",
         color: "green",
       });
-    } catch {
+    } catch (error) {
       notifications.show({
         title: "Hata",
         message: "Vardiya iptal edilemedi.",
         color: "red",
       });
+      throw error;
     }
   }, [selectedShift?.id, deleteShift]);
+
+  const handleAutoSchedule = useCallback(async () => {
+    import('@mantine/modals').then(({ modals }) => {
+      modals.openConfirmModal({
+        title: 'Otomatik Planlama',
+        centered: true,
+        children: (
+          <Text size="sm">
+            Bu hafta ({formatWeekRange(weekStart)}) için çalışanların müsaitlik durumlarına ve haftalık saat sınırlarına göre otomatik vardiya önerileri oluşturulacak. Devam etmek istiyor musunuz?
+          </Text>
+        ),
+        labels: { confirm: 'Oluştur', cancel: 'İptal' },
+        onConfirm: async () => {
+          try {
+            const result = await autoGenerate.mutateAsync({ weekStart });
+            if (result.totalProposed === 0) {
+              notifications.show({
+                title: "Bilgi",
+                message: "Bu hafta için uygun vardiya önerisi bulunamadı.",
+                color: "blue",
+              });
+              return;
+            }
+
+            modals.openConfirmModal({
+              title: 'Önerilen Vardiyalar',
+              centered: true,
+              children: (
+                <Stack gap="xs">
+                  <Text size="sm">
+                    Toplam <b>{result.totalProposed}</b> adet vardiya önerisi oluşturuldu.
+                  </Text>
+                  {result.holidays?.length > 0 && (
+                    <Alert color="blue" variant="light" title="Resmi Tatiller" py="xs">
+                      <Text size="xs">Bu hafta içinde {result.holidays.length} resmi tatil var, planlamada dikkate alındı.</Text>
+                    </Alert>
+                  )}
+                  <Text size="sm" c="dimmed">
+                    Onaylarsanız bu vardiyalar "TASLAK" (DRAFT) olarak kaydedilecektir ve sonrasında yayınlayabilirsiniz.
+                  </Text>
+                </Stack>
+              ),
+              labels: { confirm: 'Taslak Olarak Kaydet', cancel: 'Vazgeç' },
+              onConfirm: async () => {
+                try {
+                  await autoConfirm.mutateAsync({ shifts: result.shifts });
+                  notifications.show({
+                    title: "Başarılı",
+                    message: `${result.shifts.length} vardiya taslak olarak kaydedildi.`,
+                    color: "green",
+                  });
+                } catch {
+                  notifications.show({
+                    title: "Hata",
+                    message: "Vardiyalar kaydedilirken hata oluştu.",
+                    color: "red",
+                  });
+                }
+              }
+            });
+
+          } catch {
+            notifications.show({
+              title: "Hata",
+              message: "Otomatik planlama oluşturulurken hata oluştu.",
+              color: "red",
+            });
+          }
+        }
+      });
+    });
+  }, [weekStart, autoGenerate, autoConfirm]);
 
   if (isLoading) return <PageLoading />;
   if (isError || !data) return <PageError message="Plan yüklenemedi." />;
@@ -313,6 +389,16 @@ export default function SchedulePage() {
             }
           >
             Yazdır
+          </Button>
+          <Button
+            size="xs"
+            variant="light"
+            color="grape"
+            leftSection={<IconWand size={16} />}
+            disabled={!(employees ?? []).length}
+            onClick={handleAutoSchedule}
+          >
+            Otomatik Planla
           </Button>
           <Button
             size="xs"

@@ -18,6 +18,9 @@ import { LeaveTypesModule } from './leave-types/leave-types.module';
 import { LeaveBalancesModule } from './leave-balances/leave-balances.module';
 import { TimeEntriesModule } from './time-entries/time-entries.module';
 import { OvertimeModule } from './overtime/overtime.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { SettingsModule } from './settings/settings.module';
+import { HolidaysModule } from './holidays/holidays.module';
 
 @Module({
   imports: [
@@ -44,7 +47,10 @@ import { OvertimeModule } from './overtime/overtime.module';
     LeaveTypesModule,
     LeaveBalancesModule,
     TimeEntriesModule,
-    OvertimeModule
+    OvertimeModule,
+    NotificationsModule,
+    SettingsModule,
+    HolidaysModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard }

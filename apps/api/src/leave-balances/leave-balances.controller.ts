@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { LeaveBalancesService } from './leave-balances.service';
 import { AdjustLeaveBalanceDto } from './dto/adjust-leave-balance.dto';
+import { ListLeaveBalancesQueryDto } from './dto/list-leave-balances-query.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { Roles } from '../common/auth/roles.decorator';
@@ -12,18 +13,14 @@ export class LeaveBalancesController {
 
     @Get()
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
-    findAll(
-        @Query('employeeId') employeeId: string,
-        @Query('year') year: number,
-        @Request() req: any
-    ) {
+    findAll(@Query() query: ListLeaveBalancesQueryDto, @Request() req: any) {
         const actor = {
             role: req.user.role,
             sub: req.user.sub,
             employeeId: req.user.employeeId,
             department: req.user.department
         };
-        return this.leaveBalancesService.findBalances(employeeId, year, actor);
+        return this.leaveBalancesService.findBalances(query.employeeId, query.year, actor);
     }
 
     @Post('adjust')

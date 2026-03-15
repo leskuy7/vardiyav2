@@ -46,6 +46,10 @@ export function formatDateDisplay(value: string) {
   });
 }
 
+export function toIstanbulIsoDate(value: Date) {
+  return value.toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+}
+
 export function currentWeekStartIsoDate() {
   const now = new Date();
   const day = now.getUTCDay();

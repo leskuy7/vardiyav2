@@ -1,7 +1,7 @@
 "use client";
 
-import { ActionIcon, Badge, Card, Grid, Group, List, Paper, Stack, Text, ThemeIcon, Title, Tooltip } from '@mantine/core';
-import { IconAlertTriangle, IconBell, IconCalendarEvent, IconChevronRight, IconClockHour4, IconUsers } from '@tabler/icons-react';
+import { ActionIcon, Badge, Card, Grid, Group, List, Paper, Progress, SimpleGrid, Stack, Text, ThemeIcon, Title, Tooltip } from '@mantine/core';
+import { IconAlertTriangle, IconBell, IconCalendarEvent, IconChevronRight, IconClockHour4, IconHistory, IconPercentage, IconUsers } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -12,11 +12,14 @@ import { useWeeklySchedule } from '../../../hooks/use-shifts';
 import { getShiftStatusLabel } from '../../../lib/shift-status';
 import { currentWeekStartIsoDate, formatDateShort, formatTimeOnly } from '../../../lib/time';
 import { api } from '../../../lib/api';
+import { useAuth } from '../../../hooks/use-auth';
 
 export default function DashboardPage() {
   const router = useRouter();
   const weekStart = currentWeekStartIsoDate();
   const [todayStr] = useState(() => new Date().toLocaleDateString('tr-TR'));
+  const todayIso = useMemo(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }), []);
+  const { data: me } = useAuth();
 
   const { data: employees, isLoading: employeesLoading, isError: employeesError } = useEmployees(true);
   const { data: schedule, isLoading: scheduleLoading, isError: scheduleError } = useWeeklySchedule(weekStart);
@@ -35,7 +38,25 @@ export default function DashboardPage() {
   });
   const pendingLeaveCount = pendingLeaves?.length ?? 0;
 
+  // Son aktiviteler (audit trail)
+  const isAdmin = me?.role === 'ADMIN';
+  const isManager = me?.role === 'MANAGER';
+  const { data: recentActivities } = useQuery<Array<{ id: string; action: string; entityType: string; createdAt: string; user?: { name?: string; email?: string } }>>({
+    queryKey: ['dashboard', 'recent-activities'],
+    queryFn: async () => {
+      const { data } = await api.get('/reports/audit-trail?limit=8');
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: isAdmin || isManager,
+  });
+
   const shifts = useMemo(() => (schedule?.days ?? []).flatMap((day) => day.shifts), [schedule]);
+
+  // Bugünün vardiyaları
+  const todayShifts = useMemo(() => {
+    const todayDay = schedule?.days?.find((d: any) => d.date === todayIso);
+    return todayDay?.shifts ?? [];
+  }, [schedule, todayIso]);
 
   // PUBLISHED = çalışan henüz onaylamamış
   const publishedShifts = useMemo(() => shifts.filter((shift) => shift.status === 'PUBLISHED'), [shifts]);
@@ -45,9 +66,30 @@ export default function DashboardPage() {
     [schedule]
   );
 
+  // Haftalık doluluk oranı
+  const weeklyOccupancy = useMemo(() => {
+    const totalDays = schedule?.days?.length ?? 7;
+    const filledDays = totalDays - unassignedDays;
+    return totalDays > 0 ? Math.round((filledDays / totalDays) * 100) : 0;
+  }, [schedule, unassignedDays]);
+
+  // Departman dağılımı
+  const departmentDistribution = useMemo(() => {
+    if (!employees) return [];
+    const map = new Map<string, number>();
+    for (const emp of employees) {
+      const dept = (emp as any).department || 'Belirtilmemiş';
+      map.set(dept, (map.get(dept) ?? 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [employees]);
+
   const upcoming = useMemo(() => {
+    const now = new Date();
     return shifts
-      .slice()
+      .filter((s) => new Date(s.start) >= now)
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
       .slice(0, 5);
   }, [shifts]);
@@ -58,7 +100,7 @@ export default function DashboardPage() {
     if (publishedCount > 0) {
       items.push({
         id: 'pending-acks',
-        text: `${publishedCount} vardiya çalışan onayı bekliyor — aşağıda detayları görebilirsiniz.`,
+        text: `${publishedCount} vardiya çalışan onayı bekliyor.`,
         severity: 'info',
         action: () => router.push('/schedule'),
       });
@@ -91,6 +133,9 @@ export default function DashboardPage() {
     return <PageError message="Dashboard verileri yüklenemedi." />;
   }
 
+  const deptColors = ['indigo', 'violet', 'teal', 'orange', 'pink', 'cyan', 'grape', 'lime'];
+  const totalEmps = employees.length || 1;
+
   return (
     <Stack>
       <Group justify="space-between" align="center" wrap="wrap">
@@ -121,12 +166,12 @@ export default function DashboardPage() {
         <Grid.Col span={{ base: 12, md: 3 }}>
           <Card withBorder p="md" className="stat-card gradient-card stagger-2">
             <Group justify="space-between">
-              <Text c="dimmed" size="sm">Toplam Vardiya</Text>
-              <ThemeIcon variant="gradient" gradient={{ from: 'indigo', to: 'violet' }} radius="xl">
+              <Text c="dimmed" size="sm">Bugünün Vardiyaları</Text>
+              <ThemeIcon variant="gradient" gradient={{ from: 'teal', to: 'cyan' }} radius="xl">
                 <IconClockHour4 size={14} />
               </ThemeIcon>
             </Group>
-            <Title order={3}>{shifts.length}</Title>
+            <Title order={3}>{todayShifts.length}</Title>
           </Card>
         </Grid.Col>
 
@@ -189,25 +234,68 @@ export default function DashboardPage() {
             >
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">Bekleyen İzin</Text>
-                <Group gap={4}>
-                  <Tooltip label="İzin Onaylarına git" withArrow>
-                    <ActionIcon variant="subtle" size="sm" color="indigo" component="span">
-                      <IconChevronRight size={14} />
-                    </ActionIcon>
-                  </Tooltip>
-                  <ThemeIcon variant="gradient" gradient={{ from: 'orange', to: 'pink' }} radius="xl">
-                    <IconCalendarEvent size={14} />
-                  </ThemeIcon>
-                </Group>
+                <ThemeIcon variant="gradient" gradient={{ from: 'orange', to: 'pink' }} radius="xl">
+                  <IconCalendarEvent size={14} />
+                </ThemeIcon>
               </Group>
               <Title order={3} c="orange">{pendingLeaveCount}</Title>
               <Text size="xs" c="dimmed" mt={4}>Tıkla → İzin Onayları</Text>
             </Card>
           </Grid.Col>
         )}
+
+        {/* Haftalık Doluluk Oranı */}
+        <Grid.Col span={{ base: 12, md: 3 }}>
+          <Card withBorder p="md" className="stat-card gradient-card stagger-5">
+            <Group justify="space-between">
+              <Text c="dimmed" size="sm">Haftalık Doluluk</Text>
+              <ThemeIcon variant="gradient" gradient={{ from: 'grape', to: 'pink' }} radius="xl">
+                <IconPercentage size={14} />
+              </ThemeIcon>
+            </Group>
+            <Title order={3}>%{weeklyOccupancy}</Title>
+            <Progress value={weeklyOccupancy} size="sm" mt={8} radius="xl" color={weeklyOccupancy >= 80 ? 'teal' : weeklyOccupancy >= 50 ? 'yellow' : 'red'} />
+          </Card>
+        </Grid.Col>
       </Grid>
 
-      {/* ─── Onay Kuyruğu: kimin onayı beklediğini listeler ─── */}
+      {/* ─── Bugünün Vardiyaları ─── */}
+      {todayShifts.length > 0 && (
+        <Paper
+          withBorder
+          radius="md"
+          p="md"
+          className="surface-card"
+          style={{ borderLeft: '3px solid var(--mantine-color-teal-filled)' }}
+        >
+          <Group justify="space-between" mb="sm">
+            <Group gap="xs">
+              <ThemeIcon variant="light" color="teal" radius="xl" size="sm">
+                <IconClockHour4 size={12} />
+              </ThemeIcon>
+              <Title order={4}>Bugünün Vardiyaları</Title>
+            </Group>
+            <Badge color="teal" variant="light">{todayShifts.length} vardiya</Badge>
+          </Group>
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xs">
+            {todayShifts.map((shift: any) => (
+              <Card key={shift.id} withBorder radius="md" p="sm" className="interactive-card">
+                <Group justify="space-between" align="center">
+                  <Stack gap={0}>
+                    <Text fw={600} size="sm">{shift.employeeName ?? 'Çalışan'}</Text>
+                    <Text c="dimmed" size="xs">
+                      {formatTimeOnly(shift.start)} - {formatTimeOnly(shift.end)}
+                    </Text>
+                  </Stack>
+                  <Badge variant="light" size="sm">{getShiftStatusLabel(shift.status)}</Badge>
+                </Group>
+              </Card>
+            ))}
+          </SimpleGrid>
+        </Paper>
+      )}
+
+      {/* ─── Onay Kuyruğu ─── */}
       {publishedCount > 0 && (
         <Paper
           withBorder
@@ -227,7 +315,7 @@ export default function DashboardPage() {
           </Group>
 
           <Stack gap="xs">
-            {publishedShifts.map((shift) => (
+            {publishedShifts.slice(0, 5).map((shift) => (
               <Card
                 key={shift.id}
                 withBorder
@@ -244,24 +332,15 @@ export default function DashboardPage() {
                       {formatDateShort(shift.start)} — {formatTimeOnly(shift.start)} - {formatTimeOnly(shift.end)}
                     </Text>
                   </Stack>
-                  <Group gap="xs">
-                    <Badge color="orange" variant="light" size="sm">Onay Bekliyor</Badge>
-                    <ActionIcon variant="subtle" size="sm" color="indigo">
-                      <IconChevronRight size={14} />
-                    </ActionIcon>
-                  </Group>
+                  <Badge color="orange" variant="light" size="sm">Onay Bekliyor</Badge>
                 </Group>
               </Card>
             ))}
           </Stack>
-
-          <Text size="xs" c="dimmed" mt="sm">
-            💡 Çalışanlar kendi panellerinden (<em>Vardiyalarım</em>) &quot;Onayla&quot; butonuna basarak onay verebilir.
-          </Text>
         </Paper>
       )}
 
-      {/* ─── Bildirimler + Yaklaşan Vardiyalar ─── */}
+      {/* ─── Alt Panel: Bildirimler + Departman + Yaklaşan + Aktiviteler ─── */}
       <Grid>
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Paper withBorder radius="md" p="md" className="surface-card">
@@ -290,6 +369,34 @@ export default function DashboardPage() {
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Paper withBorder radius="md" p="md" className="surface-card">
             <Group justify="space-between" mb="xs">
+              <Title order={4}>Departman Dağılımı</Title>
+              <Badge variant="light">{departmentDistribution.length} departman</Badge>
+            </Group>
+            <Stack gap="xs">
+              {departmentDistribution.map((dept, i) => (
+                <div key={dept.name}>
+                  <Group justify="space-between" mb={4}>
+                    <Text size="sm" fw={500}>{dept.name}</Text>
+                    <Text size="xs" c="dimmed">{dept.count} kişi</Text>
+                  </Group>
+                  <Progress
+                    value={Math.round((dept.count / totalEmps) * 100)}
+                    size="sm"
+                    radius="xl"
+                    color={deptColors[i % deptColors.length]}
+                  />
+                </div>
+              ))}
+              {departmentDistribution.length === 0 && (
+                <Text c="dimmed" size="sm">Departman bilgisi bulunamadı.</Text>
+              )}
+            </Stack>
+          </Paper>
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Paper withBorder radius="md" p="md" className="surface-card">
+            <Group justify="space-between" mb="xs">
               <Title order={4}>Yaklaşan Vardiyalar</Title>
               <Badge variant="light">{upcoming.length}</Badge>
             </Group>
@@ -300,7 +407,7 @@ export default function DashboardPage() {
                     <Stack gap={0}>
                       <Text fw={600}>{shift.employeeName ?? 'Çalışan'}</Text>
                       <Text c="dimmed" size="xs">
-                        {formatTimeOnly(shift.start)} - {formatTimeOnly(shift.end)}
+                        {formatDateShort(shift.start)} — {formatTimeOnly(shift.start)} - {formatTimeOnly(shift.end)}
                       </Text>
                     </Stack>
                     <Badge variant="light">{getShiftStatusLabel(shift.status)}</Badge>
@@ -313,6 +420,42 @@ export default function DashboardPage() {
             </Stack>
           </Paper>
         </Grid.Col>
+
+        {/* Son Aktiviteler — sadece Admin/Manager */}
+        {(isAdmin || isManager) && (
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Paper withBorder radius="md" p="md" className="surface-card">
+              <Group justify="space-between" mb="xs">
+                <Group gap="xs">
+                  <ThemeIcon variant="light" color="grape" radius="xl" size="sm">
+                    <IconHistory size={12} />
+                  </ThemeIcon>
+                  <Title order={4}>Son Aktiviteler</Title>
+                </Group>
+                <Badge variant="light" color="grape"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => router.push('/reports')}
+                >Tümü →</Badge>
+              </Group>
+              <Stack gap="xs">
+                {(recentActivities ?? []).slice(0, 6).map((a) => (
+                  <Group key={a.id} gap="xs" wrap="nowrap">
+                    <Badge variant="light" size="xs" style={{ flexShrink: 0 }}>{a.action}</Badge>
+                    <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
+                      {a.user?.name ?? a.user?.email ?? '—'} → {a.entityType}
+                    </Text>
+                    <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                      {new Date(a.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </Group>
+                ))}
+                {(recentActivities ?? []).length === 0 && (
+                  <Text c="dimmed" size="sm">Henüz aktivite kaydı yok.</Text>
+                )}
+              </Stack>
+            </Paper>
+          </Grid.Col>
+        )}
       </Grid>
     </Stack>
   );

@@ -115,7 +115,7 @@ export class ScheduleService {
             id: l.id,
             employeeId: l.employeeId,
             employeeName: l.employee.user.name,
-            type: l.type,
+            leaveCode: l.leaveCode,
             reason: l.reason
           }))
         };

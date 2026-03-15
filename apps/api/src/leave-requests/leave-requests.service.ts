@@ -183,6 +183,26 @@ export class LeaveRequestsService {
             });
         }
 
+        if (dto.status === 'CANCELLED') {
+            const leave = await this.prisma.leaveRequest.findUnique({ where: { id }, include: { employee: true } });
+            if (!leave) throw new NotFoundException({ code: 'NOT_FOUND', message: 'İzin talebi bulunamadı' });
+            if (actor.role === 'ADMIN') {
+                const orgId = await this.getAdminOrganizationId(actor.sub);
+                if (!orgId || leave.employee.organizationId !== orgId) {
+                    throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Organizasyon dışı izin iptal edemezsiniz' });
+                }
+            } else if (actor.role === 'MANAGER' && actor.employeeId) {
+                const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+                if (!manager || manager.department !== leave.employee.department || manager.organizationId !== leave.employee.organizationId) {
+                    throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Departman dışı izin iptal edemezsiniz' });
+                }
+            }
+            return this.prisma.leaveRequest.update({
+                where: { id },
+                data: { status: 'CANCELLED', cancelledAt: new Date(), managerNote: dto.managerNote ?? undefined }
+            });
+        }
+
         return this.prisma.leaveRequest.update({
             where: { id },
             data: { status: dto.status as any, managerNote: dto.managerNote }
@@ -289,17 +309,22 @@ export class LeaveRequestsService {
     async remove(id: string, actor: { role: string; employeeId?: string; sub?: string }) {
         const leave = await this.prisma.leaveRequest.findUnique({ where: { id }, include: { employee: true } });
         if (!leave) {
-            throw new NotFoundException({ code: 'NOT_FOUND', message: 'Leave request not found' });
+            throw new NotFoundException({ code: 'NOT_FOUND', message: 'İzin talebi bulunamadı' });
         }
 
         if (actor.role === 'ADMIN') {
             const orgId = await this.getAdminOrganizationId(actor.sub);
             if (!orgId || leave.employee.organizationId !== orgId) {
-                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Only admins can delete leave requests in their own organization' });
+                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi organizasyonunuzdaki izinleri silebilirsiniz' });
+            }
+        } else if (actor.role === 'MANAGER' && actor.employeeId) {
+            const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
+            if (!manager || manager.department !== leave.employee.department || manager.organizationId !== leave.employee.organizationId) {
+                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki izinleri silebilirsiniz' });
             }
         } else {
             if (leave.employeeId !== actor.employeeId || leave.status !== 'PENDING') {
-                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Only admins can delete non-pending or others leave requests' });
+                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Çalışanlar yalnızca kendi bekleyen taleplerini silebilir' });
             }
         }
 

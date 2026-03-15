@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Card, Center, Loader, Stack, Text, ThemeIcon } from '@mantine/core';
+import { Alert, Box, Card, Center, Loader, Stack, Text, ThemeIcon } from '@mantine/core';
 import { IconInbox } from '@tabler/icons-react';
 
 type PageErrorProps = {
@@ -12,12 +12,34 @@ type PageEmptyProps = {
   description?: string;
 };
 
+/** Tam ekran oturum doğrulama ekranı (layout ilk yüklenirken). */
+export function SessionLoadingScreen() {
+  return (
+    <Box
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--mantine-color-body)',
+        zIndex: 9999,
+      }}
+    >
+      <Stack align="center" gap="md">
+        <Loader size="lg" type="dots" />
+        <Text c="dimmed" size="sm">Oturum doğrulanıyor</Text>
+      </Stack>
+    </Box>
+  );
+}
+
 export function PageLoading() {
   return (
     <Center py="xl">
-      <Stack align="center" gap="xs">
-        <Loader />
-        <Text c="dimmed" size="sm">Yükleniyor...</Text>
+      <Stack align="center" gap="md">
+        <Loader size="lg" type="dots" />
+        <Text c="dimmed" size="sm">Yükleniyor</Text>
       </Stack>
     </Center>
   );

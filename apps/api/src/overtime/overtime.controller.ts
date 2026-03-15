@@ -5,15 +5,11 @@ import { RolesGuard } from '../common/auth/roles.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { WeekStartQueryDto } from '../common/dto/week-start-query.dto';
 import { OvertimeStrategy } from '@prisma/client';
-import { PrismaService } from '../database/prisma.service';
 
 @Controller('overtime')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class OvertimeController {
-    constructor(
-        private readonly overtimeService: OvertimeService,
-        private readonly prisma: PrismaService,
-    ) { }
+  constructor(private readonly overtimeService: OvertimeService) { }
 
     @Get('weekly')
     @Roles('ADMIN', 'MANAGER')
@@ -22,15 +18,7 @@ export class OvertimeController {
         @Query('strategy') strategy: OvertimeStrategy,
         @Request() req: any
     ) {
-        let department: string | undefined;
-        if (req.user?.role === 'MANAGER' && req.user?.employeeId) {
-            const manager = await this.prisma.employee.findUnique({
-                where: { id: req.user.employeeId },
-                select: { department: true },
-            });
-            department = manager?.department ?? undefined;
-        }
-        return this.overtimeService.calculateWeeklyOvertime(query.weekStart!, strategy, undefined, department);
+        return this.overtimeService.calculateWeeklyOvertime(query.weekStart!, strategy, req.user);
     }
 
     @Get('my')
@@ -40,15 +28,16 @@ export class OvertimeController {
         @Query('strategy') strategy: OvertimeStrategy,
         @Request() req: any
     ) {
-        return this.overtimeService.calculateWeeklyOvertime(query.weekStart!, strategy, req.user?.employeeId);
+        return this.overtimeService.calculateWeeklyOvertime(query.weekStart!, strategy, req.user, req.user?.employeeId);
     }
 
     @Post('recalculate')
     @Roles('ADMIN', 'MANAGER')
     recalculateWeekly(
         @Query() query: WeekStartQueryDto,
-        @Query('strategy') strategy: OvertimeStrategy
+        @Query('strategy') strategy: OvertimeStrategy,
+        @Request() req: any
     ) {
-        return this.overtimeService.recalculateWeeklyOvertime(query.weekStart!, strategy);
+        return this.overtimeService.recalculateWeeklyOvertime(query.weekStart!, strategy, req.user);
     }
 }

@@ -15,21 +15,21 @@ export class SwapRequestsController {
     @Post()
     @Roles('EMPLOYEE')
     async create(@Body() dto: CreateSwapRequestDto, @Req() req: Request) {
-        const actor = req.user as { role: string; employeeId?: string };
+        const actor = req.user as { role: string; employeeId?: string; sub?: string };
         return this.swapRequestsService.create(dto, actor);
     }
 
     @Post(':id/approve')
     @Roles('ADMIN', 'MANAGER')
     async approve(@Param('id') id: string, @Body() body: ApproveSwapRequestDto, @Req() req: Request) {
-        const actor = req.user as { role: string; employeeId?: string };
+        const actor = req.user as { role: string; employeeId?: string; sub?: string };
         return this.swapRequestsService.approve(id, actor, body?.targetEmployeeId);
     }
 
     @Post(':id/reject')
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
     async reject(@Param('id') id: string, @Req() req: Request) {
-        const actor = req.user as { role: string; employeeId?: string };
+        const actor = req.user as { role: string; employeeId?: string; sub?: string };
         return this.swapRequestsService.reject(id, actor);
     }
 }

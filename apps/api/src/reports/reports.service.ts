@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { getEmployeeScope } from '../common/employee-scope';
-import { parseWeekStart, plusDays } from '../common/time.utils';
+import { istanbulDateEndUtc, istanbulDateStartUtc, parseWeekStart, plusDays } from '../common/time.utils';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
@@ -33,6 +33,32 @@ export class ReportsService {
       severity: 'LOW' as const,
       recommendation: 'Direktif ihlali tekrar ediyorsa policy ve asset URLlerini senkronize et.'
     };
+  }
+
+  private parseDateFilterStart(value?: string) {
+    const normalized = value?.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(normalized)
+      ? istanbulDateStartUtc(normalized)
+      : new Date(normalized);
+
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private parseDateFilterEnd(value?: string) {
+    const normalized = value?.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(normalized)
+      ? istanbulDateEndUtc(normalized)
+      : new Date(normalized);
+
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
   async weeklyHours(weekStart: string, actor?: { role: string; sub?: string; employeeId?: string }) {
@@ -213,15 +239,15 @@ export class ReportsService {
   async securityEvents(params?: { limit?: number; directive?: string; from?: string; to?: string }) {
     const take = Math.max(1, Math.min(200, Math.trunc(params?.limit ?? 50)));
     const directiveFilter = params?.directive?.trim().toLowerCase() ?? '';
-    const fromDate = params?.from ? new Date(params.from) : null;
-    const toDate = params?.to ? new Date(params.to) : null;
+    const fromDate = this.parseDateFilterStart(params?.from);
+    const toDate = this.parseDateFilterEnd(params?.to);
 
     const logs = await this.prisma.auditLog.findMany({
       where: {
         action: 'SECURITY_CSP_REPORT',
         createdAt: {
-          gte: fromDate && !Number.isNaN(fromDate.getTime()) ? fromDate : undefined,
-          lte: toDate && !Number.isNaN(toDate.getTime()) ? toDate : undefined
+          gte: fromDate ?? undefined,
+          lte: toDate ?? undefined
         }
       },
       orderBy: { createdAt: 'desc' },
@@ -327,8 +353,8 @@ export class ReportsService {
     const actionFilter = params?.action?.trim();
     const entityTypeFilter = params?.entityType?.trim();
     const userIdFilter = params?.userId?.trim();
-    const fromDate = params?.from ? new Date(params.from) : null;
-    const toDate = params?.to ? new Date(params.to) : null;
+    const fromDate = this.parseDateFilterStart(params?.from);
+    const toDate = this.parseDateFilterEnd(params?.to);
     const scope = await this.getAuditUserScope(actor);
 
     const rows = await this.prisma.auditLog.findMany({
@@ -338,8 +364,8 @@ export class ReportsService {
         ...(userIdFilter ? { userId: userIdFilter } : {}),
         ...(scope?.includeUserIds ? { userId: { in: scope.includeUserIds } } : {}),
         createdAt: {
-          gte: fromDate && !Number.isNaN(fromDate.getTime()) ? fromDate : undefined,
-          lte: toDate && !Number.isNaN(toDate.getTime()) ? toDate : undefined
+          gte: fromDate ?? undefined,
+          lte: toDate ?? undefined
         }
       },
       include: {

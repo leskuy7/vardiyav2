@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuditService } from '../common/audit.service';
@@ -7,6 +7,7 @@ import { RolesGuard } from '../common/auth/roles.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { UpdateSelfEmployeeDto } from './dto/update-self-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
 @Controller('employees')
@@ -78,6 +79,19 @@ export class EmployeesController {
       entityId: 'BULK',
       details: dto
     });
+    return result;
+  }
+
+  /** Self-service: Employee can update their own phone */
+  @Patch('me')
+  @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+  @UseGuards(CsrfGuard)
+  async updateSelf(@Body() dto: UpdateSelfEmployeeDto, @Req() request: Request) {
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    if (!actor.employeeId) {
+      throw new NotFoundException({ code: 'EMPLOYEE_NOT_FOUND', message: 'Çalışan kaydı bulunamadı.' });
+    }
+    const result = await this.employeesService.update(actor.employeeId, { phone: dto.phone }, actor);
     return result;
   }
 

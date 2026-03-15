@@ -11,6 +11,18 @@ const envApiUrl =
     : '/api');
 const API_URL = envApiUrl.endsWith('/') ? envApiUrl : `${envApiUrl}/`;
 
+/** API hata cevabındaki message (bazen string[], bazen string) tek satır stringe çevirir. */
+export function getErrorMessage(
+  error: unknown,
+  fallback = 'İşlem başarısız.'
+): string {
+  const raw = error && typeof error === 'object' && 'response' in error
+    ? (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message
+    : undefined;
+  if (raw == null) return fallback;
+  return Array.isArray(raw) ? (raw[0] ?? fallback) : (raw || fallback);
+}
+
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true

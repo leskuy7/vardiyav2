@@ -22,9 +22,14 @@ export type AuthUser = {
   } | null;
 };
 
-export function useAuth() {
+type UseAuthOptions = {
+  initialData?: AuthUser | null;
+};
+
+export function useAuth(options?: UseAuthOptions) {
   return useQuery<AuthUser | null>({
     queryKey: ["auth", "me"],
+    initialData: options?.initialData,
     queryFn: async () => {
       try {
         if (!getAccessToken()) {

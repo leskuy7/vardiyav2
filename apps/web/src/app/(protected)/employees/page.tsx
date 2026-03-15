@@ -34,6 +34,7 @@ import {
   useMetaPositions,
   type EmployeeItem,
 } from "../../../hooks/use-employees";
+import { getErrorMessage } from "../../../lib/api";
 
 type FormMode = "create" | "edit";
 
@@ -244,10 +245,9 @@ export default function EmployeesPage() {
 
       setModalOpen(false);
     } catch (error: unknown) {
-      const apiMessage = (error as { response?: { data?: { message?: string; code?: string } } })?.response?.data?.message;
       notifications.show({
         title: "Hata",
-        message: apiMessage ?? "İşlem başarısız.",
+        message: getErrorMessage(error, "İşlem başarısız."),
         color: "red",
       });
     }
@@ -753,6 +753,18 @@ export default function EmployeesPage() {
             Lütfen aşağıdaki giriş bilgilerini kopyalayıp çalışana iletin.
             <br /><Text span c="red" size="sm" fw={600}>Bu şifre güvenlik sebebiyle bir daha gösterilmeyecektir!</Text>
           </Text>
+          <Button
+            variant="light"
+            leftSection={<IconCopy size={18} />}
+            onClick={() => {
+              const text = `Kullanıcı adı: ${newCredentials?.email ?? ""}, Şifre: ${newCredentials?.password ?? ""}`;
+              void navigator.clipboard.writeText(text).then(() => {
+                notifications.show({ title: "Kopyalandı", message: "Kullanıcı adı ve şifre panoya kopyalandı.", color: "green" });
+              });
+            }}
+          >
+            Tümünü kopyala
+          </Button>
           <TextInput
             label="Kullanıcı Adı"
             readOnly

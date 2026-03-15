@@ -1,12 +1,13 @@
 "use client";
 
-import { Alert, Badge, Button, Card, Grid, Group, PasswordInput, Progress, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
+import { Alert, Badge, Button, Card, Grid, Group, PasswordInput, Progress, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title } from "@mantine/core";
 import { IconBriefcase, IconBuilding, IconClock, IconCoin, IconCalendar } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../hooks/use-auth";
-import { api } from "../../../lib/api";
+import { api, getErrorMessage } from "../../../lib/api";
 import { setAccessToken } from "../../../lib/token-store";
 
 type LeaveBalance = {
@@ -21,8 +22,14 @@ type LeaveBalance = {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: me } = useAuth();
   const emp = me?.employee;
+  const [phone, setPhone] = useState('');
+
+  useEffect(() => {
+    setPhone(emp?.phone ?? '');
+  }, [emp?.phone]);
 
   const currentYear = new Date().getFullYear();
   const { data: balancesRaw } = useQuery<LeaveBalance[]>({
@@ -51,7 +58,7 @@ export default function ProfilePage() {
       router.replace("/login");
     },
     onError: (err: { response?: { data?: { message?: string; code?: string } } }) => {
-      const msg = err?.response?.data?.message ?? err?.response?.data?.code ?? "Şifre güncellenemedi.";
+      const msg = getErrorMessage(err, "Şifre güncellenemedi.");
       notifications.show({ title: "Hata", message: msg, color: "red" });
     },
   });
@@ -213,6 +220,33 @@ export default function ProfilePage() {
           </SimpleGrid>
         </Card>
       )}
+
+      {/* Bilgilerimi Guncelle */}
+      <Card withBorder radius="md" p="md">
+        <Title order={4} mb="sm">Bilgilerimi Guncelle</Title>
+        <Stack>
+          <TextInput
+            label="Telefon"
+            placeholder="05XX XXX XX XX"
+            value={phone}
+            onChange={(e) => setPhone(e.currentTarget.value)}
+          />
+          <Button
+            w="fit-content"
+            onClick={() => {
+              api.patch('/employees/me', { phone }).then(() => {
+                notifications.show({ title: 'Basarili', message: 'Telefon guncellendi', color: 'green' });
+                queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+              }).catch(() => {
+                notifications.show({ title: 'Hata', message: 'Guncelleme basarisiz', color: 'red' });
+              });
+            }}
+          >
+            Kaydet
+          </Button>
+        </Stack>
+      </Card>
+
 
       {/* Şifre Değiştir */}
       <Card withBorder radius="md" p="md">

@@ -676,4 +676,4 @@ Bu repoda genel mimari (Next.js App Router + React Query + NestJS + Prisma) tuta
 - **Auth refresh döngüsü**: URL normalize etme + refresh tespiti uyumsuzluğu (kritik). fileciteturn46file0L28-L80  
 - **Timezone/availability mantığı**: UTC dakikasıyla yerel saat string’lerini karşılaştırma (kritik). fileciteturn36file2L11-L65 fileciteturn32file1L95-L105
 
-Bu iki konu düzeltildiğinde, kalan hatalar çoğunlukla “edge-case UX” ve “audit/rapor doğruluğu” sınıfına düşer (yine önemli, ama kullanıcıyı sistemden tamamen düşürmez).
+Bu iki konu düzeltildiğinde, kalan hatalar çoğunlukla “edge-case UX” ve “audit/rapor doğruluğu” sınıfına düşer (yine önemli, ama kullanıcıyı sistemden tamamen düşürmez).![1772795148624](image/yapilacak/1772795148624.png)![1772795152528](image/yapilacak/1772795152528.png)![1772795158956](image/yapilacak/1772795158956.png)

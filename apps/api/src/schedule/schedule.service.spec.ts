@@ -43,4 +43,28 @@ describe('ScheduleService', () => {
 
     await expect(service.getWeek('2026-01-05', { role: 'EMPLOYEE' })).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  it('haftalik plan leaves alaninda leaveCode dondurur', async () => {
+    const { service, prisma } = createService();
+    prisma.shift.findMany.mockResolvedValue([]);
+    prisma.leaveRequest.findMany.mockResolvedValue([
+      {
+        id: 'leave-1',
+        employeeId: 'emp-1',
+        leaveCode: 'ANNUAL',
+        reason: 'Yillik izin',
+        startDate: new Date('2026-01-05T00:00:00.000Z'),
+        endDate: new Date('2026-01-05T00:00:00.000Z'),
+        employee: { user: { name: 'Ali' } }
+      }
+    ]);
+
+    const week = await service.getWeek('2026-01-05', { role: 'EMPLOYEE', employeeId: 'emp-1' });
+    const monday = week.days.find((day: any) => day.date === '2026-01-05');
+
+    expect(monday?.leaves?.[0]).toMatchObject({
+      id: 'leave-1',
+      leaveCode: 'ANNUAL'
+    });
+  });
 });
