@@ -1,6 +1,8 @@
-import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Actor } from '../common/employee-scope';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { ApproveSwapRequestDto } from './dto/approve-swap-request.dto';
@@ -11,6 +13,13 @@ import { SwapRequestsService } from './swap-requests.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SwapRequestsController {
     constructor(private readonly swapRequestsService: SwapRequestsService) { }
+
+    @Get()
+    @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+    async list(@Query('status') status: string | undefined, @Query() pagination: PaginationQueryDto, @Req() req: Request) {
+        const actor = req.user as Actor;
+        return this.swapRequestsService.list(actor, status, pagination);
+    }
 
     @Post()
     @Roles('EMPLOYEE')

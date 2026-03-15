@@ -12,6 +12,10 @@ type ShiftWithRelations = Prisma.ShiftGetPayload<{
   }
 }>;
 
+type LeaveWithEmployee = Prisma.LeaveRequestGetPayload<{
+  include: { employee: { include: { user: true } } };
+}>;
+
 @Injectable()
 export class ScheduleService {
   constructor(
@@ -88,15 +92,15 @@ export class ScheduleService {
         const dayDate = plusDays(startDate, index);
         const dayIso = toIsoDate(dayDate);
 
-        const dailyShifts = shifts.filter((shift: any) => toIsoDate(shift.startTime) === dayIso);
+        const dailyShifts = shifts.filter((shift: ShiftWithRelations) => toIsoDate(shift.startTime) === dayIso);
 
-        const dailyLeaves = leaves.filter((l: any) => {
+        const dailyLeaves = leaves.filter((l: LeaveWithEmployee) => {
           const lStart = toIsoDate(l.startDate);
           const lEnd = toIsoDate(l.endDate);
           return dayIso >= lStart && dayIso <= lEnd;
         });
 
-        const mappedShifts = dailyShifts.map((shift: any) => ({
+        const mappedShifts = dailyShifts.map((shift: ShiftWithRelations) => ({
           id: shift.id,
           employeeId: shift.employeeId,
           employeeName: shift.employee.user.name,
@@ -111,11 +115,11 @@ export class ScheduleService {
         return {
           date: dayIso,
           shifts: mappedShifts,
-          leaves: dailyLeaves.map((l: any) => ({
+          leaves: dailyLeaves.map((l: LeaveWithEmployee) => ({
             id: l.id,
             employeeId: l.employeeId,
             employeeName: l.employee.user.name,
-            type: l.type,
+            type: l.leaveCode,
             reason: l.reason
           }))
         };

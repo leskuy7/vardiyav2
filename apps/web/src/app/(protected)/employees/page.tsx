@@ -228,6 +228,8 @@ export default function EmployeesPage() {
       } else if (editingEmployee) {
         await updateEmployee.mutateAsync({
           id: editingEmployee.id,
+          firstName: form.firstName || undefined,
+          lastName: form.lastName || undefined,
           position: form.position || undefined,
           department: form.department || undefined,
           phone: form.phone || undefined,
@@ -663,10 +665,17 @@ export default function EmployeesPage() {
                 <TextInput
                   label="Ad"
                   value={form.firstName}
-                  disabled
-                  description="İsim düzenlemesi yakında eklenecek."
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, firstName: e.currentTarget.value }))
+                  }
                 />
-                <TextInput label="Soyad" value={form.lastName} disabled />
+                <TextInput
+                  label="Soyad"
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, lastName: e.currentTarget.value }))
+                  }
+                />
                 <TextInput label="Kullanıcı Adı" value={form.email} disabled />
               </>
             )}

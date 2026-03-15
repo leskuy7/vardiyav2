@@ -1,12 +1,10 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type { Prisma, ShiftEventAction, ShiftStatus } from '@prisma/client';
-import { getEmployeeScope } from '../common/employee-scope';
+import { Actor, getEmployeeScope } from '../common/employee-scope';
 import { parseWeekStart, plusDays } from '../common/time.utils';
 import { PrismaService } from '../database/prisma.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
-
-type ActorWithSub = { role: string; employeeId?: string; sub?: string };
 
 const SHIFT_STATUS_VALUES = new Set<ShiftStatus>([
   'PROPOSED',
@@ -202,7 +200,7 @@ export class ShiftsService {
       }
 
       if (block.type === 'UNAVAILABLE' && !forceOverride) {
-        throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Calisan ${this.toLocalIsoDate(startTime)} tarihinde musait degil (UNAVAILABLE).` });
+        throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Çalışan ${this.toLocalIsoDate(startTime)} tarihinde müsait değil.` });
       }
 
       if (block.type === 'UNAVAILABLE' && forceOverride) {
@@ -248,7 +246,7 @@ export class ShiftsService {
         }
 
         if (block.type === 'UNAVAILABLE' && !forceOverride) {
-          throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Calisan ${this.toLocalIsoDate(endTime)} tarihinde musait degil (UNAVAILABLE).` });
+          throw new UnprocessableEntityException({ code: 'UNAVAILABLE_CONFLICT', message: `Çalışan ${this.toLocalIsoDate(endTime)} tarihinde müsait değil.` });
         }
 
         if (block.type === 'UNAVAILABLE' && forceOverride) {
@@ -348,7 +346,7 @@ export class ShiftsService {
     return warningsByShiftId;
   }
 
-  async list(employeeId?: string, start?: string, end?: string, status?: string, actor?: ActorWithSub) {
+  async list(employeeId?: string, start?: string, end?: string, status?: string, actor?: Actor) {
     const scope = await getEmployeeScope(this.prisma, actor);
 
     if (scope.type === 'self' && employeeId && employeeId !== scope.employeeId) {
@@ -389,7 +387,7 @@ export class ShiftsService {
     });
   }
 
-  async getById(id: string, actor?: ActorWithSub) {
+  async getById(id: string, actor?: Actor) {
     const shift = await this.prisma.shift.findUnique({
       where: { id },
       include: undefined
@@ -421,7 +419,7 @@ export class ShiftsService {
     return shift;
   }
 
-  async create(dto: CreateShiftDto, actor?: ActorWithSub) {
+  async create(dto: CreateShiftDto, actor?: Actor) {
     const scope = await getEmployeeScope(this.prisma, actor);
     if (scope.type === 'self' && dto.employeeId !== scope.employeeId) {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendinize vardiya atayabilirsiniz.' });
@@ -487,15 +485,13 @@ export class ShiftsService {
       }
     });
 
-    const userId = (actor as ActorWithSub)?.sub;
-    if (userId) {
-      await this.recordShiftEvent(shift.id, userId, 'CREATED', null, status);
-    }
+    const userId = (actor as Actor)?.sub ?? 'SYSTEM';
+    await this.recordShiftEvent(shift.id, userId, 'CREATED', null, status);
 
     return { ...shift, warnings };
   }
 
-  async update(id: string, dto: UpdateShiftDto, actor?: ActorWithSub) {
+  async update(id: string, dto: UpdateShiftDto, actor?: Actor) {
     const existing = await this.getById(id, actor);
 
     const employeeId = dto.employeeId ?? existing.employeeId;
@@ -566,21 +562,19 @@ export class ShiftsService {
       }
     });
 
-    const userId = (actor as ActorWithSub)?.sub;
-    if (userId && (existing.status !== newStatus || dto.startTime || dto.endTime || dto.employeeId)) {
+    const userId = (actor as Actor)?.sub ?? 'SYSTEM';
+    if (existing.status !== newStatus || dto.startTime || dto.endTime || dto.employeeId) {
       await this.recordShiftEvent(id, userId, 'UPDATED', existing.status, newStatus);
     }
 
     return { ...shift, warnings };
   }
 
-  async remove(id: string, actor?: ActorWithSub) {
+  async remove(id: string, actor?: Actor) {
     const existing = await this.getById(id, actor);
     await this.prisma.shift.update({ where: { id }, data: { status: 'CANCELLED' } });
-    const userId = (actor as ActorWithSub)?.sub;
-    if (userId) {
-      await this.recordShiftEvent(id, userId, 'CANCELLED', existing.status, 'CANCELLED');
-    }
+    const userId = (actor as Actor)?.sub ?? 'SYSTEM';
+    await this.recordShiftEvent(id, userId, 'CANCELLED', existing.status, 'CANCELLED');
     return { message: 'Vardiya iptal edildi.' };
   }
 
@@ -593,10 +587,8 @@ export class ShiftsService {
       throw new UnprocessableEntityException({ code: 'INVALID_STATUS', message: 'Yalnızca YAYINLANMIŞ veya ÖNERİLMİŞ vardiyalar onaylanabilir.' });
     }
     const updated = await this.prisma.shift.update({ where: { id }, data: { status: 'ACKNOWLEDGED' } });
-    const userId = (actor as ActorWithSub)?.sub;
-    if (userId) {
-      await this.recordShiftEvent(id, userId, 'ACKNOWLEDGED', shift.status, 'ACKNOWLEDGED');
-    }
+    const userId = (actor as Actor)?.sub ?? 'SYSTEM';
+    await this.recordShiftEvent(id, userId, 'ACKNOWLEDGED', shift.status, 'ACKNOWLEDGED');
     return updated;
   }
 
@@ -616,14 +608,12 @@ export class ShiftsService {
         note: shift.note ? `${shift.note}\n--- Reddetme Nedeni: ${reason}` : `Reddetme Nedeni: ${reason}`
       }
     });
-    const userId = (actor as ActorWithSub)?.sub;
-    if (userId) {
-      await this.recordShiftEvent(id, userId, 'DECLINED', shift.status, 'DECLINED', reason);
-    }
+    const userId = (actor as Actor)?.sub ?? 'SYSTEM';
+    await this.recordShiftEvent(id, userId, 'DECLINED', shift.status, 'DECLINED', reason);
     return updated;
   }
 
-  async bulkCreate(payload: CreateShiftDto[], actor?: ActorWithSub) {
+  async bulkCreate(payload: CreateShiftDto[], actor?: Actor) {
     const created: Array<unknown> = [];
     const failed: Array<{ index: number; reason: string }> = [];
 
@@ -645,7 +635,7 @@ export class ShiftsService {
     };
   }
 
-  async copyWeek(sourceWeekStart: string, targetWeekStart: string, actor?: ActorWithSub) {
+  async copyWeek(sourceWeekStart: string, targetWeekStart: string, actor?: Actor) {
     const scope = await getEmployeeScope(this.prisma, actor);
     const sourceStart = parseWeekStart(sourceWeekStart);
     const sourceEnd = plusDays(sourceStart, 7);
@@ -669,7 +659,7 @@ export class ShiftsService {
       }
     });
 
-    const results = await this.prisma.$transaction(async (trx: any) => {
+    const results = await this.prisma.$transaction(async (trx: Prisma.TransactionClient) => {
       const created: Array<unknown> = [];
       const errors: Array<{ shiftId: string; reason: string }> = [];
       let skipped = 0;

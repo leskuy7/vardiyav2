@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, UnprocessableEntityException, ForbiddenException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { AdjustLeaveBalanceDto } from './dto/adjust-leave-balance.dto';
 
@@ -7,7 +8,7 @@ export class LeaveBalancesService {
     constructor(private prisma: PrismaService) { }
 
     async findBalances(employeeId?: string, year?: number, actor?: { role: string; sub?: string; employeeId?: string; department?: string }) {
-        const where: any = {};
+        const where: Prisma.LeaveBalanceWhereInput = {};
 
         const manager = actor?.role === 'MANAGER' && actor.employeeId
             ? await this.prisma.employee.findUnique({ where: { id: actor.employeeId } })

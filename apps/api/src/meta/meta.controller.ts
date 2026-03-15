@@ -4,9 +4,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CsrfGuard } from '../common/auth/csrf.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
+import { Actor } from '../common/employee-scope';
 import { MetaService } from './meta.service';
-
-type Actor = { role: string; sub?: string; employeeId?: string };
 
 @Controller('meta')
 @UseGuards(JwtAuthGuard, RolesGuard)

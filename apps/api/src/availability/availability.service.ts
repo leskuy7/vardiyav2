@@ -1,5 +1,6 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { getEmployeeScope } from '../common/employee-scope';
+import { assertActorAccessToEmployee } from '../common/manager-scope';
 import { PrismaService } from '../database/prisma.service';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
 
@@ -60,28 +61,18 @@ export class AvailabilityService {
   }
 
   async create(dto: CreateAvailabilityDto, actor: { sub: string; role: string; employeeId?: string }) {
-    if (actor.role === 'EMPLOYEE') {
-      if (actor.employeeId !== dto.employeeId) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only manage your own availability' });
-      }
-    } else if (actor.role === 'MANAGER' && actor.employeeId) {
-      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
-      const target = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
-      if (!target || target.department !== manager?.department || target.organizationId !== manager?.organizationId) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only manage availability for employees in your department' });
-      }
-    }
+    await assertActorAccessToEmployee(this.prisma, actor, dto.employeeId);
 
     if ((dto.startTime && !dto.endTime) || (!dto.startTime && dto.endTime)) {
-      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'startTime and endTime must be together' });
+      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'Başlangıç ve bitiş saati birlikte belirtilmelidir' });
     }
 
     if (dto.startTime && dto.endTime && this.toMinutes(dto.startTime) >= this.toMinutes(dto.endTime)) {
-      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'startTime must be before endTime' });
+      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'Başlangıç saati bitiş saatinden önce olmalıdır' });
     }
 
     if (dto.startDate && dto.endDate && dto.startDate > dto.endDate) {
-      throw new BadRequestException({ code: 'INVALID_DATE_RANGE', message: 'startDate must be before endDate' });
+      throw new BadRequestException({ code: 'INVALID_DATE_RANGE', message: 'Başlangıç tarihi bitiş tarihinden önce olmalıdır' });
     }
 
     return this.prisma.availabilityBlock.create({
@@ -98,24 +89,41 @@ export class AvailabilityService {
     });
   }
 
-  async remove(id: string, actor: { sub: string; role: string; employeeId?: string }) {
-    const record = await this.prisma.availabilityBlock.findUnique({ where: { id }, include: { employee: true } });
+  async update(id: string, dto: Partial<CreateAvailabilityDto>, actor: { sub: string; role: string; employeeId?: string }) {
+    const record = await this.prisma.availabilityBlock.findUnique({ where: { id } });
     if (!record) {
-      throw new BadRequestException({ code: 'AVAILABILITY_NOT_FOUND', message: 'Availability not found' });
+      throw new BadRequestException({ code: 'AVAILABILITY_NOT_FOUND', message: 'Müsaitlik kaydı bulunamadı' });
     }
 
-    if (actor.role === 'EMPLOYEE') {
-      if (actor.employeeId !== record.employeeId) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only delete your own availability' });
-      }
-    } else if (actor.role === 'MANAGER' && actor.employeeId) {
-      const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
-      if (record.employee.department !== manager?.department || record.employee.organizationId !== manager?.organizationId) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only delete availability for employees in your department' });
-      }
+    await assertActorAccessToEmployee(this.prisma, actor, record.employeeId);
+
+    if (dto.startTime && dto.endTime && this.toMinutes(dto.startTime) >= this.toMinutes(dto.endTime)) {
+      throw new BadRequestException({ code: 'INVALID_TIME_RANGE', message: 'Başlangıç saati bitiş saatinden önce olmalıdır' });
     }
+
+    return this.prisma.availabilityBlock.update({
+      where: { id },
+      data: {
+        ...(dto.type !== undefined && { type: dto.type }),
+        ...(dto.dayOfWeek !== undefined && { dayOfWeek: dto.dayOfWeek }),
+        ...(dto.startTime !== undefined && { startTime: dto.startTime }),
+        ...(dto.endTime !== undefined && { endTime: dto.endTime }),
+        ...(dto.startDate !== undefined && { startDate: dto.startDate ? new Date(dto.startDate) : null }),
+        ...(dto.endDate !== undefined && { endDate: dto.endDate ? new Date(dto.endDate) : null }),
+        ...(dto.note !== undefined && { note: dto.note })
+      }
+    });
+  }
+
+  async remove(id: string, actor: { sub: string; role: string; employeeId?: string }) {
+    const record = await this.prisma.availabilityBlock.findUnique({ where: { id } });
+    if (!record) {
+      throw new BadRequestException({ code: 'AVAILABILITY_NOT_FOUND', message: 'Müsaitlik kaydı bulunamadı' });
+    }
+
+    await assertActorAccessToEmployee(this.prisma, actor, record.employeeId);
 
     await this.prisma.availabilityBlock.delete({ where: { id } });
-    return { message: 'Availability deleted' };
+    return { message: 'Müsaitlik kaydı silindi' };
   }
 }

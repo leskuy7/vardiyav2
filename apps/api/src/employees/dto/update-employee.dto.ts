@@ -3,6 +3,14 @@ import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-val
 export class UpdateEmployeeDto {
   @IsOptional()
   @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
   position?: string;
 
   @IsOptional()

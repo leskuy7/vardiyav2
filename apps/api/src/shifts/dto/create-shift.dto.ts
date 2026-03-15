@@ -20,5 +20,5 @@ export class CreateShiftDto {
 
   @IsOptional()
   @IsString()
-  status?: any; // any to avoid strict type mismatch before build, will cast in service
+  status?: string;
 }

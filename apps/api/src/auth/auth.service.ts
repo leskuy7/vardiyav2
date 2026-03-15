@@ -38,7 +38,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException({
         code: "INVALID_CREDENTIALS",
-        message: "Invalid email or password",
+        message: "Geçersiz e-posta veya şifre",
       });
     }
 
@@ -46,7 +46,7 @@ export class AuthService {
     if (!isValid) {
       throw new UnauthorizedException({
         code: "INVALID_CREDENTIALS",
-        message: "Invalid email or password",
+        message: "Geçersiz e-posta veya şifre",
       });
     }
 
@@ -81,7 +81,7 @@ export class AuthService {
     if (!user || !user.refreshTokenHash) {
       throw new UnauthorizedException({
         code: "INVALID_REFRESH_TOKEN",
-        message: "Invalid refresh token",
+        message: "Geçersiz yenileme tokeni",
       });
     }
 
@@ -89,7 +89,7 @@ export class AuthService {
     if (!ok) {
       throw new UnauthorizedException({
         code: "INVALID_REFRESH_TOKEN",
-        message: "Invalid refresh token",
+        message: "Geçersiz yenileme tokeni",
       });
     }
 
@@ -132,7 +132,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException({
         code: "UNAUTHORIZED",
-        message: "User not found",
+        message: "Kullanıcı bulunamadı",
       });
     }
 
@@ -196,7 +196,7 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException({
         code: "UNAUTHORIZED",
-        message: "Invalid access token",
+        message: "Geçersiz erişim tokeni",
       });
     }
   }
@@ -207,7 +207,7 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException({
         code: "UNAUTHORIZED",
-        message: "Invalid refresh token",
+        message: "Geçersiz yenileme tokeni",
       });
     }
   }
@@ -224,7 +224,7 @@ export class AuthService {
     if (!businessType) {
       throw new UnauthorizedException({
         code: "UNKNOWN_BUSINESS_TYPE",
-        message: `Unknown business type: ${dto.businessTypeCode}`,
+        message: `Bilinmeyen işletme türü: ${dto.businessTypeCode}`,
       });
     }
 

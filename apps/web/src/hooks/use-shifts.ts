@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { showMutationError } from '../lib/mutation-error';
 
 export type Shift = {
   id: string;
@@ -46,7 +47,8 @@ export function useShiftsActions(weekStart: string) {
       const response = await api.post('/shifts', payload);
       return response.data as Shift;
     },
-    onSuccess: invalidate
+    onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Vardiya oluşturulamadı.')
   });
 
   const updateShift = useMutation({
@@ -54,7 +56,8 @@ export function useShiftsActions(weekStart: string) {
       const response = await api.patch(`/shifts/${payload.id}`, payload);
       return response.data as Shift;
     },
-    onSuccess: invalidate
+    onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Vardiya güncellenemedi.')
   });
 
   const acknowledgeShift = useMutation({
@@ -62,7 +65,8 @@ export function useShiftsActions(weekStart: string) {
       const response = await api.post(`/shifts/${shiftId}/acknowledge`);
       return response.data as Shift;
     },
-    onSuccess: invalidate
+    onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Vardiya onaylanamadı.')
   });
 
   const deleteShift = useMutation({
@@ -70,15 +74,8 @@ export function useShiftsActions(weekStart: string) {
       const response = await api.patch(`/shifts/${shiftId}/cancel`);
       return response.data as { message: string };
     },
-    onSuccess: invalidate
-  });
-
-  const deleteShiftLegacy = useMutation({
-    mutationFn: async (shiftId: string) => {
-      const response = await api.delete(`/shifts/${shiftId}`);
-      return response.data as { message: string };
-    },
-    onSuccess: invalidate
+    onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Vardiya iptal edilemedi.')
   });
 
   const declineShift = useMutation({
@@ -86,8 +83,9 @@ export function useShiftsActions(weekStart: string) {
       const response = await api.post(`/shifts/${payload.shiftId}/decline`, { reason: payload.reason });
       return response.data as Shift;
     },
-    onSuccess: invalidate
+    onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Vardiya reddedilemedi.')
   });
 
-  return { createShift, updateShift, acknowledgeShift, deleteShift, deleteShiftLegacy, declineShift };
+  return { createShift, updateShift, acknowledgeShift, deleteShift, declineShift };
 }

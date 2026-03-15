@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { showMutationError } from "../lib/mutation-error";
 
 type CreateSwapPayload = {
     shiftId: string;
@@ -22,6 +23,7 @@ export function useSwapRequests() {
             return response.data;
         },
         onSuccess: invalidate,
+        onError: (error) => showMutationError(error, 'Takas talebi oluşturulamadı.'),
     });
 
     const approveSwapRequest = useMutation({
@@ -30,6 +32,7 @@ export function useSwapRequests() {
             return response.data;
         },
         onSuccess: invalidate,
+        onError: (error) => showMutationError(error, 'Takas talebi onaylanamadı.'),
     });
 
     const rejectSwapRequest = useMutation({
@@ -38,6 +41,7 @@ export function useSwapRequests() {
             return response.data;
         },
         onSuccess: invalidate,
+        onError: (error) => showMutationError(error, 'Takas talebi reddedilemedi.'),
     });
 
     return {

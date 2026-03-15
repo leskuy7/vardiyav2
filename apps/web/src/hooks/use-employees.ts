@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { showMutationError } from "../lib/mutation-error";
 
 const LONG_STALE_TIME = 5 * 60 * 1000;
 
@@ -70,6 +71,8 @@ export type CreateEmployeeResult =
 
 type UpdateEmployeePayload = {
   id: string;
+  firstName?: string;
+  lastName?: string;
   position?: string;
   department?: string;
   phone?: string;
@@ -94,6 +97,7 @@ export function useEmployeeActions() {
       return response.data as CreateEmployeeResult;
     },
     onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Çalışan oluşturulamadı.'),
   });
 
   const updateEmployee = useMutation({
@@ -103,6 +107,7 @@ export function useEmployeeActions() {
       return response.data as EmployeeItem;
     },
     onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Çalışan güncellenemedi.'),
   });
 
   const archiveEmployee = useMutation({
@@ -111,6 +116,7 @@ export function useEmployeeActions() {
       return response.data as { message: string };
     },
     onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Çalışan arşivlenemedi.'),
   });
 
   const bulkClearField = useMutation({
@@ -128,6 +134,7 @@ export function useEmployeeActions() {
       return { field, value, count: employeeIds.length };
     },
     onSuccess: invalidate,
+    onError: (error) => showMutationError(error, 'Toplu güncelleme başarısız oldu.'),
   });
 
   return { createEmployee, updateEmployee, archiveEmployee, bulkClearField };

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
@@ -23,9 +23,9 @@ export class LeaveRequestsController {
 
     @Get()
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
-    async findAll(@Req() req: Request) {
-        const actor = req.user as { role: string; employeeId?: string; sub?: string };
-        return this.leaveRequestsService.findAll(actor);
+    async findAll(@Query('status') status: string | undefined, @Req() req: Request) {
+        const actor = req.user as { role: string; employeeId?: string; sub?: string; department?: string };
+        return this.leaveRequestsService.findAll(actor, status);
     }
 
     @Patch(':id/status')
@@ -34,13 +34,9 @@ export class LeaveRequestsController {
     async updateStatus(
         @Param('id') id: string,
         @Body() dto: UpdateLeaveRequestStatusDto,
-        @Req() req: any,
+        @Req() req: Request,
     ) {
-        const actor = {
-            role: req.user?.role,
-            employeeId: req.user?.employeeId,
-            sub: req.user?.sub
-        };
+        const actor = req.user as { role: string; employeeId?: string; sub?: string };
         return this.leaveRequestsService.updateStatus(id, dto, actor);
     }
 

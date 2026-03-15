@@ -35,7 +35,7 @@ export class LeaveRequestsService {
 
     async create(dto: CreateLeaveRequestDto, actor: { role: string; employeeId?: string }) {
         if (!actor.employeeId) {
-            throw new BadRequestException({ code: 'BAD_REQUEST', message: 'User is not linked to an employee profile' });
+            throw new BadRequestException({ code: 'BAD_REQUEST', message: 'Kullanıcı bir çalışan profiliyle ilişkili değil' });
         }
 
         const leaveCode = dto.leaveCode ?? dto.type;
@@ -97,8 +97,8 @@ export class LeaveRequestsService {
             where: {
                 employeeId: actor.employeeId,
                 status: { in: ['PENDING', 'APPROVED'] },
-                startDate: { lt: endAt },
-                endDate: { gt: startAt }
+                startAt: { lt: endAt },
+                endAt: { gt: startAt }
             }
         });
 
@@ -123,12 +123,16 @@ export class LeaveRequestsService {
         });
     }
 
-    async findAll(actor: { role: string; employeeId?: string; sub?: string; department?: string }) {
+    async findAll(actor: { role: string; employeeId?: string; sub?: string; department?: string }, statusFilter?: string) {
+        const statusWhere = statusFilter
+            ? { status: { in: statusFilter.split(',').map(s => s.trim().toUpperCase()) as any[] } }
+            : {};
+
         if (actor.role === 'ADMIN') {
             const organizationId = await this.getAdminOrganizationId(actor.sub);
             if (!organizationId) return [];
             return this.prisma.leaveRequest.findMany({
-                where: { employee: { organizationId } },
+                where: { employee: { organizationId }, ...statusWhere },
                 include: { employee: { include: { user: true } } },
                 orderBy: { createdAt: 'desc' }
             });
@@ -142,7 +146,8 @@ export class LeaveRequestsService {
                     employee: {
                         department: manager.department,
                         ...(manager.organizationId ? { organizationId: manager.organizationId } : {})
-                    }
+                    },
+                    ...statusWhere
                 },
                 include: { employee: { include: { user: true } } },
                 orderBy: { createdAt: 'desc' }
@@ -152,7 +157,7 @@ export class LeaveRequestsService {
         // Employee sees their own
         if (actor.employeeId) {
             return this.prisma.leaveRequest.findMany({
-                where: { employeeId: actor.employeeId },
+                where: { employeeId: actor.employeeId, ...statusWhere },
                 include: { employee: { include: { user: true } } },
                 orderBy: { createdAt: 'desc' }
             });
@@ -196,7 +201,7 @@ export class LeaveRequestsService {
 
         return this.prisma.$transaction(async (tx) => {
             const leave = await tx.leaveRequest.findUnique({ where: { id }, include: { employee: true, leaveType: true } });
-            if (!leave) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Leave request not found' });
+            if (!leave) throw new NotFoundException({ code: 'NOT_FOUND', message: 'İzin talebi bulunamadı' });
             if (leave.status !== 'PENDING') throw new BadRequestException({ code: 'INVALID_STATUS', message: 'Sadece PENDING onaylanabilir' });
 
             if (actor.role === 'ADMIN') {
@@ -213,7 +218,11 @@ export class LeaveRequestsService {
             }
 
             const leaveMinutes = Math.round((leave.endAt.getTime() - leave.startAt.getTime()) / 60_000);
-            const year = Number(leave.startDate.toISOString().slice(0, 4));
+            // Use IST-aware year extraction to avoid UTC midnight boundary issues
+            // (e.g. Jan 1 00:00 IST = Dec 31 21:00 UTC → wrong year if using UTC)
+            const istOffsetMs = IST_OFFSET_MINUTES * 60_000;
+            const istDate = new Date(leave.startAt.getTime() + istOffsetMs);
+            const year = istDate.getUTCFullYear();
 
             if (leave.leaveType.isPaid) {
                 const bal = await tx.leaveBalance.findUnique({
@@ -289,17 +298,17 @@ export class LeaveRequestsService {
     async remove(id: string, actor: { role: string; employeeId?: string; sub?: string }) {
         const leave = await this.prisma.leaveRequest.findUnique({ where: { id }, include: { employee: true } });
         if (!leave) {
-            throw new NotFoundException({ code: 'NOT_FOUND', message: 'Leave request not found' });
+            throw new NotFoundException({ code: 'NOT_FOUND', message: 'İzin talebi bulunamadı' });
         }
 
         if (actor.role === 'ADMIN') {
             const orgId = await this.getAdminOrganizationId(actor.sub);
             if (!orgId || leave.employee.organizationId !== orgId) {
-                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Only admins can delete leave requests in their own organization' });
+                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca yöneticiler kendi organizasyonlarındaki izin taleplerini silebilir' });
             }
         } else {
             if (leave.employeeId !== actor.employeeId || leave.status !== 'PENDING') {
-                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Only admins can delete non-pending or others leave requests' });
+                throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca yöneticiler beklemede olmayan veya başkalarına ait izin taleplerini silebilir' });
             }
         }
 

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { showMutationError } from "../lib/mutation-error";
 
 const LONG_STALE_TIME = 5 * 60 * 1000;
 
@@ -67,6 +68,7 @@ export function useLeaves() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["leaves"] });
         },
+        onError: (error) => showMutationError(error, 'İzin talebi oluşturulamadı.'),
     });
 
     const updateStatus = useMutation({
@@ -78,6 +80,7 @@ export function useLeaves() {
             queryClient.invalidateQueries({ queryKey: ["leaves"] });
             queryClient.invalidateQueries({ queryKey: ["schedule"] });
         },
+        onError: (error) => showMutationError(error, 'İzin durumu güncellenemedi.'),
     });
 
     const deleteLeave = useMutation({
@@ -88,6 +91,7 @@ export function useLeaves() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["leaves"] });
         },
+        onError: (error) => showMutationError(error, 'İzin talebi silinemedi.'),
     });
 
     const typesQuery = useQuery({
@@ -118,7 +122,8 @@ export function useLeaves() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["leave-balances"] });
-        }
+        },
+        onError: (error) => showMutationError(error, 'Bakiye düzenlenemedi.'),
     });
 
     return {

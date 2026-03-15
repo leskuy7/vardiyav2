@@ -1,7 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 
-type Actor = { role: string; sub?: string; employeeId?: string };
+export type Actor = { role: string; sub?: string; employeeId?: string };
 
 export type EmployeeScope =
   | { type: 'all' }
@@ -27,7 +27,7 @@ export async function getEmployeeScope(prisma: PrismaService, actor?: Actor): Pr
   }
 
   if (!actor.employeeId) {
-    throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Employee scope is missing' });
+    throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Çalışan kapsamı bulunamadı' });
   }
 
   if (actor.role === 'EMPLOYEE') {

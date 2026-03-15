@@ -96,14 +96,14 @@ export class EmployeesService {
     if (actor?.role === 'ADMIN' && actor.sub) {
       const org = await this.prisma.organization.findUnique({ where: { adminUserId: actor.sub }, select: { id: true } });
       if (org && employee.organizationId !== org.id) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access employees in your organization' });
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi organizasyonunuzdaki çalışanlara erişebilirsiniz' });
       }
     }
 
     if (actor?.role === 'MANAGER' && actor.employeeId) {
       const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
       if (manager && (employee.department !== manager.department || employee.organizationId !== manager.organizationId)) {
-        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access employees in your department' });
+        throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki çalışanlara erişebilirsiniz' });
       }
     }
 
@@ -279,13 +279,28 @@ export class EmployeesService {
   }
 
   async update(id: string, dto: UpdateEmployeeDto, actor?: { role: string; sub?: string; employeeId?: string }) {
-    await this.getById(id, actor);
+    const employee = await this.getById(id, actor);
 
     let targetDepartment = dto.department;
     if (actor?.role === 'MANAGER' && actor.employeeId) {
       const manager = await this.prisma.employee.findUnique({ where: { id: actor.employeeId } });
       if (manager) {
         targetDepartment = manager.department ?? undefined;
+      }
+    }
+
+    // Update user name if firstName or lastName provided
+    if (dto.firstName !== undefined || dto.lastName !== undefined) {
+      const currentName = employee.user.name ?? '';
+      const nameParts = currentName.split(' ');
+      const currentFirst = nameParts[0] ?? '';
+      const currentLast = nameParts.slice(1).join(' ') ?? '';
+      const newName = `${dto.firstName ?? currentFirst} ${dto.lastName ?? currentLast}`.trim();
+      if (newName && newName !== currentName) {
+        await this.prisma.user.update({
+          where: { id: employee.userId },
+          data: { name: newName }
+        });
       }
     }
 

@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import type { Prisma } from '@prisma/client';
 import { OvertimeStrategy } from '@prisma/client';
+import { Actor, getEmployeeScope } from '../common/employee-scope';
 
 @Injectable()
 export class OvertimeService {
     constructor(private readonly prisma: PrismaService) { }
 
-    async calculateWeeklyOvertime(weekStart: string, strategy: OvertimeStrategy, employeeId?: string, department?: string) {
+    async calculateWeeklyOvertime(weekStart: string, strategy: OvertimeStrategy, actor?: Actor, employeeId?: string) {
         if (!weekStart) throw new BadRequestException({ code: 'WEEK_START_REQUIRED', message: 'weekStart parametresi (YYYY-MM-DD) zorunlu' });
 
         // Parse week start (Monday)
@@ -14,9 +16,15 @@ export class OvertimeService {
         const end = new Date(start);
         end.setUTCDate(end.getUTCDate() + 7);
 
-        const whereEmp: any = {};
+        const scope = await getEmployeeScope(this.prisma, actor);
+        const whereEmp: Prisma.EmployeeWhereInput = {};
         if (employeeId) whereEmp.id = employeeId;
-        if (department) whereEmp.department = department;
+        if (scope.type === 'all_in_org') whereEmp.organizationId = scope.organizationId;
+        if (scope.type === 'department') {
+            whereEmp.department = scope.department;
+            if (scope.organizationId) whereEmp.organizationId = scope.organizationId;
+        }
+        if (scope.type === 'self') whereEmp.id = scope.employeeId;
 
         const employees = await this.prisma.employee.findMany({
             where: whereEmp,
@@ -83,8 +91,8 @@ export class OvertimeService {
         return { weekStart: start.toISOString().split('T')[0], strategy, rows };
     }
 
-    async recalculateWeeklyOvertime(weekStart: string, strategy: OvertimeStrategy) {
-        const result = await this.calculateWeeklyOvertime(weekStart, strategy);
+    async recalculateWeeklyOvertime(weekStart: string, strategy: OvertimeStrategy, actor?: Actor) {
+        const result = await this.calculateWeeklyOvertime(weekStart, strategy, actor);
 
         for (const row of result.rows) {
             await this.prisma.overtimeRecord.upsert({

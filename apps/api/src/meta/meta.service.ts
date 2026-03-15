@@ -1,8 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { SuggestionKind } from '@prisma/client';
+import { Actor } from '../common/employee-scope';
 import { PrismaService } from '../database/prisma.service';
-
-type Actor = { role: string; sub?: string; employeeId?: string };
 
 @Injectable()
 export class MetaService {
@@ -87,7 +86,7 @@ export class MetaService {
   async addSuggestion(kind: SuggestionKind, value: string, actor?: Actor): Promise<void> {
     const organizationId = await this.getActorOrganizationId(actor);
     if (!organizationId || actor?.role !== 'ADMIN') {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Only admin can add suggestions' });
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca yöneticiler öneri ekleyebilir' });
     }
     const trimmed = value?.trim();
     if (!trimmed) return;
@@ -102,14 +101,14 @@ export class MetaService {
 
   async removeSuggestion(id: string, actor?: Actor): Promise<void> {
     if (actor?.role !== 'ADMIN') {
-      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Only admin can remove suggestions' });
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca yöneticiler öneri silebilir' });
     }
     const organizationId = await this.getActorOrganizationId(actor);
     const suggestion = await this.prisma.orgSuggestion.findFirst({
       where: { id, organizationId: organizationId ?? undefined }
     });
     if (!suggestion) {
-      throw new ForbiddenException({ code: 'NOT_FOUND', message: 'Suggestion not found' });
+      throw new ForbiddenException({ code: 'NOT_FOUND', message: 'Öneri bulunamadı' });
     }
     await this.prisma.orgSuggestion.delete({ where: { id } });
   }

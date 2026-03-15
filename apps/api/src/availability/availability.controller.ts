@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param, Post, Query, UseGuards, Body } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, Body } from '@nestjs/common';
 import { Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -26,6 +26,13 @@ export class AvailabilityController {
   create(@Body() dto: CreateAvailabilityDto, @Req() request: Request) {
     const actor = request.user as { sub: string; role: string; employeeId?: string };
     return this.availabilityService.create(dto, actor);
+  }
+
+  @Patch(':id')
+  @UseGuards(CsrfGuard)
+  update(@Param('id') id: string, @Body() dto: CreateAvailabilityDto, @Req() request: Request) {
+    const actor = request.user as { sub: string; role: string; employeeId?: string };
+    return this.availabilityService.update(id, dto, actor);
   }
 
   @Delete(':id')
