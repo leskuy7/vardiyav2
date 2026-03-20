@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Vardiya Mesai</string>
+    <string name="notification_channel_name">Vardiya Hatırlatmaları</string>
+    <string name="notification_channel_description">Yaklaşan vardiya bildirimleri</string>
+</resources>

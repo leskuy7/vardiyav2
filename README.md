@@ -6,6 +6,11 @@ Production-ready hedefli vardiya planlama sistemi (monorepo).
 
 ```text
 .
+├─ docs/
+│  ├─ SHIFT_STATE_MACHINE.md
+│  └─ mobile/
+│     ├─ ANDROID_PLAYSTORE_REPORT.md
+│     └─ ANDROID_MVP_EXECUTION_PLAN.md
 ├─ apps/
 │  ├─ api/                # NestJS + Prisma + PostgreSQL
 │  │  ├─ prisma/schema.prisma
@@ -20,6 +25,7 @@ Production-ready hedefli vardiya planlama sistemi (monorepo).
 │  │  │  └─ common/
 │  │  ├─ test/app.e2e-spec.ts
 │  │  └─ scripts/seed-test.ts
+│  ├─ android/            # Kotlin + Jetpack Compose + Room + WorkManager
 │  └─ web/                # Next.js App Router + React Query + Mantine + DnD-kit
 │     ├─ src/app/
 │     ├─ src/components/schedule/
@@ -51,6 +57,12 @@ Production-ready hedefli vardiya planlama sistemi (monorepo).
 
 - `NEXT_PUBLIC_API_URL` — İstemci tarafı API base URL (varsayılan: `/api`). Local'de proxy kullanıyorsanız `http://localhost:4000/api` veya boş bırakılabilir.
 - **Production:** Rewrite'ların ve CSP `connect-src`'in doğru çalışması için `NEXT_PUBLIC_API_BASE` ayarlanmalı (API sunucusu origin, örn. `https://api.sirket.com`). Build sırasında set edilmezse uyarı verilir.
+
+## Dokümanlar
+
+- Android canonical rapor: [docs/mobile/ANDROID_PLAYSTORE_REPORT.md](docs/mobile/ANDROID_PLAYSTORE_REPORT.md)
+- Android execution plan: [docs/mobile/ANDROID_MVP_EXECUTION_PLAN.md](docs/mobile/ANDROID_MVP_EXECUTION_PLAN.md)
+- Shift state machine: [docs/SHIFT_STATE_MACHINE.md](docs/SHIFT_STATE_MACHINE.md)
 
 ### AI/LLM (Opsiyonel, server-only)
 
@@ -194,6 +206,26 @@ npm run -w @vardiya/web test
 
 - API job: lint + prisma push + build + unit + e2e (Postgres service container)
 - Web job: build + Playwright (API+Web start edilip test edilir)
+- Android job: unit test + lint + release bundle
+
+## Android
+
+Android uygulama iskeleti `apps/android` altında bulunur.
+
+Temel hedef:
+- offline-first kişisel mod
+- Kotlin + Jetpack Compose
+- Room + DataStore + WorkManager
+- Play Store icin `targetSdk 35`, `AAB`
+
+Ornek komutlar:
+
+```bash
+cd apps/android
+./gradlew testDebugUnitTest
+./gradlew lintDebug
+./gradlew bundleRelease
+```
 
 ## Deploy Notları
 

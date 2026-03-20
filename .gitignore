@@ -1,11 +1,17 @@
 node_modules
 pnpm-lock.yaml
+.gradle
 .env
 .env.*
 !.env.example
 .next
+build
+build/
 dist
 coverage
+local.properties
+*.jks
+*.keystore
 *.log
 playwright-report
 test-results
