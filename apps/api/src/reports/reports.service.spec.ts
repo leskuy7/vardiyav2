@@ -152,4 +152,109 @@ describe('ReportsService', () => {
 
     jest.useRealTimers();
   });
+
+  it('attendanceSummary ayni puantaj kaydini iki vardiya icin tekrar kullanmaz', async () => {
+    const prisma = {
+      shift: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'shift-1',
+            employeeId: 'e1',
+            status: 'PUBLISHED',
+            startTime: new Date('2026-01-05T08:00:00.000Z'),
+            endTime: new Date('2026-01-05T12:00:00.000Z'),
+            employee: { department: 'Servis', user: { name: 'Ali' } }
+          },
+          {
+            id: 'shift-2',
+            employeeId: 'e1',
+            status: 'PUBLISHED',
+            startTime: new Date('2026-01-05T17:00:00.000Z'),
+            endTime: new Date('2026-01-05T21:00:00.000Z'),
+            employee: { department: 'Servis', user: { name: 'Ali' } }
+          }
+        ])
+      },
+      timeEntry: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'entry-1',
+            employeeId: 'e1',
+            shiftId: null,
+            checkInAt: new Date('2026-01-05T08:00:00.000Z'),
+            checkOutAt: null,
+            endAt: null,
+            status: 'OPEN',
+            source: 'MANUAL',
+            employee: { department: 'Servis', user: { name: 'Ali' } },
+            shift: null
+          }
+        ])
+      },
+      leaveRequest: {
+        findMany: jest.fn().mockResolvedValue([])
+      }
+    } as unknown as ConstructorParameters<typeof ReportsService>[0];
+
+    const service = new ReportsService(prisma);
+    jest.useFakeTimers().setSystemTime(new Date('2026-01-05T18:00:00.000Z'));
+
+    const report = await service.attendanceSummary('2026-01-05');
+
+    expect(report.scheduledShiftCount).toBe(2);
+    expect(report.timeEntryCount).toBe(1);
+    expect(report.openEntries).toBe(1);
+    expect(report.missingEntries).toBe(1);
+    expect(report.absentShifts).toBe(0);
+    expect(report.employeeSummaries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          employeeId: 'e1',
+          matchedEntries: 1,
+          missingEntries: 1
+        })
+      ])
+    );
+
+    jest.useRealTimers();
+  });
+
+  it('attendanceSummary hafta ile kesisen gece vardiyasini dahil eder', async () => {
+    const prisma = {
+      shift: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'shift-overnight',
+            employeeId: 'e1',
+            status: 'PUBLISHED',
+            startTime: new Date('2026-01-04T23:00:00.000Z'),
+            endTime: new Date('2026-01-05T07:00:00.000Z'),
+            employee: { department: 'Bar', user: { name: 'Ayse' } }
+          }
+        ])
+      },
+      timeEntry: {
+        findMany: jest.fn().mockResolvedValue([])
+      },
+      leaveRequest: {
+        findMany: jest.fn().mockResolvedValue([])
+      }
+    } as unknown as ConstructorParameters<typeof ReportsService>[0];
+
+    const service = new ReportsService(prisma);
+    jest.useFakeTimers().setSystemTime(new Date('2026-01-05T10:00:00.000Z'));
+
+    const report = await service.attendanceSummary('2026-01-05');
+
+    expect(report.scheduledShiftCount).toBe(1);
+    expect(report.missingEntries).toBe(1);
+    expect(report.absentShifts).toBe(1);
+    expect(report.absentShiftItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ shiftId: 'shift-overnight', employeeName: 'Ayse' })
+      ])
+    );
+
+    jest.useRealTimers();
+  });
 });

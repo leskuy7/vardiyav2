@@ -128,9 +128,9 @@ export default function BootstrapAdminPage() {
       <Paper withBorder radius="md" p="xl" shadow="sm">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="lg">
-            <Title order={2}>Kafe / Restoran Kurulumu</Title>
+            <Title order={2}>İç Kurulum Ekranı</Title>
             <Text size="sm" c="dimmed">
-              Geçerli bootstrap anahtarı ile kafe için ilk admin hesabı ve işletme kurulumu yapılır.
+              Bu ekran self-serve kayıt için değildir. Demo veya kurulum görüşmesi sonrası paylaşılan bootstrap anahtarı ile ilk admin hesabı ve işletme kurulumu yapılır.
             </Text>
             {error && (
               <Alert color="red" title="Hata">

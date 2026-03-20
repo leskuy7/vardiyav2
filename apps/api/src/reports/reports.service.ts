@@ -16,8 +16,8 @@ export class ReportsService {
 
   private buildScopedShiftWhere(scope: Awaited<ReturnType<typeof getEmployeeScope>>, start: Date, end: Date) {
     return {
-      startTime: { gte: start, lt: end },
-      endTime: { gt: start, lte: end },
+      startTime: { lt: end },
+      endTime: { gt: start },
       status: { in: [...this.scheduledShiftStatuses] },
       ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
       ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
@@ -300,6 +300,7 @@ export class ReportsService {
     const end = plusDays(start, 7);
     const scope = await getEmployeeScope(this.prisma, actor);
     const now = new Date();
+    const activeEntryFallbackEnd = now < end ? now : end;
 
     const [shifts, timeEntries, approvedLeaves] = await Promise.all([
       this.prisma.shift.findMany({
@@ -406,6 +407,34 @@ export class ReportsService {
       shiftEndTime: string;
       shiftStatus: string;
     }> = [];
+    const usedEntryIds = new Set<string>();
+
+    const findMatchingEntry = (shift: (typeof shifts)[number]) => {
+      const employeeEntries = entriesByEmployee.get(shift.employeeId) ?? [];
+      const exactShiftEntry = employeeEntries.find((entry) => !usedEntryIds.has(entry.id) && entry.shiftId === shift.id);
+      if (exactShiftEntry) {
+        usedEntryIds.add(exactShiftEntry.id);
+        return exactShiftEntry;
+      }
+
+      const overlappingEntry = employeeEntries.find(
+        (entry) =>
+          !usedEntryIds.has(entry.id) &&
+          this.overlaps(
+            shift.startTime,
+            shift.endTime,
+            entry.checkInAt,
+            entry.endAt ?? entry.checkOutAt ?? activeEntryFallbackEnd
+          )
+      );
+
+      if (!overlappingEntry) {
+        return null;
+      }
+
+      usedEntryIds.add(overlappingEntry.id);
+      return overlappingEntry;
+    };
 
     for (const shift of shifts) {
       const employeeSummary = employeeSummaries.get(shift.employeeId) ?? {
@@ -432,16 +461,9 @@ export class ReportsService {
         continue;
       }
 
-      const overlappingEntries = (entriesByEmployee.get(shift.employeeId) ?? []).filter((entry) =>
-        this.overlaps(
-          shift.startTime,
-          shift.endTime,
-          entry.checkInAt,
-          entry.endAt ?? entry.checkOutAt ?? end
-        )
-      );
+      const matchingEntry = findMatchingEntry(shift);
 
-      if (overlappingEntries.length > 0) {
+      if (matchingEntry) {
         employeeSummary.matchedEntries += 1;
       } else if (shift.startTime <= now) {
         const isAbsent = shift.endTime <= now;

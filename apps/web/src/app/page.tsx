@@ -79,13 +79,13 @@ export default function HomePage() {
                 <Button component="a" href="/login?demo=admin" size="lg" variant="filled" color="indigo" radius="xl">
                   Demo Panelini Aç
                 </Button>
-                <Button component="a" href="/bootstrap-admin" size="lg" variant="light" color="gray" radius="xl" style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#c7d2fe' }}>
-                  Kurulum Akışını Gör
+                <Button component="a" href="/login?demo=manager" size="lg" variant="light" color="gray" radius="xl" style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#c7d2fe' }}>
+                  Müdür Senaryosunu Aç
                 </Button>
               </Group>
 
               <Text size="sm" maw={560} style={{ color: 'rgba(199, 210, 254, 0.7)' }}>
-                Self-serve yerine demo-led ilerler: önce paneli görür, ardından işletmenize uygun kurulumla canlıya geçersiniz.
+                Self-serve kayıt yok. Demo panelini gördükten sonra kurulum ekibi bootstrap anahtarıyla işletmenizi canlıya alır.
               </Text>
             </Stack>
           </Paper>

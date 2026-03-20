@@ -44,7 +44,7 @@ function entryStatusColor(status: TimeEntryRecord["status"]) {
 
 export default function AttendancePage() {
   const [weekStart, setWeekStart] = useState(currentWeekStartIsoDate());
-  const { data: me } = useAuth();
+  const { data: me, isLoading: authLoading } = useAuth();
   const isAdminOrManager = me?.role === "ADMIN" || me?.role === "MANAGER";
 
   const {
@@ -174,6 +174,7 @@ export default function AttendancePage() {
     return attendance?.employeeSummaries ?? [];
   }, [attendance]);
 
+  if (authLoading && !me) return <PageLoading />;
   if (!isAdminOrManager && me) {
     return <PageError message="Puantaj özeti yalnızca yönetici ve admin rolü için gösterilir." />;
   }

@@ -238,13 +238,13 @@ async function main() {
   const nextTuesday = new Date(startOfWeek);
   nextTuesday.setDate(nextTuesday.getDate() + 8);
   const mondayCurrentWeek = new Date(startOfWeek);
-  mondayCurrentWeek.setUTCHours(10, 0, 0, 0);
+  mondayCurrentWeek.setUTCHours(14, 0, 0, 0);
   const mondayCurrentWeekEnd = new Date(startOfWeek);
-  mondayCurrentWeekEnd.setUTCHours(18, 0, 0, 0);
+  mondayCurrentWeekEnd.setUTCHours(22, 0, 0, 0);
 
   await prisma.leaveRequest.create({
     data: {
-      employeeId: createdEmployees[0].id,
+      employeeId: createdEmployees[1].id,
       leaveCode: 'ANNUAL',
       startDate: mondayCurrentWeek,
       endDate: mondayCurrentWeek,
