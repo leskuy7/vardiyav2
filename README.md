@@ -52,6 +52,17 @@ Production-ready hedefli vardiya planlama sistemi (monorepo).
 - `NEXT_PUBLIC_API_URL` — İstemci tarafı API base URL (varsayılan: `/api`). Local'de proxy kullanıyorsanız `http://localhost:4000/api` veya boş bırakılabilir.
 - **Production:** Rewrite'ların ve CSP `connect-src`'in doğru çalışması için `NEXT_PUBLIC_API_BASE` ayarlanmalı (API sunucusu origin, örn. `https://api.sirket.com`). Build sırasında set edilmezse uyarı verilir.
 
+### AI/LLM (Opsiyonel, server-only)
+
+Bu repo varsayılan olarak LLM/AI kullanmıyor. Eğer eklenecekse aşağıdaki prensiplere uyun:
+
+- Model adı ve API key yalnızca `apps/api` tarafında env olarak tutulmalı (Railway Variables gibi).
+- `apps/web` tarafına `NEXT_PUBLIC_` ile asla taşınmamalı.
+- Kod içinde model adı sabitlenmemeli; `LLM_MODEL` gibi env'den okunmalı.
+- Yedek/fallback model istenmiyorsa env yoksa servis fail-fast kapanmalı.
+- İstek başına model override'ı kapalı olmalı, allowlist ile sınırlandırılmalı.
+- Loglarda model/ad/token yazılmamalı; maskeleme uygulanmalı.
+
 ## Local Development
 
 ```bash

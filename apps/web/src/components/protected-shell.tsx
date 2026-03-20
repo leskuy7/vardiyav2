@@ -53,10 +53,11 @@ export function ProtectedShell({ children, initialUser }: ProtectedShellProps) {
 
   const adminManagerLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={18} /> },
-    { href: '/schedule', label: 'Haftalık Program', icon: <IconCalendarWeek size={18} /> },
-    { href: '/employees', label: 'Çalışanlar', icon: <IconUsers size={18} /> },
+    { href: '/schedule', label: 'Vardiya', icon: <IconCalendarWeek size={18} /> },
+    { href: '/employees', label: 'Personel', icon: <IconUsers size={18} /> },
     { href: '/availability', label: 'Müsaitlik', icon: <IconClockHour4 size={18} /> },
-    { href: '/leaves', label: 'İzin Onayları', icon: <IconCalendarEvent size={18} /> },
+    { href: '/leaves', label: 'İzinler', icon: <IconCalendarEvent size={18} /> },
+    { href: '/attendance', label: 'Puantaj', icon: <IconClockHour4 size={18} /> },
     ...(data.role === 'ADMIN' || data.role === 'MANAGER'
       ? [{ href: '/reports', label: 'Raporlar', icon: <IconChartBar size={18} /> }]
       : []),
@@ -166,8 +167,8 @@ export function ProtectedShell({ children, initialUser }: ProtectedShellProps) {
                   <IconLayoutDashboard size={18} />
                 </ThemeIcon>
                 <Stack gap={0}>
-                  <Text fw={700} size="sm">Vardiya Planlayıcı</Text>
-                  <Text c="dimmed" size="xs">Ekip Yönetimi</Text>
+                  <Text fw={700} size="sm">Kafe Operasyon</Text>
+                  <Text c="dimmed" size="xs">Vardiya + İzin + Puantaj</Text>
                 </Stack>
               </Group>
 

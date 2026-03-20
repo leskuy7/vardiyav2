@@ -100,7 +100,7 @@ export default function DashboardPage() {
     if (publishedCount > 0) {
       items.push({
         id: 'pending-acks',
-        text: `${publishedCount} vardiya çalışan onayı bekliyor.`,
+        text: `${publishedCount} vardiya barista veya servis ekibi onayı bekliyor.`,
         severity: 'info',
         action: () => router.push('/schedule'),
       });
@@ -122,7 +122,7 @@ export default function DashboardPage() {
       });
     }
     if (items.length === 0) {
-      items.push({ id: 'none', text: 'Yeni bildirim yok, planlama dengeli görünüyor.', severity: 'info' });
+      items.push({ id: 'none', text: 'Yeni kritik uyarı yok, kafe planı dengeli görünüyor.', severity: 'info' });
     }
 
     return items;
@@ -144,8 +144,8 @@ export default function DashboardPage() {
             <Badge variant="light">DASHBOARD</Badge>
             <Text c="dimmed" size="sm">{todayStr}</Text>
           </Group>
-          <Title order={2}>Operasyon Özeti</Title>
-          <Text c="dimmed" size="sm">Ekip, vardiya ve bildirim görünümünü tek ekrandan takip et.</Text>
+          <Title order={2}>Kafe Operasyon Özeti</Title>
+          <Text c="dimmed" size="sm">Personel planını, izin akışını ve puantaj sinyallerini tek ekrandan izle.</Text>
         </Stack>
       </Group>
 
@@ -154,7 +154,7 @@ export default function DashboardPage() {
         <Grid.Col span={{ base: 12, md: 3 }}>
           <Card withBorder p="md" className="stat-card gradient-card stagger-1">
             <Group justify="space-between">
-              <Text c="dimmed" size="sm">Aktif Çalışan</Text>
+              <Text c="dimmed" size="sm">Aktif Personel</Text>
               <ThemeIcon variant="gradient" gradient={{ from: 'indigo', to: 'violet' }} radius="xl">
                 <IconUsers size={14} />
               </ThemeIcon>
@@ -166,7 +166,7 @@ export default function DashboardPage() {
         <Grid.Col span={{ base: 12, md: 3 }}>
           <Card withBorder p="md" className="stat-card gradient-card stagger-2">
             <Group justify="space-between">
-              <Text c="dimmed" size="sm">Bugünün Vardiyaları</Text>
+              <Text c="dimmed" size="sm">Bugünün Ekibi</Text>
               <ThemeIcon variant="gradient" gradient={{ from: 'teal', to: 'cyan' }} radius="xl">
                 <IconClockHour4 size={14} />
               </ThemeIcon>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
             onClick={() => publishedCount > 0 && router.push('/schedule')}
           >
             <Group justify="space-between">
-              <Text c="dimmed" size="sm">Onay Bekleyen</Text>
+              <Text c="dimmed" size="sm">Onay Bekleyen Vardiya</Text>
               <Group gap={4}>
                 {publishedCount > 0 && (
                   <Tooltip label="Haftalık programa git" withArrow>
@@ -213,7 +213,7 @@ export default function DashboardPage() {
         <Grid.Col span={{ base: 12, md: 3 }}>
           <Card withBorder p="md" className="stat-card gradient-card stagger-4">
             <Group justify="space-between">
-              <Text c="dimmed" size="sm">Fazla Mesai</Text>
+              <Text c="dimmed" size="sm">Haftalık Fazla Mesai</Text>
               <ThemeIcon variant="gradient" gradient={{ from: 'indigo', to: 'violet' }} radius="xl">
                 <IconAlertTriangle size={14} />
               </ThemeIcon>
@@ -248,7 +248,7 @@ export default function DashboardPage() {
         <Grid.Col span={{ base: 12, md: 3 }}>
           <Card withBorder p="md" className="stat-card gradient-card stagger-5">
             <Group justify="space-between">
-              <Text c="dimmed" size="sm">Haftalık Doluluk</Text>
+              <Text c="dimmed" size="sm">Haftalık Kapsama</Text>
               <ThemeIcon variant="gradient" gradient={{ from: 'grape', to: 'pink' }} radius="xl">
                 <IconPercentage size={14} />
               </ThemeIcon>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
               <ThemeIcon variant="light" color="teal" radius="xl" size="sm">
                 <IconClockHour4 size={12} />
               </ThemeIcon>
-              <Title order={4}>Bugünün Vardiyaları</Title>
+              <Title order={4}>Bugünün Kafe Ekibi</Title>
             </Group>
             <Badge color="teal" variant="light">{todayShifts.length} vardiya</Badge>
           </Group>
@@ -309,7 +309,7 @@ export default function DashboardPage() {
               <ThemeIcon variant="light" color="orange" radius="xl" size="sm">
                 <IconBell size={12} />
               </ThemeIcon>
-              <Title order={4}>Onay Kuyruğu</Title>
+              <Title order={4}>Yayın Bekleyen Onaylar</Title>
             </Group>
             <Badge color="orange" variant="light">{publishedCount} bekliyor</Badge>
           </Group>
@@ -345,7 +345,7 @@ export default function DashboardPage() {
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Paper withBorder radius="md" p="md" className="surface-card">
             <Group justify="space-between" mb="xs">
-              <Title order={4}>Bildirimler</Title>
+              <Title order={4}>Operasyon Uyarıları</Title>
               <Badge variant="light">{notifications.length}</Badge>
             </Group>
             <List spacing="xs" size="sm">
@@ -369,7 +369,7 @@ export default function DashboardPage() {
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Paper withBorder radius="md" p="md" className="surface-card">
             <Group justify="space-between" mb="xs">
-              <Title order={4}>Departman Dağılımı</Title>
+              <Title order={4}>Ekip Dağılımı</Title>
               <Badge variant="light">{departmentDistribution.length} departman</Badge>
             </Group>
             <Stack gap="xs">

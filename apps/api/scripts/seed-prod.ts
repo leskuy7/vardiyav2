@@ -53,21 +53,51 @@ async function seed() {
 
     const hash = await bcrypt.hash(PASSWORD, 12);
     const employeeMap: Record<string, string> = {};
+    const businessType = await prisma.businessType.upsert({
+        where: { code: 'RESTAURANT' },
+        update: { name: 'Kafe / Restoran' },
+        create: { code: 'RESTAURANT', name: 'Kafe / Restoran' }
+    });
+
+    const adminAccount = accounts.find((account) => account.role === 'ADMIN');
+    if (!adminAccount) {
+        throw new Error('Admin account tanımı bulunamadı.');
+    }
+
+    const adminUser = await prisma.user.create({
+        data: {
+            email: adminAccount.email,
+            name: adminAccount.name,
+            passwordHash: hash,
+            role: adminAccount.role
+        }
+    });
+
+    const organization = await prisma.organization.create({
+        data: {
+            name: 'Demo Kafe',
+            businessTypeId: businessType.id,
+            adminUserId: adminUser.id
+        }
+    });
 
     console.log('👥 Kullanıcılar ve çalışanlar oluşturuluyor...');
     for (const acc of accounts) {
-        const user = await prisma.user.create({
-            data: {
-                email: acc.email,
-                name: acc.name,
-                passwordHash: hash,
-                role: acc.role
-            }
-        });
+        const user = acc.email === adminAccount.email
+            ? adminUser
+            : await prisma.user.create({
+                data: {
+                    email: acc.email,
+                    name: acc.name,
+                    passwordHash: hash,
+                    role: acc.role
+                }
+            });
 
         const employee = await prisma.employee.create({
             data: {
                 userId: user.id,
+                organizationId: organization.id,
                 position: acc.position,
                 department: acc.department,
                 hourlyRate: acc.hourlyRate,
@@ -274,6 +304,60 @@ async function seed() {
         balanceCount++;
     }
     console.log(`  ✅ İzin türleri ve ${balanceCount} çalışanın izin bakiyesi oluşturuldu`);
+
+    console.log('\n🧾 Puantaj ve izin örnekleri oluşturuluyor...');
+    await prisma.timeEntry.createMany({
+        data: [
+            {
+                employeeId: employeeMap['employee@test.local'],
+                checkInAt: shiftTime(thisMonday, 0, 8),
+                checkOutAt: shiftTime(thisMonday, 0, 16),
+                endAt: shiftTime(thisMonday, 0, 16),
+                status: 'CLOSED',
+                source: 'MANUAL'
+            },
+            {
+                employeeId: employeeMap['zeynep@test.local'],
+                checkInAt: shiftTime(thisMonday, 0, 8),
+                checkOutAt: shiftTime(thisMonday, 0, 16),
+                endAt: shiftTime(thisMonday, 0, 16),
+                status: 'CLOSED',
+                source: 'MANUAL'
+            },
+            {
+                employeeId: employeeMap['can@test.local'],
+                checkInAt: shiftTime(thisMonday, 1, 12),
+                status: 'OPEN',
+                source: 'MANUAL'
+            }
+        ]
+    });
+
+    await prisma.leaveRequest.create({
+        data: {
+            employeeId: employeeMap['selin@test.local'],
+            leaveCode: 'ANNUAL',
+            startDate: thisMonday,
+            endDate: thisMonday,
+            startAt: shiftTime(thisMonday, 0, 8),
+            endAt: shiftTime(thisMonday, 0, 18),
+            status: 'APPROVED',
+            reason: 'Planlı yıllık izin'
+        }
+    });
+
+    await prisma.leaveRequest.create({
+        data: {
+            employeeId: employeeMap['deniz@test.local'],
+            leaveCode: 'ANNUAL',
+            startDate: nextMonday,
+            endDate: nextMonday,
+            startAt: shiftTime(nextMonday, 0, 8),
+            endAt: shiftTime(nextMonday, 0, 18),
+            status: 'PENDING',
+            reason: 'Hafta sonu sonrası izin talebi'
+        }
+    });
 
     console.log('\n🎉 Seed tamamlandı!');
     console.log(`   ${accounts.length} kullanıcı, ${shiftCount} vardiya, ${availCount} müsaitlik, ${balanceCount} izin bakiyesi`);

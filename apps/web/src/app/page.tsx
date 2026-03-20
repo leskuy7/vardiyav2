@@ -1,23 +1,36 @@
-import { Badge, Box, Button, Container, Group, Paper, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Badge, Box, Button, Card, Container, Group, Paper, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { ThemeToggle } from '../components/theme-toggle';
 
 const features = [
   {
     title: 'Haftalık Planlama',
-    description: 'Sürükle-bırak grid ile anlık vardiya atama ve düzenleme.',
+    description: 'Kafe ekibini haftalık grid üzerinden hızlıca planla, yayınla ve değiştir.',
   },
   {
-    title: 'Çalışan Takibi',
-    description: 'Rol bazlı erişim, müsaitlik ve saat yönetimi.',
+    title: 'İzin Çakışma Kontrolü',
+    description: 'Onaylı izinler planı korur, çakışan vardiyalar görünür ve operasyon aksamasını azaltır.',
   },
   {
-    title: 'Akıllı Raporlama',
-    description: 'Haftalık saat, mesai ve maliyet analizleri.',
+    title: 'Puantaj ve Devamsızlık',
+    description: 'Giriş-çıkış kayıtlarını, açık puantajları ve devamsızlık riskini aynı ekranda takip et.',
   },
   {
-    title: 'Güvenli Yönetim',
-    description: 'RBAC, CSRF koruması ve audit logging.',
+    title: 'PDF / Çıktı',
+    description: 'Haftalık vardiya ve puantaj özetini CSV veya PDF olarak dışa aktar.',
   }
+];
+
+const packages = [
+  {
+    title: 'Kafe Starter',
+    description: 'Tek şubeli kafeler için temel operasyon paketi.',
+    highlights: 'Personel, vardiya, izin, puantaj, PDF çıktı',
+  },
+  {
+    title: 'Kafe Chain',
+    description: 'Küçük zincirler için ikinci faz genişleme yolu.',
+    highlights: 'Şube görünürlüğü, çok lokasyonlu raporlama, büyüyen ekip akışı',
+  },
 ];
 
 export default function HomePage() {
@@ -43,7 +56,7 @@ export default function HomePage() {
                 size="lg"
                 style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.1)', color: '#c7d2fe' }}
               >
-                Yeni Nesil Vardiya Yönetimi
+                Kafeler İçin Operasyon Yönetimi
               </Badge>
 
               <Title
@@ -55,21 +68,25 @@ export default function HomePage() {
                   letterSpacing: '-0.02em'
                 }}
               >
-                Ekibinizi <span className="gradient-text">akıllıca</span> yönetin.
+                Kafeler için <span className="gradient-text">personel, vardiya, izin ve puantaj</span> tek panelde.
               </Title>
 
               <Text size="lg" maw={640} style={{ color: 'rgba(199, 210, 254, 0.8)', lineHeight: 1.7 }}>
-                Sürükle-bırak planlama, gerçek zamanlı takip, izin ve mesai kuralları ile operasyonu tek panelden yönetin.
+                Haftalık vardiya planını oluştur, izin çakışmalarını önle, puantajı kapat ve çıktını dakikalar içinde al.
               </Text>
 
               <Group mt="md">
-                <Button component="a" href="/login" size="lg" variant="filled" color="indigo" radius="xl">
-                  Hemen Başla
+                <Button component="a" href="/login?demo=admin" size="lg" variant="filled" color="indigo" radius="xl">
+                  Demo Panelini Aç
                 </Button>
-                <Button component="a" href="/login?demo=admin" size="lg" variant="light" color="gray" radius="xl" style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#c7d2fe' }}>
-                  Demo Dene
+                <Button component="a" href="/bootstrap-admin" size="lg" variant="light" color="gray" radius="xl" style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#c7d2fe' }}>
+                  Kurulum Akışını Gör
                 </Button>
               </Group>
+
+              <Text size="sm" maw={560} style={{ color: 'rgba(199, 210, 254, 0.7)' }}>
+                Self-serve yerine demo-led ilerler: önce paneli görür, ardından işletmenize uygun kurulumla canlıya geçersiniz.
+              </Text>
             </Stack>
           </Paper>
 
@@ -92,8 +109,21 @@ export default function HomePage() {
             ))}
           </SimpleGrid>
 
+          <SimpleGrid cols={{ base: 1, md: 2 }}>
+            {packages.map((item) => (
+              <Card key={item.title} withBorder p="xl" radius="xl" className="feature-card">
+                <Stack gap="sm">
+                  <Badge variant="light" color="teal" w="fit-content">Paket</Badge>
+                  <Title order={3}>{item.title}</Title>
+                  <Text c="dimmed" size="sm" lh={1.7}>{item.description}</Text>
+                  <Text size="sm" fw={600}>{item.highlights}</Text>
+                </Stack>
+              </Card>
+            ))}
+          </SimpleGrid>
+
           <Group justify="center" py="md">
-            <Text c="dimmed" size="xs">© 2026 Vardiya Platformu — Tüm hakları saklıdır.</Text>
+            <Text c="dimmed" size="xs">© 2026 Vardiya Platformu — Kafe operasyonu için tasarlandı.</Text>
           </Group>
         </Stack>
       </Container>

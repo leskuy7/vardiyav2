@@ -392,6 +392,16 @@ export default function SchedulePage() {
           </Button>
           <Button
             size="xs"
+            variant="default"
+            color="dark"
+            onClick={() =>
+              window.open(`/schedule/print/form?start=${weekStart}`, "_blank")
+            }
+          >
+            Geniş Yazdır
+          </Button>
+          <Button
+            size="xs"
             variant="light"
             color="grape"
             leftSection={<IconWand size={16} />}

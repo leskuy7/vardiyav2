@@ -1,14 +1,22 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { TimeEntriesService } from './time-entries.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { CheckInDto, CheckOutDto } from './dto/time-entries.dto';
+import { ListTimeEntriesQueryDto } from './dto/list-time-entries-query.dto';
 
 @Controller('time-entries')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class TimeEntriesController {
     constructor(private readonly timeEntriesService: TimeEntriesService) { }
+
+    @Get()
+    @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')
+    list(@Query() query: ListTimeEntriesQueryDto, @Request() req: any) {
+        const actor = req.user as { role: string; sub?: string; employeeId?: string };
+        return this.timeEntriesService.list(query, actor);
+    }
 
     @Get('active')
     @Roles('ADMIN', 'MANAGER', 'EMPLOYEE')

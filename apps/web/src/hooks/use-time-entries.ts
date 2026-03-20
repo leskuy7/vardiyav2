@@ -14,6 +14,25 @@ export type TimeEntry = {
     createdAt: string;
 };
 
+export type TimeEntryRecord = TimeEntry & {
+    employee?: {
+        id: string;
+        department?: string | null;
+        position?: string | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+        };
+    };
+    shift?: {
+        id: string;
+        startTime: string;
+        endTime: string;
+        status: string;
+    } | null;
+};
+
 export function useActiveTimeEntry(enabled = true) {
     return useQuery<TimeEntry | null>({
         queryKey: ["time-entries", "active"],
@@ -23,6 +42,28 @@ export function useActiveTimeEntry(enabled = true) {
         },
         enabled,
         refetchInterval: 30000,
+    });
+}
+
+export function useTimeEntriesList(
+    filters: { weekStart: string; employeeId?: string; status?: "OPEN" | "CLOSED" | "VOID" },
+    enabled = true
+) {
+    const employeeId = filters.employeeId ?? "";
+    const status = filters.status ?? "";
+
+    return useQuery<TimeEntryRecord[]>({
+        queryKey: ["time-entries", "list", filters.weekStart, employeeId, status],
+        enabled,
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            params.set("weekStart", filters.weekStart);
+            if (employeeId) params.set("employeeId", employeeId);
+            if (status) params.set("status", status);
+
+            const { data } = await api.get<TimeEntryRecord[]>(`/time-entries?${params.toString()}`);
+            return Array.isArray(data) ? data : [];
+        },
     });
 }
 

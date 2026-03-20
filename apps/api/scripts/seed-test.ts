@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.timeEntry.deleteMany();
   await prisma.shift.deleteMany();
   await prisma.availabilityBlock.deleteMany();
   await prisma.leaveBalance.deleteMany();
@@ -22,9 +23,9 @@ async function main() {
   });
 
   const businessType = await prisma.businessType.upsert({
-    where: { code: 'CAFE' },
-    update: {},
-    create: { code: 'CAFE', name: 'Kafe / Restoran' }
+    where: { code: 'RESTAURANT' },
+    update: { name: 'Kafe / Restoran' },
+    create: { code: 'RESTAURANT', name: 'Kafe / Restoran' }
   });
 
   const organization = await prisma.organization.create({
@@ -58,24 +59,24 @@ async function main() {
   });
 
   const managerEmployee = await prisma.employee.create({
-    data: { userId: manager.id, organizationId: organization.id, position: 'Manager', department: 'Ops', hourlyRate: 100 }
+    data: { userId: manager.id, organizationId: organization.id, position: 'Kafe Müdürü', department: 'Yönetim', hourlyRate: 100 }
   });
 
   const employee = await prisma.employee.create({
-    data: { userId: employeeUser.id, organizationId: organization.id, position: 'Barista', department: 'Ops', hourlyRate: 80 }
+    data: { userId: employeeUser.id, organizationId: organization.id, position: 'Barista', department: 'Bar', hourlyRate: 80 }
   });
 
   // Create 10 more diverse employees for the demo
   const sampleUsers = [
-    { name: 'Ayşe Yılmaz', role: 'EMPLOYEE', pos: 'Barista', dep: 'Ops', rate: 85 },
-    { name: 'Mehmet Demir', role: 'EMPLOYEE', pos: 'Kasiyer', dep: 'Ops', rate: 80 },
+    { name: 'Ayşe Yılmaz', role: 'EMPLOYEE', pos: 'Barista', dep: 'Bar', rate: 85 },
+    { name: 'Mehmet Demir', role: 'EMPLOYEE', pos: 'Kasiyer', dep: 'Kasa', rate: 80 },
     { name: 'Fatma Kaya', role: 'EMPLOYEE', pos: 'Aşçı', dep: 'Mutfak', rate: 100 },
     { name: 'Ali Çelik', role: 'EMPLOYEE', pos: 'Garson', dep: 'Servis', rate: 75 },
     { name: 'Zeynep Şahin', role: 'EMPLOYEE', pos: 'Garson', dep: 'Servis', rate: 75 },
-    { name: 'Ahmet Yıldız', role: 'EMPLOYEE', pos: 'Komi', dep: 'Servis', rate: 70 },
-    { name: 'Elif Doğan', role: 'EMPLOYEE', pos: 'Barista', dep: 'Ops', rate: 85 },
-    { name: 'Burak Arslan', role: 'EMPLOYEE', pos: 'Bulaşıkçı', dep: 'Mutfak', rate: 70 },
-    { name: 'Ceren Kılıç', role: 'EMPLOYEE', pos: 'Karşılama', dep: 'Servis', rate: 80 },
+    { name: 'Ahmet Yıldız', role: 'EMPLOYEE', pos: 'Müdür Yardımcısı', dep: 'Yönetim', rate: 70 },
+    { name: 'Elif Doğan', role: 'EMPLOYEE', pos: 'Barista', dep: 'Bar', rate: 85 },
+    { name: 'Burak Arslan', role: 'EMPLOYEE', pos: 'Hazırlık', dep: 'Mutfak', rate: 70 },
+    { name: 'Ceren Kılıç', role: 'EMPLOYEE', pos: 'Kasiyer', dep: 'Kasa', rate: 80 },
     { name: 'Oğuzhan Tekin', role: 'EMPLOYEE', pos: 'Şef', dep: 'Mutfak', rate: 130 }
   ];
 
@@ -188,22 +189,82 @@ async function main() {
     }))
   });
 
-  // Example leave request
+  await prisma.timeEntry.createMany({
+    data: [
+      {
+        employeeId: allEmployees[2].id,
+        checkInAt: getShiftDate(0, 8),
+        checkOutAt: getShiftDate(0, 16),
+        endAt: getShiftDate(0, 16),
+        status: 'CLOSED',
+        source: 'MANUAL',
+      },
+      {
+        employeeId: allEmployees[3].id,
+        checkInAt: getShiftDate(0, 10),
+        checkOutAt: getShiftDate(0, 18),
+        endAt: getShiftDate(0, 18),
+        status: 'CLOSED',
+        source: 'MANUAL',
+      },
+      {
+        employeeId: allEmployees[5].id,
+        checkInAt: getShiftDate(1, 8),
+        checkOutAt: getShiftDate(1, 16),
+        endAt: getShiftDate(1, 16),
+        status: 'CLOSED',
+        source: 'MANUAL',
+      },
+      {
+        employeeId: allEmployees[6].id,
+        checkInAt: getShiftDate(1, 9),
+        checkOutAt: getShiftDate(1, 17),
+        endAt: getShiftDate(1, 17),
+        status: 'CLOSED',
+        source: 'MANUAL',
+      },
+      {
+        employeeId: allEmployees[7].id,
+        checkInAt: getShiftDate(1, 15),
+        status: 'OPEN',
+        source: 'MANUAL',
+      }
+    ]
+  });
+
+  // Example leave requests
   const nextMonday = new Date(startOfWeek);
   nextMonday.setDate(nextMonday.getDate() + 7);
   const nextTuesday = new Date(startOfWeek);
   nextTuesday.setDate(nextTuesday.getDate() + 8);
+  const mondayCurrentWeek = new Date(startOfWeek);
+  mondayCurrentWeek.setUTCHours(10, 0, 0, 0);
+  const mondayCurrentWeekEnd = new Date(startOfWeek);
+  mondayCurrentWeekEnd.setUTCHours(18, 0, 0, 0);
 
   await prisma.leaveRequest.create({
     data: {
       employeeId: createdEmployees[0].id,
       leaveCode: 'ANNUAL',
+      startDate: mondayCurrentWeek,
+      endDate: mondayCurrentWeek,
+      startAt: mondayCurrentWeek,
+      endAt: mondayCurrentWeekEnd,
+      status: 'APPROVED',
+      reason: 'Yoğun hafta öncesi planlı izin'
+    }
+  });
+
+  await prisma.leaveRequest.create({
+    data: {
+      employeeId: createdEmployees[1].id,
+      leaveCode: 'ANNUAL',
       startDate: nextMonday,
       endDate: nextTuesday,
       startAt: nextMonday,
       endAt: nextTuesday,
-      status: 'APPROVED',
-      reason: 'Yıllık izin kullanımı'
+      status: 'PENDING',
+      reason: 'Hafta sonu dönüşü için izin talebi'
     }
   });
 }

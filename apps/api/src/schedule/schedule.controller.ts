@@ -7,6 +7,7 @@ import { ScheduleWeekQueryDto } from '../common/dto/schedule-week-query.dto';
 import { currentWeekStartIso } from '../common/time.utils';
 import { AutoConfirmScheduleDto } from './dto/auto-confirm-schedule.dto';
 import { AutoGenerateScheduleDto } from './dto/auto-generate-schedule.dto';
+import { PrintFormQueryDto } from './dto/print-form-query.dto';
 import { ScheduleService } from './schedule.service';
 import { AutoScheduleService } from './auto-schedule.service';
 
@@ -30,6 +31,13 @@ export class ScheduleController {
     const actor = request.user as { role: string; sub?: string; employeeId?: string };
     const start = query.start ?? currentWeekStartIso();
     return this.scheduleService.getPrint(start, actor);
+  }
+
+  @Get('print-form')
+  getPrintForm(@Query() query: PrintFormQueryDto, @Req() request: Request) {
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
+    const start = query.start ?? currentWeekStartIso();
+    return this.scheduleService.getPrintForm(start, query.department, actor);
   }
 
   @Post('auto-generate')

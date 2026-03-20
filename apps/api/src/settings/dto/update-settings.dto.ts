@@ -7,6 +7,7 @@ import {
   IsIn,
   IsInt,
   IsNumber,
+  IsObject,
   IsOptional,
   Max,
   Min
@@ -55,4 +56,8 @@ export class UpdateSettingsDto {
   @Min(15)
   @Max(1440)
   shiftMaxDuration?: number;
+
+  @IsOptional()
+  @IsObject()
+  printFormConfig?: Record<string, unknown>;
 }

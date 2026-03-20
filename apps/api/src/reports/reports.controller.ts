@@ -29,6 +29,13 @@ export class ReportsController {
     return this.reportsService.complianceViolations(weekStart, actor);
   }
 
+  @Get('attendance-summary')
+  attendanceSummary(@Query() query: WeekStartQueryDto, @Req() request: Request) {
+    const actor = request.user as { role: string; sub?: string; employeeId?: string };
+    const weekStart = query.weekStart ?? currentWeekStartIso();
+    return this.reportsService.attendanceSummary(weekStart, actor);
+  }
+
   @Get('security-events')
   @Roles('ADMIN')
   securityEvents(@Query() query: SecurityEventsQueryDto) {

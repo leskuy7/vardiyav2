@@ -8,6 +8,65 @@ import { PrismaService } from '../database/prisma.service';
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly scheduledShiftStatuses = ['PROPOSED', 'DRAFT', 'PUBLISHED', 'ACKNOWLEDGED', 'SWAPPED'] as const;
+
+  private overlaps(startA: Date, endA: Date, startB: Date, endB: Date) {
+    return startA < endB && endA > startB;
+  }
+
+  private buildScopedShiftWhere(scope: Awaited<ReturnType<typeof getEmployeeScope>>, start: Date, end: Date) {
+    return {
+      startTime: { gte: start, lt: end },
+      endTime: { gt: start, lte: end },
+      status: { in: [...this.scheduledShiftStatuses] },
+      ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
+      ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
+      ...(scope.type === 'department'
+        ? {
+            employee: {
+              department: scope.department,
+              ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+            }
+          }
+        : {})
+    };
+  }
+
+  private buildScopedTimeEntryWhere(scope: Awaited<ReturnType<typeof getEmployeeScope>>, start: Date, end: Date) {
+    return {
+      checkInAt: { lt: end },
+      OR: [{ endAt: null }, { endAt: { gte: start } }],
+      ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
+      ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
+      ...(scope.type === 'department'
+        ? {
+            employee: {
+              department: scope.department,
+              ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+            }
+          }
+        : {})
+    };
+  }
+
+  private buildScopedLeaveWhere(scope: Awaited<ReturnType<typeof getEmployeeScope>>, start: Date, end: Date) {
+    return {
+      status: 'APPROVED' as const,
+      startAt: { lt: end },
+      endAt: { gt: start },
+      ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
+      ...(scope.type === 'self' ? { employeeId: scope.employeeId } : {}),
+      ...(scope.type === 'department'
+        ? {
+            employee: {
+              department: scope.department,
+              ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+            }
+          }
+        : {})
+    };
+  }
+
   private readString(value: Prisma.JsonValue | null | undefined) {
     return typeof value === 'string' ? value : null;
   }
@@ -233,6 +292,223 @@ export class ReportsService {
       weekStart: start.toISOString(),
       weekEnd: end.toISOString(),
       violations
+    };
+  }
+
+  async attendanceSummary(weekStart: string, actor?: { role: string; sub?: string; employeeId?: string }) {
+    const start = parseWeekStart(weekStart);
+    const end = plusDays(start, 7);
+    const scope = await getEmployeeScope(this.prisma, actor);
+    const now = new Date();
+
+    const [shifts, timeEntries, approvedLeaves] = await Promise.all([
+      this.prisma.shift.findMany({
+        where: this.buildScopedShiftWhere(scope, start, end),
+        include: {
+          employee: {
+            include: { user: true }
+          }
+        },
+        orderBy: [{ startTime: 'asc' }]
+      }),
+      this.prisma.timeEntry.findMany({
+        where: this.buildScopedTimeEntryWhere(scope, start, end),
+        include: {
+          employee: {
+            include: { user: true }
+          },
+          shift: {
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              status: true
+            }
+          }
+        },
+        orderBy: [{ status: 'asc' }, { checkInAt: 'asc' }]
+      }),
+      this.prisma.leaveRequest.findMany({
+        where: this.buildScopedLeaveWhere(scope, start, end),
+        select: {
+          id: true,
+          employeeId: true,
+          leaveCode: true,
+          startAt: true,
+          endAt: true,
+          startDate: true,
+          endDate: true
+        }
+      })
+    ]);
+
+    const entriesByEmployee = new Map<string, typeof timeEntries>();
+    for (const entry of timeEntries) {
+      const current = entriesByEmployee.get(entry.employeeId) ?? [];
+      current.push(entry);
+      entriesByEmployee.set(entry.employeeId, current);
+    }
+
+    const leavesByEmployee = new Map<string, typeof approvedLeaves>();
+    for (const leave of approvedLeaves) {
+      const current = leavesByEmployee.get(leave.employeeId) ?? [];
+      current.push(leave);
+      leavesByEmployee.set(leave.employeeId, current);
+    }
+
+    const employeeSummaries = new Map<
+      string,
+      {
+        employeeId: string;
+        employeeName: string;
+        department: string | null;
+        scheduledShifts: number;
+        matchedEntries: number;
+        missingEntries: number;
+        absentShifts: number;
+        openEntries: number;
+        leaveProtectedShifts: number;
+      }
+    >();
+
+    const openEntryItems = timeEntries
+      .filter((entry) => entry.status === 'OPEN')
+      .map((entry) => ({
+        id: entry.id,
+        employeeId: entry.employeeId,
+        employeeName: entry.employee.user.name,
+        department: entry.employee.department,
+        checkInAt: entry.checkInAt.toISOString(),
+        shiftId: entry.shiftId,
+        shiftStartTime: entry.shift?.startTime?.toISOString() ?? null,
+        shiftEndTime: entry.shift?.endTime?.toISOString() ?? null,
+        shiftStatus: entry.shift?.status ?? null,
+        source: entry.source
+      }));
+
+    const missingEntryItems: Array<{
+      shiftId: string;
+      employeeId: string;
+      employeeName: string;
+      department: string | null;
+      shiftStartTime: string;
+      shiftEndTime: string;
+      shiftStatus: string;
+      isAbsent: boolean;
+    }> = [];
+
+    const absentShiftItems: Array<{
+      shiftId: string;
+      employeeId: string;
+      employeeName: string;
+      department: string | null;
+      shiftStartTime: string;
+      shiftEndTime: string;
+      shiftStatus: string;
+    }> = [];
+
+    for (const shift of shifts) {
+      const employeeSummary = employeeSummaries.get(shift.employeeId) ?? {
+        employeeId: shift.employeeId,
+        employeeName: shift.employee.user.name,
+        department: shift.employee.department,
+        scheduledShifts: 0,
+        matchedEntries: 0,
+        missingEntries: 0,
+        absentShifts: 0,
+        openEntries: 0,
+        leaveProtectedShifts: 0
+      };
+
+      employeeSummary.scheduledShifts += 1;
+
+      const overlappingLeave = (leavesByEmployee.get(shift.employeeId) ?? []).find((leave) =>
+        this.overlaps(shift.startTime, shift.endTime, leave.startAt, leave.endAt)
+      );
+
+      if (overlappingLeave) {
+        employeeSummary.leaveProtectedShifts += 1;
+        employeeSummaries.set(shift.employeeId, employeeSummary);
+        continue;
+      }
+
+      const overlappingEntries = (entriesByEmployee.get(shift.employeeId) ?? []).filter((entry) =>
+        this.overlaps(
+          shift.startTime,
+          shift.endTime,
+          entry.checkInAt,
+          entry.endAt ?? entry.checkOutAt ?? end
+        )
+      );
+
+      if (overlappingEntries.length > 0) {
+        employeeSummary.matchedEntries += 1;
+      } else if (shift.startTime <= now) {
+        const isAbsent = shift.endTime <= now;
+        employeeSummary.missingEntries += 1;
+        if (isAbsent) {
+          employeeSummary.absentShifts += 1;
+        }
+
+        const item = {
+          shiftId: shift.id,
+          employeeId: shift.employeeId,
+          employeeName: shift.employee.user.name,
+          department: shift.employee.department,
+          shiftStartTime: shift.startTime.toISOString(),
+          shiftEndTime: shift.endTime.toISOString(),
+          shiftStatus: shift.status,
+          isAbsent
+        };
+
+        missingEntryItems.push(item);
+        if (isAbsent) {
+          absentShiftItems.push({
+            shiftId: item.shiftId,
+            employeeId: item.employeeId,
+            employeeName: item.employeeName,
+            department: item.department,
+            shiftStartTime: item.shiftStartTime,
+            shiftEndTime: item.shiftEndTime,
+            shiftStatus: item.shiftStatus
+          });
+        }
+      }
+
+      employeeSummaries.set(shift.employeeId, employeeSummary);
+    }
+
+    for (const entry of openEntryItems) {
+      const summary = employeeSummaries.get(entry.employeeId) ?? {
+        employeeId: entry.employeeId,
+        employeeName: entry.employeeName,
+        department: entry.department,
+        scheduledShifts: 0,
+        matchedEntries: 0,
+        missingEntries: 0,
+        absentShifts: 0,
+        openEntries: 0,
+        leaveProtectedShifts: 0
+      };
+      summary.openEntries += 1;
+      employeeSummaries.set(entry.employeeId, summary);
+    }
+
+    return {
+      weekStart: start.toISOString(),
+      weekEnd: end.toISOString(),
+      scheduledShiftCount: shifts.length,
+      timeEntryCount: timeEntries.length,
+      openEntries: openEntryItems.length,
+      missingEntries: missingEntryItems.length,
+      absentShifts: absentShiftItems.length,
+      employeesWithoutCheckout: new Set(openEntryItems.map((entry) => entry.employeeId)).size,
+      openEntryItems,
+      missingEntryItems,
+      absentShiftItems,
+      employeeSummaries: Array.from(employeeSummaries.values()).sort((a, b) =>
+        a.employeeName.localeCompare(b.employeeName, 'tr')
+      )
     };
   }
 

@@ -1,13 +1,70 @@
 import { Injectable, UnprocessableEntityException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { getEmployeeScope } from '../common/employee-scope';
+import { currentWeekStartIso, parseWeekStart, plusDays } from '../common/time.utils';
 import { PrismaService } from '../database/prisma.service';
 import { CheckInDto, CheckOutDto } from './dto/time-entries.dto';
+import { ListTimeEntriesQueryDto } from './dto/list-time-entries-query.dto';
 
 type Actor = { role: string; sub?: string; employeeId?: string };
 
 @Injectable()
 export class TimeEntriesService {
   constructor(private prisma: PrismaService) { }
+
+  async list(query: ListTimeEntriesQueryDto, actor?: Actor) {
+    const scope = await getEmployeeScope(this.prisma, actor);
+    const weekStart = query.weekStart ?? currentWeekStartIso();
+    const start = parseWeekStart(weekStart);
+    const end = plusDays(start, 7);
+
+    if (query.employeeId) {
+      await this.assertEmployeeScope(query.employeeId, actor);
+    }
+
+    return this.prisma.timeEntry.findMany({
+      where: {
+        checkInAt: { lt: end },
+        OR: [{ endAt: null }, { endAt: { gte: start } }],
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.employeeId ? { employeeId: query.employeeId } : {}),
+        ...(scope.type === 'all_in_org' ? { employee: { organizationId: scope.organizationId } } : {}),
+        ...(scope.type === 'self' && !query.employeeId ? { employeeId: scope.employeeId } : {}),
+        ...(scope.type === 'department' && !query.employeeId
+          ? {
+              employee: {
+                department: scope.department,
+                ...(scope.organizationId ? { organizationId: scope.organizationId } : {})
+              }
+            }
+          : {})
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            department: true,
+            position: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        },
+        shift: {
+          select: {
+            id: true,
+            startTime: true,
+            endTime: true,
+            status: true
+          }
+        }
+      },
+      orderBy: [{ status: 'asc' }, { checkInAt: 'desc' }]
+    });
+  }
 
   private async assertEmployeeScope(targetEmployeeId: string, actor?: Actor) {
     const scope = await getEmployeeScope(this.prisma, actor);

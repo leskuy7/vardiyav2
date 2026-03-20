@@ -61,12 +61,78 @@ export type AuditTrailEvent = {
   details: Record<string, unknown>;
 };
 
+export type AttendanceSummaryReport = {
+  weekStart: string;
+  weekEnd: string;
+  scheduledShiftCount: number;
+  timeEntryCount: number;
+  openEntries: number;
+  missingEntries: number;
+  absentShifts: number;
+  employeesWithoutCheckout: number;
+  openEntryItems: Array<{
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    department?: string | null;
+    checkInAt: string;
+    shiftId?: string | null;
+    shiftStartTime?: string | null;
+    shiftEndTime?: string | null;
+    shiftStatus?: string | null;
+    source: "MANUAL" | "KIOSK" | "MOBILE" | "IMPORT";
+  }>;
+  missingEntryItems: Array<{
+    shiftId: string;
+    employeeId: string;
+    employeeName: string;
+    department?: string | null;
+    shiftStartTime: string;
+    shiftEndTime: string;
+    shiftStatus: string;
+    isAbsent: boolean;
+  }>;
+  absentShiftItems: Array<{
+    shiftId: string;
+    employeeId: string;
+    employeeName: string;
+    department?: string | null;
+    shiftStartTime: string;
+    shiftEndTime: string;
+    shiftStatus: string;
+  }>;
+  employeeSummaries: Array<{
+    employeeId: string;
+    employeeName: string;
+    department?: string | null;
+    scheduledShifts: number;
+    matchedEntries: number;
+    missingEntries: number;
+    absentShifts: number;
+    openEntries: number;
+    leaveProtectedShifts: number;
+  }>;
+};
+
 export function useComplianceViolations(weekStart: string) {
   return useQuery({
     queryKey: ['reports', 'compliance-violations', weekStart],
     queryFn: async () => {
       const response = await api.get<ComplianceViolationsReport>(
         `/reports/compliance-violations?weekStart=${weekStart}`
+      );
+      return response.data;
+    }
+  });
+}
+
+export function useAttendanceSummary(weekStart: string, enabled = true) {
+  return useQuery({
+    queryKey: ['reports', 'attendance-summary', weekStart],
+    enabled,
+    queryFn: async () => {
+      const response = await api.get<AttendanceSummaryReport>(
+        `/reports/attendance-summary?weekStart=${weekStart}`
       );
       return response.data;
     }

@@ -21,11 +21,7 @@ import { api, getErrorMessage } from "../../lib/api";
 import { setAccessToken } from "../../lib/token-store";
 
 const BUSINESS_TYPES = [
-  { value: "RESTAURANT", label: "Restoran" },
-  { value: "HOTEL", label: "Otel" },
-  { value: "FACTORY", label: "Fabrika" },
-  { value: "RETAIL", label: "Perakende" },
-  { value: "OFFICE", label: "Ofis" },
+  { value: "RESTAURANT", label: "Kafe / Restoran" },
 ];
 
 type BootstrapResult = {
@@ -83,7 +79,7 @@ export default function BootstrapAdminPage() {
           <Stack gap="lg">
             <Title order={2}>Admin Hesabı Oluşturuldu</Title>
             <Alert color="green" title="Başarılı">
-              İşletme ve admin hesabı oluşturuldu. Aşağıdaki giriş bilgilerini kaydedin; şifre tekrar gösterilmeyecektir.
+              Kafe kurulumu ve admin hesabı oluşturuldu. Aşağıdaki giriş bilgilerini kaydedin; şifre tekrar gösterilmeyecektir.
             </Alert>
             <Button
               variant="light"
@@ -111,7 +107,7 @@ export default function BootstrapAdminPage() {
               styles={{ input: { fontFamily: "monospace", fontWeight: 600 } }}
             />
             <Text size="sm" c="dimmed">
-              İşletme: {result.organization.name} ({result.organization.businessTypeCode})
+              İşletme: {result.organization.name} ({result.organization.businessTypeCode === "RESTAURANT" ? "Kafe / Restoran" : result.organization.businessTypeCode})
             </Text>
             <Group>
               <Button onClick={() => router.push("/dashboard")}>
@@ -132,9 +128,9 @@ export default function BootstrapAdminPage() {
       <Paper withBorder radius="md" p="xl" shadow="sm">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="lg">
-            <Title order={2}>Bootstrap Admin</Title>
+            <Title order={2}>Kafe / Restoran Kurulumu</Title>
             <Text size="sm" c="dimmed">
-              Sadece geçerli bootstrap anahtarı ile ilk admin hesabı ve işletme oluşturulur.
+              Geçerli bootstrap anahtarı ile kafe için ilk admin hesabı ve işletme kurulumu yapılır.
             </Text>
             {error && (
               <Alert color="red" title="Hata">
@@ -151,15 +147,16 @@ export default function BootstrapAdminPage() {
               label="İşletme tipi"
               data={BUSINESS_TYPES}
               {...form.getInputProps("businessTypeCode")}
+              disabled
             />
             <TextInput
               label="İşletme adı (isteğe bağlı)"
-              placeholder="Varsayılan: işletme tipi adı"
+              placeholder="Örn. Moda Şubesi"
               {...form.getInputProps("organizationName")}
             />
             <TextInput
               label="Admin adı (isteğe bağlı)"
-              placeholder="Varsayılan: Admin"
+              placeholder="Örn. Kafe Müdürü"
               {...form.getInputProps("adminName")}
             />
             <Button type="submit" loading={submitting}>

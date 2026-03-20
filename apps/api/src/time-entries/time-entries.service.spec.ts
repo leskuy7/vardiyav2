@@ -8,6 +8,7 @@ function createService() {
     shift: { findUnique: jest.fn() },
     timeEntry: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn()
@@ -75,5 +76,24 @@ describe('TimeEntriesService', () => {
         { role: 'EMPLOYEE', employeeId: 'emp-1' }
       )
     ).rejects.toThrow('çakışıyor');
+  });
+
+  it('manager puantaj listesini kendi departmani ile sinirlar', async () => {
+    const { service, prisma } = createService();
+    prisma.employee.findUnique.mockResolvedValue({ id: 'mgr-1', department: 'Servis', organizationId: 'org-1' });
+    prisma.timeEntry.findMany = jest.fn().mockResolvedValue([]);
+
+    await service.list({ weekStart: '2026-03-16' } as any, {
+      role: 'MANAGER',
+      employeeId: 'mgr-1'
+    });
+
+    expect(prisma.timeEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          employee: { department: 'Servis', organizationId: 'org-1' }
+        })
+      })
+    );
   });
 });

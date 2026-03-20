@@ -55,8 +55,8 @@ export default function LoginPage() {
   const demoDisabled = process.env.NEXT_PUBLIC_DEMO_ENABLED === "false";
   const demoAccounts = [
     { label: "Admin", email: "admin@test.local", password: "Test12345!", color: "indigo" },
-    { label: "Müdür", email: "manager@test.local", password: "Test12345!", color: "violet" },
-    { label: "Çalışan", email: "employee@test.local", password: "Test12345!", color: "grape" },
+    { label: "Kafe Müdürü", email: "manager@test.local", password: "Test12345!", color: "violet" },
+    { label: "Barista", email: "employee@test.local", password: "Test12345!", color: "grape" },
   ];
 
   useEffect(() => {
@@ -167,7 +167,7 @@ export default function LoginPage() {
                     color: "#a5b4fc",
                   }}
                 >
-                  Vardiya Platformu
+                  Kafe / Restoran Operasyonu
                 </Badge>
                 <Title
                   order={1}
@@ -177,12 +177,12 @@ export default function LoginPage() {
                     letterSpacing: "-0.02em",
                   }}
                 >
-                  Operasyonunu{" "}
-                  <span className="gradient-text">tek panelden</span> yönet
+                  Personel, vardiya, izin ve puantajı{" "}
+                  <span className="gradient-text">aynı panelden</span> yönet
                 </Title>
                 <Text style={{ color: "rgba(199, 210, 254, 0.7)" }} lh={1.7}>
-                  Vardiya atama, raporlama, çalışan takibi ve onay süreçlerini
-                  merkezi olarak yönet.
+                  Kafe ekibinin haftalık planını kur, izin çakışmalarını önle ve
+                  günlük puantajı canlı takip et.
                 </Text>
               </Stack>
             </Grid.Col>
@@ -203,13 +203,13 @@ export default function LoginPage() {
                         Giriş Yap
                       </Title>
                       <Badge variant="light" style={{ background: "rgba(102, 126, 234, 0.3)", color: "#a5b4fc" }}>
-                        BETA
+                        DEMO-LED
                       </Badge>
                     </Group>
 
                     <TextInput
                       label="Kullanıcı Adı / E-posta"
-                      description="Size verilen 6 haneli kod veya e-postanız ile giriş yapın"
+                      description="Size açılan kullanıcı adı veya e-posta ile giriş yapın"
                       placeholder="örn. a1b2c3 veya admin@shiftplanner.com"
                       leftSection={<IconAt size={18} />}
                       size="md"
@@ -290,8 +290,7 @@ export default function LoginPage() {
                       ta="center"
                       style={{ color: "rgba(199, 210, 254, 0.4)" }}
                     >
-                      Hesaplar yalnızca sistem yöneticisi tarafından
-                      oluşturulur.
+                      Hesaplar self-serve açılmaz; demo ve canlı kurulum ekip tarafından hazırlanır.
                     </Text>
 
                     {error ? (
