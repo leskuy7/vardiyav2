@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
+const NOTIFICATIONS_STALE_TIME = 15_000;
+const NOTIFICATIONS_REFETCH_INTERVAL = 60_000;
+
 export type Notification = {
     id: string;
     title: string;
@@ -18,11 +21,12 @@ export function useNotifications(userId?: string) {
   const { data, isLoading } = useQuery<{ items: Notification[]; unreadCount: number }>({
     queryKey,
     enabled: Boolean(userId),
+    staleTime: NOTIFICATIONS_STALE_TIME,
     queryFn: async () => {
       const { data } = await api.get('/notifications');
       return data;
     },
-    refetchInterval: 30000,
+    refetchInterval: NOTIFICATIONS_REFETCH_INTERVAL,
   });
 
   const markAsRead = useMutation({

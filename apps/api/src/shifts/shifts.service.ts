@@ -389,7 +389,14 @@ export class ShiftsService {
   async getById(id: string, actor?: ActorWithSub) {
     const shift = await this.prisma.shift.findUnique({
       where: { id },
-      include: undefined
+      include: {
+        employee: {
+          select: {
+            department: true,
+            organizationId: true
+          }
+        }
+      }
     });
 
     if (!shift) {
@@ -397,20 +404,30 @@ export class ShiftsService {
     }
 
     const scope = await getEmployeeScope(this.prisma, actor);
+    let shiftDepartment: string | null = shift.employee?.department ?? null;
+    let shiftOrganizationId: string | null = shift.employee?.organizationId ?? null;
+
+    if ((scope.type === 'department' || scope.type === 'all_in_org') && (!shiftDepartment || !shiftOrganizationId)) {
+      const employee = await this.prisma.employee.findUnique({
+        where: { id: shift.employeeId },
+        select: { department: true, organizationId: true }
+      });
+      shiftDepartment = employee?.department ?? null;
+      shiftOrganizationId = employee?.organizationId ?? null;
+    }
+
     if (scope.type === 'self' && shift.employeeId !== scope.employeeId) {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi vardiyalarınıza erişebilirsiniz.' });
     }
 
     if (scope.type === 'department') {
-      const emp = await this.prisma.employee.findUnique({ where: { id: shift.employeeId } });
-      if (emp?.department !== scope.department || (scope.organizationId && emp.organizationId !== scope.organizationId)) {
+      if (shiftDepartment !== scope.department || (scope.organizationId && shiftOrganizationId !== scope.organizationId)) {
         throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi departmanınızdaki vardiyalara erişebilirsiniz.' });
       }
     }
 
     if (scope.type === 'all_in_org') {
-      const emp = await this.prisma.employee.findUnique({ where: { id: shift.employeeId }, select: { organizationId: true } });
-      if (!emp || emp.organizationId !== scope.organizationId) {
+      if (!shiftOrganizationId || shiftOrganizationId !== scope.organizationId) {
         throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi organizasyonunuzdaki vardiyalara erişebilirsiniz.' });
       }
     }

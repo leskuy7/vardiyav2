@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
+const SCHEDULE_STALE_TIME = 60_000;
+
 export type Shift = {
   id: string;
   employeeId: string;
@@ -26,6 +28,8 @@ export type WeeklySchedule = {
 export function useWeeklySchedule(weekStart: string) {
   return useQuery({
     queryKey: ['schedule', weekStart],
+    staleTime: SCHEDULE_STALE_TIME,
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const response = await api.get<WeeklySchedule>(`/schedule/week?start=${weekStart}`);
       return response.data;

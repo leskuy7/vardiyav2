@@ -30,6 +30,7 @@ export function useAuth(options?: UseAuthOptions) {
   return useQuery<AuthUser | null>({
     queryKey: ["auth", "me"],
     initialData: options?.initialData,
+    staleTime: 60_000,
     queryFn: async () => {
       try {
         if (!getAccessToken()) {
@@ -47,7 +48,6 @@ export function useAuth(options?: UseAuthOptions) {
       }
     },
     retry: false,
-    refetchOnWindowFocus: true,
     enabled: typeof window !== "undefined",
   });
 }

@@ -1,7 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 
-type Actor = { role: string; sub?: string; employeeId?: string };
+type Actor = { role: string; sub?: string; employeeId?: string; organizationId?: string };
 
 export type EmployeeScope =
   | { type: 'all' }
@@ -15,6 +15,9 @@ export async function getEmployeeScope(prisma: PrismaService, actor?: Actor): Pr
   }
 
   if (actor.role === 'ADMIN') {
+    if (actor.organizationId) {
+      return { type: 'all_in_org', organizationId: actor.organizationId };
+    }
     if (!actor.sub) {
       return { type: 'all' };
     }
@@ -31,17 +34,20 @@ export async function getEmployeeScope(prisma: PrismaService, actor?: Actor): Pr
   }
 
   if (actor.role === 'EMPLOYEE') {
-    return { type: 'self', employeeId: actor.employeeId };
+    return { type: 'self', employeeId: actor.employeeId, organizationId: actor.organizationId };
   }
 
   const employeeDelegate = (prisma as unknown as { employee?: { findUnique?: Function } }).employee;
   if (!employeeDelegate?.findUnique) {
-    return { type: 'self', employeeId: actor.employeeId };
+    return { type: 'self', employeeId: actor.employeeId, organizationId: actor.organizationId };
   }
 
-  const employee = await prisma.employee.findUnique({ where: { id: actor.employeeId } });
+  const employee = await prisma.employee.findUnique({
+    where: { id: actor.employeeId },
+    select: { department: true, organizationId: true }
+  });
   if (!employee) {
-    return { type: 'self', employeeId: actor.employeeId };
+    return { type: 'self', employeeId: actor.employeeId, organizationId: actor.organizationId };
   }
 
   if (actor.role === 'MANAGER') {
@@ -55,5 +61,9 @@ export async function getEmployeeScope(prisma: PrismaService, actor?: Actor): Pr
     }
   }
 
-  return { type: 'self', employeeId: actor.employeeId, organizationId: employee.organizationId };
+  return {
+    type: 'self',
+    employeeId: actor.employeeId,
+    organizationId: employee.organizationId ?? actor.organizationId
+  };
 }

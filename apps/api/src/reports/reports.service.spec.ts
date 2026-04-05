@@ -42,7 +42,9 @@ describe('ReportsService', () => {
     const service = new ReportsService(prisma);
     await service.weeklyHours('2026-01-05', { role: 'MANAGER', employeeId: 'm1' });
 
-    expect(prisma.employee.findUnique).toHaveBeenCalledWith({ where: { id: 'm1' } });
+    expect(prisma.employee.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'm1' } })
+    );
     expect(shiftFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

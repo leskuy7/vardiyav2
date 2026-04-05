@@ -59,14 +59,30 @@ export class ScheduleService {
             }
           : {}),
       },
-      include: {
+      select: {
+        id: true,
+        employeeId: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+        note: true,
         employee: {
-          include: {
-            user: true,
-          },
+          select: {
+            user: {
+              select: {
+                name: true
+              }
+            }
+          }
         },
         swapRequests: {
           where: { status: 'PENDING' },
+          select: {
+            id: true,
+            requesterId: true,
+            targetEmployeeId: true,
+            status: true
+          }
         },
       },
       orderBy: [{ startTime: 'asc' }],
@@ -96,9 +112,19 @@ export class ScheduleService {
             }
           : {}),
       },
-      include: {
+      select: {
+        id: true,
+        employeeId: true,
+        leaveCode: true,
+        reason: true,
         employee: {
-          include: { user: true },
+          select: {
+            user: {
+              select: {
+                name: true
+              }
+            }
+          },
         },
       },
     });

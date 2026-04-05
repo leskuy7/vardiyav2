@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
+const TIME_ENTRY_STALE_TIME = 30_000;
+const ACTIVE_TIME_ENTRY_REFETCH_INTERVAL = 60_000;
+
 export type TimeEntry = {
     id: string;
     employeeId: string;
@@ -36,12 +39,13 @@ export type TimeEntryRecord = TimeEntry & {
 export function useActiveTimeEntry(enabled = true) {
     return useQuery<TimeEntry | null>({
         queryKey: ["time-entries", "active"],
+        staleTime: TIME_ENTRY_STALE_TIME,
         queryFn: async () => {
             const { data } = await api.get<TimeEntry | null>("/time-entries/active");
             return data ?? null;
         },
         enabled,
-        refetchInterval: 30000,
+        refetchInterval: ACTIVE_TIME_ENTRY_REFETCH_INTERVAL,
     });
 }
 
@@ -55,6 +59,8 @@ export function useTimeEntriesList(
     return useQuery<TimeEntryRecord[]>({
         queryKey: ["time-entries", "list", filters.weekStart, employeeId, status],
         enabled,
+        staleTime: TIME_ENTRY_STALE_TIME,
+        placeholderData: (previousData) => previousData,
         queryFn: async () => {
             const params = new URLSearchParams();
             params.set("weekStart", filters.weekStart);

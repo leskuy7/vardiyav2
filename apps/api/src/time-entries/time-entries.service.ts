@@ -6,6 +6,7 @@ import { CheckInDto, CheckOutDto } from './dto/time-entries.dto';
 import { ListTimeEntriesQueryDto } from './dto/list-time-entries-query.dto';
 
 type Actor = { role: string; sub?: string; employeeId?: string };
+type Scope = Awaited<ReturnType<typeof getEmployeeScope>>;
 
 @Injectable()
 export class TimeEntriesService {
@@ -18,7 +19,7 @@ export class TimeEntriesService {
     const end = plusDays(start, 7);
 
     if (query.employeeId) {
-      await this.assertEmployeeScope(query.employeeId, actor);
+      await this.assertEmployeeScope(query.employeeId, scope);
     }
 
     return this.prisma.timeEntry.findMany({
@@ -66,9 +67,7 @@ export class TimeEntriesService {
     });
   }
 
-  private async assertEmployeeScope(targetEmployeeId: string, actor?: Actor) {
-    const scope = await getEmployeeScope(this.prisma, actor);
-
+  private async assertEmployeeScope(targetEmployeeId: string, scope: Scope) {
     if (scope.type === 'self' && targetEmployeeId !== scope.employeeId) {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi kayıtlarınıza erişebilirsiniz' });
     }
@@ -122,7 +121,8 @@ export class TimeEntriesService {
       throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Yalnızca kendi girişinizi başlatabilirsiniz' });
     }
 
-    await this.assertEmployeeScope(targetEmployeeId, actor);
+    const scope = await getEmployeeScope(this.prisma, actor);
+    await this.assertEmployeeScope(targetEmployeeId, scope);
 
     const start = new Date(dto.checkInAt);
 
@@ -185,7 +185,8 @@ export class TimeEntriesService {
 
     if (!entry) throw new NotFoundException({ code: 'TIME_ENTRY_NOT_FOUND', message: 'Kayıt bulunamadı' });
 
-    await this.assertEmployeeScope(entry.employeeId, actor);
+    const scope = await getEmployeeScope(this.prisma, actor);
+    await this.assertEmployeeScope(entry.employeeId, scope);
 
     // Only admins/managers or the owner can check out
     if (actor?.role === 'EMPLOYEE' && entry.employeeId !== actor.employeeId) {
