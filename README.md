@@ -12,6 +12,7 @@ Production-ready hedefli vardiya planlama sistemi (monorepo).
 │     ├─ ANDROID_PLAYSTORE_REPORT.md
 │     └─ ANDROID_MVP_EXECUTION_PLAN.md
 ├─ apps/
+│  ├─ desktop/            # Electron desktop shell (Windows/macOS/Linux)
 │  ├─ api/                # NestJS + Prisma + PostgreSQL
 │  │  ├─ prisma/schema.prisma
 │  │  ├─ src/
@@ -90,6 +91,7 @@ Not:
 - `npm start` artık local geliştirme için `npm run dev` çalıştırır.
 - Production başlatma için `npm run start:api` ve `npm run start:web` (build sonrası) kullanın.
 - Windows'ta tek tıkla açmak için kökteki `start-local.bat` dosyasını çalıştırabilirsiniz.
+- Masaüstü uygulama kabuğunu açmak için `npm run dev:desktop` komutunu kullanabilirsiniz.
 - `npm run dev` başlamadan önce otomatik olarak `3000/4000` portlarını temizler ve `apps/web/.next` klasörünü sıfırlar (EPERM/port conflict sorunlarını azaltır).
 - Ayrı terminalle çalıştırmak isterseniz:
 
@@ -225,6 +227,24 @@ cd apps/android
 ./gradlew testDebugUnitTest
 ./gradlew lintDebug
 ./gradlew bundleRelease
+```
+
+## Desktop
+
+Masaüstü uygulama kabuğu `apps/desktop` altında bulunur.
+
+Temel hedef:
+- mevcut Next.js arayüzünü Electron ile masaüstünde açmak
+- geliştirme modunda API + Web süreçlerini otomatik başlatmak
+- üretim modunda build alınmış API + Web süreçlerini masaüstünden çalıştırmak
+
+Örnek komutlar:
+
+```bash
+npm run dev:desktop
+npm run -w @vardiya/api build
+npm run -w @vardiya/web build
+npm run start:desktop
 ```
 
 ## Deploy Notları

@@ -1,0 +1,15 @@
+{
+  "name": "@vardiya/desktop",
+  "private": true,
+  "description": "Electron desktop shell for Vardiya",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "electron . --mode=development",
+    "start": "electron . --mode=production",
+    "build": "npm run lint",
+    "lint": "node --check src/main.js && node --check src/preload.js"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0"
+  }
+}

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vardiya Desktop</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1220;
+        --panel: rgba(15, 23, 42, 0.88);
+        --line: rgba(148, 163, 184, 0.18);
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --accent: #6366f1;
+        --danger: #ef4444;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(99, 102, 241, 0.24), transparent 34%),
+          radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.18), transparent 30%),
+          var(--bg);
+        color: var(--text);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .panel {
+        width: min(560px, 100%);
+        border: 1px solid var(--line);
+        background: var(--panel);
+        backdrop-filter: blur(16px);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 24px 60px rgba(2, 6, 23, 0.42);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(99, 102, 241, 0.14);
+        color: #c7d2fe;
+        border: 1px solid rgba(99, 102, 241, 0.28);
+      }
+
+      h1 {
+        margin: 18px 0 10px;
+        font-size: 30px;
+        line-height: 1.15;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 14px;
+        padding: 12px 16px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: var(--accent);
+        color: white;
+      }
+
+      .secondary {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+
+      .status {
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(15, 23, 42, 0.6);
+      }
+
+      .status[data-kind="error"] {
+        border-color: rgba(239, 68, 68, 0.35);
+        background: rgba(127, 29, 29, 0.22);
+        color: #fecaca;
+      }
+
+      code {
+        font-family: Consolas, monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="panel stack">
+      <span class="badge" id="badge">Vardiya Desktop</span>
+      <div class="stack">
+        <h1 id="title">Masaustu uygulama baglaniyor</h1>
+        <p id="description">
+          Uygulama, Vardiya web arayuzunu masaustu penceresinde acmak icin gerekli servisleri kontrol ediyor.
+        </p>
+      </div>
+
+      <div class="status" id="statusBox">
+        <div id="statusText">Baglanti bekleniyor...</div>
+      </div>
+
+      <div class="stack">
+        <p>
+          Web adresi:
+          <code id="appUrl"></code>
+        </p>
+        <p id="hint">
+          Eger ilk acilis uzun surerse servisler yeni baslatiliyor olabilir.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="retryButton" type="button">Tekrar Dene</button>
+        <button class="secondary" id="browserButton" type="button">Tarayicida Ac</button>
+      </div>
+    </main>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const status = params.get("status") || "loading";
+      const message = params.get("message") || "Baglanti bekleniyor...";
+      const mode = params.get("mode") || (window.vardiyaDesktop?.mode ?? "development");
+      const appUrl = window.vardiyaDesktop?.appUrl ?? "http://localhost:3000";
+
+      const statusBox = document.getElementById("statusBox");
+      const statusText = document.getElementById("statusText");
+      const title = document.getElementById("title");
+      const description = document.getElementById("description");
+      const hint = document.getElementById("hint");
+      const badge = document.getElementById("badge");
+      const appUrlNode = document.getElementById("appUrl");
+      const retryButton = document.getElementById("retryButton");
+      const browserButton = document.getElementById("browserButton");
+
+      badge.textContent = `Vardiya Desktop · ${mode === "development" ? "Gelistirme" : "Calisma"}`;
+      appUrlNode.textContent = appUrl;
+      statusText.textContent = message;
+      statusBox.dataset.kind = status;
+
+      if (status === "error") {
+        title.textContent = "Masaustu uygulama baglanamadi";
+        description.textContent =
+          "Web veya API sureci hazir degil. Repo icinde calisiyorsan asagidaki komutlarla tekrar deneyebilirsin.";
+        hint.innerHTML =
+          "<code>npm run dev:desktop</code> veya build sonrasi <code>npm run start:desktop</code>";
+      }
+
+      retryButton.addEventListener("click", async () => {
+        statusBox.dataset.kind = "loading";
+        statusText.textContent = "Baglanti yeniden deneniyor...";
+        await window.vardiyaDesktop?.retryConnection?.();
+      });
+
+      browserButton.addEventListener("click", async () => {
+        await window.vardiyaDesktop?.openInBrowser?.();
+      });
+    </script>
+  </body>
+</html>
